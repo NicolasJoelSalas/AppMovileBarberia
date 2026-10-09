@@ -92,3 +92,4 @@ git checkout clase-01-ui-mvvm
 Ideas para próximas clases, ya preparadas en el código: reemplazar los fakes por Retrofit y Room reales,
 un módulo `:core:testing` para compartir fakes entre tests, *convention plugins* para no repetir los `build.gradle.kts`,
 Paging 3 y búsqueda.
+# AppMovileBarberia
