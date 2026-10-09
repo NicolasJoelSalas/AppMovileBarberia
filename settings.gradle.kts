@@ -31,10 +31,13 @@ include(":features:todos")
 include(":features:books")
 include(":features:playground")
 
+
 // Capas compartidas
 include(":core:domain")
 include(":core:data")
 include(":core:network")
 include(":core:database")
 include(":core:ui")
- 
+include(":features:auth")
+include(":core:auth")
+include(":features:turnos")

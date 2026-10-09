@@ -4,6 +4,12 @@ import android.util.Log
 import ar.edu.unaj.am.myapplication.BuildConfig
 import ar.edu.unaj.am.myapplication.core.data.repository.BookRepositoryImpl
 import ar.edu.unaj.am.myapplication.core.data.repository.TodoRepositoryImpl
+import ar.edu.unaj.am.myapplication.core.data.repository.FirestoreTurnoRepository
+import ar.edu.unaj.am.myapplication.core.data.repository.FirestoreClienteRepository
+import ar.edu.unaj.am.myapplication.core.domain.repository.ClienteRepository
+import ar.edu.unaj.am.myapplication.core.domain.usecase.EnsureClienteProfileUseCase
+import ar.edu.unaj.am.myapplication.core.domain.repository.TurnoRepository
+import ar.edu.unaj.am.myapplication.core.domain.usecase.ObserveTurnosUseCase
 import ar.edu.unaj.am.myapplication.core.database.dao.InMemoryTodoDao
 import ar.edu.unaj.am.myapplication.core.database.dao.TodoDao
 import ar.edu.unaj.am.myapplication.core.domain.repository.BookRepository
@@ -21,6 +27,11 @@ import ar.edu.unaj.am.myapplication.core.network.BookApi
 import ar.edu.unaj.am.myapplication.core.network.NetworkFactory
 import ar.edu.unaj.am.myapplication.core.network.TodoApi
 import ar.edu.unaj.am.myapplication.core.network.fake.FakeTodoApi
+import ar.edu.unaj.am.myapplication.core.auth.repository.FirebaseAuthRepository
+import ar.edu.unaj.am.myapplication.core.domain.repository.AuthRepository
+import ar.edu.unaj.am.myapplication.core.domain.usecase.LoginUseCase
+import ar.edu.unaj.am.myapplication.core.domain.usecase.LoginWithGoogleUseCase
+import ar.edu.unaj.am.myapplication.core.domain.usecase.RegisterUseCase
 
 /**
  * Inyección de dependencias MANUAL: acá se decide qué implementación concreta usa cada contrato.
@@ -32,6 +43,8 @@ import ar.edu.unaj.am.myapplication.core.network.fake.FakeTodoApi
  * lo reemplaza una librería como Hilt o Koin, pero la idea es exactamente la misma.
  */
 class AppContainer {
+    private val turnoRepository: TurnoRepository = FirestoreTurnoRepository()
+    val observeTurnos = ObserveTurnosUseCase(turnoRepository)
 
     // ---------- Tareas: API simulada + base local en memoria (offline-first) ----------
 
@@ -57,6 +70,18 @@ class AppContainer {
 
     val getBooks = GetBooksUseCase(bookRepository)
     val getBook = GetBookUseCase(bookRepository)
+    private val authRepository: AuthRepository =
+        FirebaseAuthRepository()
+
+    val login = LoginUseCase(authRepository)
+    val loginWithGoogle = LoginWithGoogleUseCase(authRepository)
+    val register = RegisterUseCase(authRepository)
+    private val clienteRepository: ClienteRepository = FirestoreClienteRepository()
+    val ensureClienteProfile = EnsureClienteProfileUseCase(clienteRepository)
+
+    fun isLoggedIn(): Boolean = authRepository.isLoggedIn()
+
+    fun logout() = authRepository.logout()
 }
 
 private const val API_BOOKS_TAG = "API_BOOKS"

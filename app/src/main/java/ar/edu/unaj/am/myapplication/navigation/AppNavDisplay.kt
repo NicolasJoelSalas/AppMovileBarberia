@@ -16,6 +16,7 @@ import ar.edu.unaj.am.myapplication.features.books.detail.BookDetailViewModel
 import ar.edu.unaj.am.myapplication.features.books.list.BookListRoute
 import ar.edu.unaj.am.myapplication.features.books.list.BookListViewModel
 import ar.edu.unaj.am.myapplication.features.playground.PlaygroundScreen
+import ar.edu.unaj.am.myapplication.features.turnos.list.TurnosListRoute
 import ar.edu.unaj.am.myapplication.features.todos.detail.TodoDetailRoute
 import ar.edu.unaj.am.myapplication.features.todos.detail.TodoDetailViewModel
 import ar.edu.unaj.am.myapplication.features.todos.list.TodoListRoute
@@ -34,6 +35,13 @@ fun AppNavDisplay(
     // entryProvider: "para esta key, mostrá esta pantalla". La key llega ya tipada:
     // key.todoId es un Int, sin getInt("todoId") ni strings de por medio.
     val entryProvider = entryProvider<NavKey> {
+
+        entry<TurnosListDestination> {
+            val viewModel = viewModel {
+                ar.edu.unaj.am.myapplication.features.turnos.list.TurnoListViewModel(container.observeTurnos)
+            }
+            TurnosListRoute(viewModel = viewModel)
+        }
 
         entry<TodoListDestination> {
             // viewModel { } crea el ViewModel UNA vez por entrada del back stack:

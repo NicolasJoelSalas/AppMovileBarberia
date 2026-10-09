@@ -1,41 +1,44 @@
 plugins {
-    alias(libs.plugins.android.application)
+    alias(libs.plugins.android.library)
+    alias(libs.plugins.compose.compiler)
 }
 
-    android {
+android {
     namespace = "ar.edu.unaj.am.myapplication.features.turnos"
-        compileSdk {
-            version = release(37)
-        }
-
-        defaultConfig {
-      applicationId = "ar.edu.unaj.am.myapplication.features.turnos"
-    minSdk = 26
-    targetSdk = 37
-    versionCode = 1
-    versionName = "1.0"
-
-      testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    compileSdk {
+        version = release(37)
     }
 
-    buildTypes {
-          release {
-              optimization {
-                  enable = true
-                  packageScope = setOf("androidx.**", "kotlin.**", "kotlinx.**")
-              }
-          }
-      }
-        compileOptions {
-            sourceCompatibility = JavaVersion.VERSION_11
-            targetCompatibility = JavaVersion.VERSION_11
-        }
+    defaultConfig {
+        minSdk = 26
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-  dependencies {
-      implementation(libs.androidx.appcompat)
-      implementation(libs.material)
-      testImplementation(libs.junit)
-      androidTestImplementation(libs.androidx.espresso.core)
-      androidTestImplementation(libs.androidx.junit)
-  }
+    buildFeatures {
+        compose = true
+    }
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+}
+
+dependencies {
+    implementation(project(":core:domain"))
+    implementation(project(":core:ui"))
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.androidx.appcompat)
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.runtime)
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    debugImplementation(libs.androidx.compose.ui.tooling)
+    implementation(libs.material)
+    testImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.androidx.junit)
+}

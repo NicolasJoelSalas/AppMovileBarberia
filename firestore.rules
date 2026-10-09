@@ -1,0 +1,40 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function esBarberoHabilitado() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/barberos/$(request.auth.uid))
+        && get(/databases/$(database)/documents/barberos/$(request.auth.uid)).data.Estado == true;
+    }
+
+    match /turnos/{turnoId} {
+      allow read: if esBarberoHabilitado()
+        && resource.data.BarberoId == request.auth.uid;
+      allow write: if false;
+    }
+
+    // Cada cuenta puede consultar su propio documento, incluso si todavía no existe.
+    match /barberos/{uid} {
+      allow get: if request.auth != null && request.auth.uid == uid;
+      allow list, write: if false;
+    }
+
+    match /clientes/{uid} {
+      allow get: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null && request.auth.uid == uid
+        && !exists(/databases/$(database)/documents/barberos/$(uid))
+        && request.resource.data.keys().hasAll(['Nombre', 'Correo', 'CreadoEn'])
+        && request.resource.data.keys().hasOnly(['Nombre', 'Correo', 'CreadoEn'])
+        && request.resource.data.Nombre is string
+        && request.resource.data.Nombre.size() <= 120
+        && request.resource.data.Correo == request.auth.token.email
+        && request.resource.data.CreadoEn == request.time;
+      allow list, update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

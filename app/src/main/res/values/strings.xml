@@ -1,6 +1,7 @@
 <resources>
     <string name="app_name">Compose Academy</string>
     <string name="tab_todos">Tareas</string>
+    <string name="tab_turnos">Turnos</string>
     <string name="tab_books">Libros</string>
     <string name="tab_playground">Playground</string>
 </resources>

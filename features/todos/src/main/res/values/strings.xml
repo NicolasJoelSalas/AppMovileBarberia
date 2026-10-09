@@ -1,5 +1,5 @@
 <resources>
-    <string name="todos_title">Mis Tareas</string>
+    <string name="todos_title">Inicio</string>
     <string name="todos_loading">Cargando tareas…</string>
     <string name="todos_error_title">Ups, algo salió mal</string>
     <string name="todos_empty_title">No hay tareas</string>

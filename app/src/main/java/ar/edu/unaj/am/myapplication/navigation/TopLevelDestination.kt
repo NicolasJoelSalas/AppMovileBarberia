@@ -5,8 +5,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.outlined.MenuBook
 import androidx.compose.material.icons.filled.Checklist
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Science
 import androidx.compose.material.icons.outlined.Checklist
+import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.Science
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation3.runtime.NavKey
@@ -22,6 +24,12 @@ enum class TopLevelDestination(
     val unselectedIcon: ImageVector,
     @StringRes val label: Int
 ) {
+    TURNOS(
+        startKey = TurnosListDestination,
+        selectedIcon = Icons.Filled.DateRange,
+        unselectedIcon = Icons.Outlined.DateRange,
+        label = R.string.tab_turnos
+    ),
     TODOS(
         startKey = TodoListDestination,
         selectedIcon = Icons.Filled.Checklist,
