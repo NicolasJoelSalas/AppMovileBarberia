@@ -4,11 +4,9 @@ import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.outlined.BarChart
-import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.automirrored.outlined.EventNote
 import androidx.compose.material.icons.outlined.Home
@@ -43,12 +41,6 @@ enum class TopLevelDestination(
         selectedIcon = Icons.AutoMirrored.Filled.EventNote,
         unselectedIcon = Icons.AutoMirrored.Outlined.EventNote,
         label = R.string.tab_agenda
-    ),
-    TODOS(
-        startKey = TodoListDestination,
-        selectedIcon = Icons.Filled.Checklist,
-        unselectedIcon = Icons.Outlined.Checklist,
-        label = R.string.tab_todos
     ),
     RESUMEN(
         startKey = ResumenBarberoDestination,
