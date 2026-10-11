@@ -20,3 +20,7 @@ local.properties
 
 # macOS
 .DS_Store
+node_modules/
+*-debug.log
+firestore-tests/firebase-debug.log
+firestore-tests/.firebase/

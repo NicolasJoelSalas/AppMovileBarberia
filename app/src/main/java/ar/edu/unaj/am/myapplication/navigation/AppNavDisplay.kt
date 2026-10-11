@@ -1,8 +1,12 @@
 package ar.edu.unaj.am.myapplication.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import ar.edu.unaj.am.myapplication.features.home.HomeRoute
+import ar.edu.unaj.am.myapplication.features.home.HomeViewModel
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
@@ -17,6 +21,11 @@ import ar.edu.unaj.am.myapplication.features.books.list.BookListRoute
 import ar.edu.unaj.am.myapplication.features.books.list.BookListViewModel
 import ar.edu.unaj.am.myapplication.features.playground.PlaygroundScreen
 import ar.edu.unaj.am.myapplication.features.turnos.list.TurnosListRoute
+import ar.edu.unaj.am.myapplication.features.turnos.list.ReservasRoute
+import ar.edu.unaj.am.myapplication.features.turnos.list.ReservarTurnoRoute
+import ar.edu.unaj.am.myapplication.features.turnos.list.ReservasViewModel
+import ar.edu.unaj.am.myapplication.features.turnos.agenda.AgendaRoute
+import ar.edu.unaj.am.myapplication.features.turnos.agenda.AgendaViewModel
 import ar.edu.unaj.am.myapplication.features.todos.detail.TodoDetailRoute
 import ar.edu.unaj.am.myapplication.features.todos.detail.TodoDetailViewModel
 import ar.edu.unaj.am.myapplication.features.todos.list.TodoListRoute
@@ -30,17 +39,73 @@ import ar.edu.unaj.am.myapplication.features.todos.list.TodoListViewModel
 fun AppNavDisplay(
     navigationState: NavigationState,
     container: AppContainer,
+    reservasViewModel: ReservasViewModel,
+    esBarbero: Boolean,
+    onEditorTrabajoVisible: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     // entryProvider: "para esta key, mostrá esta pantalla". La key llega ya tipada:
     // key.todoId es un Int, sin getInt("todoId") ni strings de por medio.
     val entryProvider = entryProvider<NavKey> {
+        entry<HomeDestination> {
+            val homeViewModel = viewModel {
+                HomeViewModel(container.observarPublicaciones, container.publicarTrabajo,
+                    container.eliminarPublicacion, createSavedStateHandle())
+            }
+            HomeRoute(homeViewModel, esBarbero = esBarbero,
+                onReservar = { navigationState.navigate(ReservarTurnoDestination(it)) },
+                onEditorVisible = onEditorTrabajoVisible)
+        }
+
 
         entry<TurnosListDestination> {
-            val viewModel = viewModel {
-                ar.edu.unaj.am.myapplication.features.turnos.list.TurnoListViewModel(container.observeTurnos)
+            ReservasRoute(reservasViewModel,
+                turnosCliente = {
+                    val misTurnosViewModel = viewModel(key = "mis-turnos-cliente") {
+                        ar.edu.unaj.am.myapplication.features.turnos.list.TurnoListViewModel(
+                            container.observeTurnos, comoCliente = true)
+                    }
+                    TurnosListRoute(misTurnosViewModel,
+                        onReservar = { navigationState.navigate(ReservarTurnoDestination()) })
+                }) { headerContent ->
+                val agendaViewModel = viewModel {
+                    ar.edu.unaj.am.myapplication.features.turnos.list.TurnoListViewModel(container.observeTurnos)
+                }
+                TurnosListRoute(viewModel = agendaViewModel, headerContent = headerContent)
             }
-            TurnosListRoute(viewModel = viewModel)
+        }
+
+        entry<ReservarTurnoDestination> { key ->
+            val reservaViewModel = viewModel {
+                ReservasViewModel(container.cargarCatalogoReservas, container.consultarSemana,
+                    container.reservarTurno, container.publicarSemana)
+            }
+            LaunchedEffect(key.barberoId) { key.barberoId?.let(reservaViewModel::barbero) }
+            ReservarTurnoRoute(reservaViewModel, onBack = { navigationState.goBackFrom(key) })
+        }
+
+        entry<ResumenBarberoDestination> { key ->
+            if (esBarbero) {
+                val resumenViewModel = viewModel {
+                    ar.edu.unaj.am.myapplication.features.turnos.resumen.ResumenBarberoViewModel(
+                        container.observeTurnos, container.calcularResumenBarbero, container.marcarTurnoRealizado)
+                }
+                ar.edu.unaj.am.myapplication.features.turnos.resumen.ResumenBarberoRoute(
+                    resumenViewModel, onBack = { navigationState.goBackFrom(key) })
+            } else {
+                ar.edu.unaj.am.myapplication.core.ui.components.LoadingContent(message = "Verificando acceso…")
+            }
+        }
+
+        entry<AgendaSemanalDestination> { key ->
+            if (esBarbero) {
+                val agendaViewModel = viewModel {
+                    AgendaViewModel(container.obtenerMiAgenda, container.guardarYPublicarAgenda)
+                }
+                AgendaRoute(agendaViewModel, onBack = { navigationState.goBackFrom(key) })
+            } else {
+                ar.edu.unaj.am.myapplication.core.ui.components.LoadingContent(message = "Verificando acceso a tu agenda…")
+            }
         }
 
         entry<TodoListDestination> {

@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
@@ -7,6 +9,14 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+// Solo datos públicos. Nunca incluir el API secret en la aplicación.
+val cloudinaryConfig = Properties().apply {
+    val config = rootProject.file("local.properties")
+    if (config.exists()) config.inputStream().use { load(it) }
+}
+fun cloudinaryValue(key: String): String = cloudinaryConfig.getProperty(key, "")
+    .takeIf { it.matches(Regex("[A-Za-z0-9_-]+")) }.orEmpty()
+
 android {
     namespace = "ar.edu.unaj.am.myapplication"
     compileSdk = 37
@@ -15,6 +25,8 @@ android {
         applicationId = "ar.edu.unaj.am.myapplication"
         minSdk = 26
         targetSdk = 37
+        buildConfigField("String", "CLOUDINARY_CLOUD_NAME", "\"${cloudinaryValue("cloudinary.cloudName")}\"")
+        buildConfigField("String", "CLOUDINARY_UPLOAD_PRESET", "\"${cloudinaryValue("cloudinary.uploadPreset")}\"")
         versionCode = 1
         versionName = "1.0"
 
@@ -39,6 +51,7 @@ dependencies {
     implementation(project(":features:playground"))
     implementation(project(":features:auth"))
     implementation(project(":features:turnos"))
+    implementation(project(":features:home"))
     implementation(project(":core:ui"))
     implementation(project(":core:domain"))
     implementation(project(":core:data"))

@@ -8,20 +8,109 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/barberos/$(request.auth.uid)).data.Estado == true;
     }
 
+    function esCliente() {
+      return request.auth != null
+        && !exists(/databases/$(database)/documents/barberos/$(request.auth.uid))
+        && exists(/databases/$(database)/documents/clientes/$(request.auth.uid));
+    }
+
+    function servicioHabilitado(id) {
+      let servicio = get(/databases/$(database)/documents/servicios/$(id)).data;
+      return servicio.Duracion == 40
+        && (('Estado' in servicio && servicio.Estado == true)
+          || (!('Estado' in servicio) && servicio.Activo == true));
+    }
+
+    function horarioPublicable(id, h) {
+      return h.keys().hasOnly(['BarberoId', 'Inicio', 'Fin', 'Estado', 'Agenda', 'AgendaId', 'ZonaHoraria'])
+        && h.AgendaId is string
+        && h.BarberoId == request.auth.uid
+        && h.Inicio is timestamp && h.Fin is timestamp
+        && h.Inicio > request.time && h.Fin - h.Inicio == duration.value(40, 'm')
+        && id == h.BarberoId + '_' + string(h.Inicio.toMillis())
+        && h.Estado == 'libre'
+        && h.Agenda == get(/databases/$(database)/documents/barberos/$(h.BarberoId)/agenda/$(h.AgendaId)).data
+        && h.ZonaHoraria == get(/databases/$(database)/documents/barberos/$(h.BarberoId)).data.ZonaHoraria;
+    }
+
+    function turnoValido(id, t) {
+      let horarioPath = /databases/$(database)/documents/horarios/$(t.HorarioId);
+      let antes = get(horarioPath).data;
+      let despues = getAfter(horarioPath).data;
+      let barbero = get(/databases/$(database)/documents/barberos/$(t.BarberoId)).data;
+      return t.keys().hasAll(['ClienteId', 'BarberoId', 'ServicioId', 'HorarioId', 'Inicio', 'Fin', 'Estado', 'CreadoEn'])
+        && t.keys().hasOnly(['ClienteId', 'BarberoId', 'ServicioId', 'HorarioId', 'Inicio', 'Fin', 'Estado', 'CreadoEn'])
+        && t.ClienteId == request.auth.uid && t.Estado == 'confirmado' && t.CreadoEn == request.time
+        && barbero.Estado == true && servicioHabilitado(t.ServicioId)
+        && antes.Estado == 'libre' && despues.Estado == 'ocupado' && despues.TurnoId == id
+        && t.BarberoId == antes.BarberoId && t.Inicio == antes.Inicio && t.Fin == antes.Fin
+        && t.Inicio > request.time && t.Fin - t.Inicio == duration.value(40, 'm')
+        && antes.AgendaId is string
+        && antes.Agenda == get(/databases/$(database)/documents/barberos/$(t.BarberoId)/agenda/$(antes.AgendaId)).data
+        && antes.ZonaHoraria == barbero.ZonaHoraria;
+    }
+
     match /turnos/{turnoId} {
-      allow read: if esBarberoHabilitado()
-        && resource.data.BarberoId == request.auth.uid;
-      allow write: if false;
+      allow list: if (esBarberoHabilitado() && resource.data.BarberoId == request.auth.uid)
+        || (esCliente() && resource.data.ClienteId == request.auth.uid);
+      // Solo lectura individual del propio comprobante para reintentar la transacción.
+      allow get: if request.auth != null && (!exists(/databases/$(database)/documents/turnos/$(turnoId))
+        || resource.data.ClienteId == request.auth.uid
+        || (esBarberoHabilitado() && resource.data.BarberoId == request.auth.uid));
+      allow create: if esCliente() && turnoValido(turnoId, request.resource.data);
+      allow update: if esBarberoHabilitado()
+        && resource.data.BarberoId == request.auth.uid
+        && (resource.data.Estado == true || resource.data.Estado in ['confirmado', 'Confirmado', 'pendiente', 'Pendiente'])
+        && resource.data.Fin is timestamp && resource.data.Fin <= request.time
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['Estado', 'PrecioCobrado', 'RealizadoEn'])
+        && request.resource.data.Estado == 'realizado'
+        && request.resource.data.RealizadoEn == request.time
+        && request.resource.data.PrecioCobrado is number
+        && request.resource.data.PrecioCobrado >= 0 && request.resource.data.PrecioCobrado <= 1000000000
+        && request.resource.data.PrecioCobrado == get(/databases/$(database)/documents/servicios/$(resource.data.ServicioId)).data.Precio;
+      allow delete: if false;
+    }
+
+    // No contiene nombre, correo ni UID de cliente. Solo disponibilidad y referencia opaca al turno.
+    match /horarios/{horarioId} {
+      allow read: if request.auth != null;
+      allow create: if esBarberoHabilitado() && horarioPublicable(horarioId, request.resource.data);
+      allow update: if (esBarberoHabilitado() && resource.data.BarberoId == request.auth.uid
+          && resource.data.Estado != 'ocupado'
+          && (horarioPublicable(horarioId, request.resource.data)
+            || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['Estado'])
+              && request.resource.data.Estado == 'bloqueado')))
+        || (esCliente() && resource.data.Estado == 'libre'
+          && request.resource.data.Estado == 'ocupado'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['Estado', 'TurnoId'])
+          && request.resource.data.TurnoId is string
+          && !exists(/databases/$(database)/documents/turnos/$(request.resource.data.TurnoId))
+          && getAfter(/databases/$(database)/documents/turnos/$(request.resource.data.TurnoId)).data.HorarioId == horarioId
+          && getAfter(/databases/$(database)/documents/turnos/$(request.resource.data.TurnoId)).data.ClienteId == request.auth.uid);
+      allow delete: if false;
     }
 
     // Cada cuenta puede consultar su propio documento, incluso si todavía no existe.
     match /barberos/{uid} {
-      allow get: if request.auth != null && request.auth.uid == uid;
-      allow list, write: if false;
+      allow get: if request.auth != null
+        && (request.auth.uid == uid || resource.data.Estado == true);
+      allow list: if request.auth != null && resource.data.Estado == true;
+      allow update: if esBarberoHabilitado() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['Nombre', 'ZonaHoraria'])
+        && request.resource.data.Nombre is string && request.resource.data.ZonaHoraria is string;
+      allow create, delete: if false;
+
+      match /agenda/{agendaId} {
+        allow read: if request.auth != null;
+        allow create, update: if (agendaId == 'semanal' || agendaId.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}'))
+          && esBarberoHabilitado() && request.auth.uid == uid;
+        allow delete: if false;
+      }
     }
 
     match /clientes/{uid} {
-      allow get: if request.auth != null && request.auth.uid == uid;
+      allow get: if request.auth != null
+        && (request.auth.uid == uid || esBarberoHabilitado());
       allow create: if request.auth != null && request.auth.uid == uid
         && !exists(/databases/$(database)/documents/barberos/$(uid))
         && request.resource.data.keys().hasAll(['Nombre', 'Correo', 'CreadoEn'])
@@ -30,7 +119,35 @@ service cloud.firestore {
         && request.resource.data.Nombre.size() <= 120
         && request.resource.data.Correo == request.auth.token.email
         && request.resource.data.CreadoEn == request.time;
-      allow list, update, delete: if false;
+      allow update: if request.auth != null && request.auth.uid == uid
+        && !exists(/databases/$(database)/documents/barberos/$(uid))
+        && resource.data.Nombre == ''
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['Nombre'])
+        && request.resource.data.Nombre is string && request.resource.data.Nombre.size() > 0
+        && request.resource.data.Nombre.size() <= 120;
+      allow list, delete: if false;
+    }
+
+    match /servicios/{servicioId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    match /publicaciones/{publicacionId} {
+      allow read: if request.auth != null;
+      allow create: if esBarberoHabilitado()
+        && request.resource.data.keys().hasAll(['BarberoId', 'BarberoNombre', 'ImagenUrl', 'ImagenPublicId', 'Descripcion', 'CreadoEn'])
+        && request.resource.data.keys().hasOnly(['BarberoId', 'BarberoNombre', 'ImagenUrl', 'ImagenPublicId', 'Descripcion', 'CreadoEn'])
+        && request.resource.data.BarberoId == request.auth.uid
+        && request.resource.data.BarberoNombre == get(/databases/$(database)/documents/barberos/$(request.auth.uid)).data.Nombre
+        && request.resource.data.ImagenUrl is string && request.resource.data.ImagenUrl.size() <= 2000
+        && request.resource.data.ImagenUrl.matches('https://res[.]cloudinary[.]com/[A-Za-z0-9_-]+/image/upload/.+[.]jpg')
+        && request.resource.data.ImagenPublicId is string && request.resource.data.ImagenPublicId.size() > 0
+        && request.resource.data.ImagenPublicId.size() <= 300
+        && request.resource.data.Descripcion is string && request.resource.data.Descripcion.size() <= 300
+        && request.resource.data.CreadoEn == request.time;
+      allow delete: if esBarberoHabilitado() && resource.data.BarberoId == request.auth.uid;
+      allow update: if false;
     }
 
     match /{document=**} {

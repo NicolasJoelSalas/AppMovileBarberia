@@ -6,6 +6,7 @@ import ar.edu.unaj.am.myapplication.core.domain.repository.AuthRepository
 import ar.edu.unaj.am.myapplication.core.domain.repository.ClienteRepository
 import ar.edu.unaj.am.myapplication.core.domain.usecase.EnsureClienteProfileUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.LoginUseCase
+import ar.edu.unaj.am.myapplication.core.domain.usecase.LogoutUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.LoginWithGoogleUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.RegisterUseCase
 import kotlinx.coroutines.CompletableDeferred
@@ -37,7 +38,7 @@ class LoginViewModelTest {
 
     private fun viewModel(initiallyLoggedIn: Boolean = false) = LoginViewModel(
         LoginUseCase(repository), LoginWithGoogleUseCase(repository), RegisterUseCase(repository),
-        EnsureClienteProfileUseCase(profiles), initiallyLoggedIn
+        EnsureClienteProfileUseCase(profiles), LogoutUseCase(repository), initiallyLoggedIn
     )
 
     @Test fun `Google success opens authenticated session`() = runTest {
@@ -142,7 +143,22 @@ class LoginViewModelTest {
         assertEquals(0, profileCalls)
     }
 
+    @Test fun `logout returns to login and allows another authenticated session`() = runTest {
+        val vm = viewModel(initiallyLoggedIn = true)
+        assertTrue(vm.uiState.value.isAuthenticated)
+        vm.onLogout()
+        vm.onLogout()
+        assertEquals(1, repository.logoutCalls)
+        assertFalse(vm.uiState.value.isAuthenticated)
+        assertFalse(vm.uiState.value.isLoading)
+        assertFalse(vm.uiState.value.needsProfileRetry)
+        vm.onLogin("another@example.com", "password")
+        assertTrue(vm.uiState.value.isAuthenticated)
+        assertEquals(2, profileCalls)
+    }
+
     private class FakeAuthRepository : AuthRepository {
+        var logoutCalls = 0
         var token: String? = null
         var passwordCalls = 0
         var registerCalls = 0
@@ -160,6 +176,6 @@ class LoginViewModelTest {
             return result
         }
         override fun isLoggedIn() = false
-        override fun logout() = Unit
+        override fun logout() { logoutCalls++ }
     }
 }

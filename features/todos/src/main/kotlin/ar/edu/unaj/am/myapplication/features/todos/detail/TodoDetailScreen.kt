@@ -17,19 +17,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Save
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -37,6 +33,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -133,18 +130,9 @@ fun TodoDetailScreen(
                         fontWeight = FontWeight.Bold
                     )
                 },
-                navigationIcon = {
-                    if (isEditing) {
-                        IconButton(onClick = onCancelEdit) {
-                            Icon(Icons.Default.Close, contentDescription = stringResource(R.string.todo_detail_cancel))
-                        }
-                    } else {
-                        IconButton(onClick = onBack) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = stringResource(R.string.todo_detail_back)
-                            )
-                        }
+                actions = {
+                    TextButton(onClick = if (isEditing) onCancelEdit else onBack) {
+                        Text(stringResource(R.string.todo_detail_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -189,11 +177,7 @@ fun TodoDetailScreen(
                 title = stringResource(R.string.todo_detail_error_title),
                 message = uiState.error.asMessage(),
                 onRetry = onRetry,
-                modifier = contentModifier,
-                // Slot: esta pantalla agrega su propio botón extra al componente compartido.
-                extraAction = {
-                    Button(onClick = onBack) { Text(stringResource(R.string.todo_detail_back)) }
-                }
+                modifier = contentModifier
             )
 
             is TodoDetailUiState.Success -> Column(

@@ -4,6 +4,10 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
@@ -11,7 +15,15 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import ar.edu.unaj.am.myapplication.features.turnos.list.ReservasViewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import ar.edu.unaj.am.myapplication.di.AppContainer
@@ -24,8 +36,16 @@ import ar.edu.unaj.am.myapplication.navigation.rememberNavigationState
 @Composable
 fun AppShell(
     container: AppContainer,
+    onLogout: () -> Unit,
     navigationState: NavigationState = rememberNavigationState()
 ) {
+    val reservasViewModel = viewModel(key = "catalogo-sesion") {
+        ReservasViewModel(container.cargarCatalogoReservas, container.consultarSemana,
+            container.reservarTurno, container.publicarSemana)
+    }
+    val reservasState by reservasViewModel.uiState.collectAsStateWithLifecycle()
+    val esBarbero = reservasState.catalogo?.esBarbero == true
+    var editorTrabajoVisible by remember { mutableStateOf(false) }
     Scaffold(
         // Los insets (status bar, barra de gestos) los maneja el Scaffold de cada pantalla.
         contentWindowInsets = WindowInsets(0),
@@ -33,20 +53,29 @@ fun AppShell(
             // Leer navigationState acá es leer estado: cuando cambia el back stack, esto se recompone solo.
             // La bottom bar solo se muestra en la pantalla principal de cada tab, no en los detalles.
             AnimatedVisibility(
-                visible = navigationState.isOnTabRoot,
+                visible = navigationState.isOnTabRoot && !editorTrabajoVisible,
                 enter = slideInVertically { it },
                 exit = slideOutVertically { it }
             ) {
-                AppBottomBar(
-                    currentTab = navigationState.currentTab,
-                    onTabClick = navigationState::selectTab
-                )
+                Column {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = onLogout) { Text("Cerrar sesión") }
+                    }
+                    AppBottomBar(
+                        currentTab = navigationState.currentTab,
+                        esBarbero = esBarbero,
+                        onTabClick = navigationState::selectTab
+                    )
+                }
             }
         }
     ) { innerPadding ->
         AppNavDisplay(
             navigationState = navigationState,
             container = container,
+            reservasViewModel = reservasViewModel,
+            esBarbero = esBarbero,
+            onEditorTrabajoVisible = { editorTrabajoVisible = it },
             // consumeWindowInsets: la bottom bar ya ocupa el espacio de la barra de navegación,
             // así las pantallas no vuelven a sumarlo.
             modifier = Modifier
@@ -59,10 +88,13 @@ fun AppShell(
 @Composable
 private fun AppBottomBar(
     currentTab: TopLevelDestination,
+    esBarbero: Boolean,
     onTabClick: (TopLevelDestination) -> Unit
 ) {
     NavigationBar {
-        TopLevelDestination.entries.forEach { tab ->
+        TopLevelDestination.entries.filter {
+            esBarbero || (it != TopLevelDestination.AGENDA && it != TopLevelDestination.RESUMEN)
+        }.forEach { tab ->
             val selected = tab == currentTab
             NavigationBarItem(
                 selected = selected,

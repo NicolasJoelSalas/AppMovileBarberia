@@ -1,6 +1,12 @@
 package ar.edu.unaj.am.myapplication.di
 
 import android.util.Log
+import android.content.Context
+import ar.edu.unaj.am.myapplication.core.data.images.PreparadorImagenTrabajo
+import ar.edu.unaj.am.myapplication.core.data.repository.FirestorePublicacionRepository
+import ar.edu.unaj.am.myapplication.core.domain.usecase.ObservarPublicacionesUseCase
+import ar.edu.unaj.am.myapplication.core.domain.usecase.PublicarTrabajoUseCase
+import ar.edu.unaj.am.myapplication.core.domain.usecase.EliminarPublicacionUseCase
 import ar.edu.unaj.am.myapplication.BuildConfig
 import ar.edu.unaj.am.myapplication.core.data.repository.BookRepositoryImpl
 import ar.edu.unaj.am.myapplication.core.data.repository.TodoRepositoryImpl
@@ -8,6 +14,14 @@ import ar.edu.unaj.am.myapplication.core.data.repository.FirestoreTurnoRepositor
 import ar.edu.unaj.am.myapplication.core.data.repository.FirestoreClienteRepository
 import ar.edu.unaj.am.myapplication.core.domain.repository.ClienteRepository
 import ar.edu.unaj.am.myapplication.core.domain.usecase.EnsureClienteProfileUseCase
+import ar.edu.unaj.am.myapplication.core.domain.repository.ReservaRepository
+import ar.edu.unaj.am.myapplication.core.data.repository.FirestoreReservaRepository
+import ar.edu.unaj.am.myapplication.core.domain.usecase.CargarCatalogoReservasUseCase
+import ar.edu.unaj.am.myapplication.core.domain.usecase.ConsultarSemanaUseCase
+import ar.edu.unaj.am.myapplication.core.domain.usecase.ReservarTurnoUseCase
+import ar.edu.unaj.am.myapplication.core.domain.usecase.PublicarSemanaUseCase
+import ar.edu.unaj.am.myapplication.core.domain.usecase.ObtenerMiAgendaUseCase
+import ar.edu.unaj.am.myapplication.core.domain.usecase.GuardarYPublicarAgendaUseCase
 import ar.edu.unaj.am.myapplication.core.domain.repository.TurnoRepository
 import ar.edu.unaj.am.myapplication.core.domain.usecase.ObserveTurnosUseCase
 import ar.edu.unaj.am.myapplication.core.database.dao.InMemoryTodoDao
@@ -30,6 +44,7 @@ import ar.edu.unaj.am.myapplication.core.network.fake.FakeTodoApi
 import ar.edu.unaj.am.myapplication.core.auth.repository.FirebaseAuthRepository
 import ar.edu.unaj.am.myapplication.core.domain.repository.AuthRepository
 import ar.edu.unaj.am.myapplication.core.domain.usecase.LoginUseCase
+import ar.edu.unaj.am.myapplication.core.domain.usecase.LogoutUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.LoginWithGoogleUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.RegisterUseCase
 
@@ -42,9 +57,25 @@ import ar.edu.unaj.am.myapplication.core.domain.usecase.RegisterUseCase
  * Ni el dominio ni las features se enteran del cambio. En proyectos grandes este archivo
  * lo reemplaza una librería como Hilt o Koin, pero la idea es exactamente la misma.
  */
-class AppContainer {
+class AppContainer(context: Context) {
+    private val publicacionRepository = FirestorePublicacionRepository(
+        PreparadorImagenTrabajo(context.applicationContext), NetworkFactory.createCloudinaryApi(),
+        BuildConfig.CLOUDINARY_CLOUD_NAME, BuildConfig.CLOUDINARY_UPLOAD_PRESET)
+    val observarPublicaciones = ObservarPublicacionesUseCase(publicacionRepository)
+    val publicarTrabajo = PublicarTrabajoUseCase(publicacionRepository)
+    val eliminarPublicacion = EliminarPublicacionUseCase(publicacionRepository)
+
+    private val reservaRepository: ReservaRepository = FirestoreReservaRepository()
+    val cargarCatalogoReservas = CargarCatalogoReservasUseCase(reservaRepository)
+    val consultarSemana = ConsultarSemanaUseCase(reservaRepository)
+    val reservarTurno = ReservarTurnoUseCase(reservaRepository)
+    val publicarSemana = PublicarSemanaUseCase(reservaRepository)
+    val obtenerMiAgenda = ObtenerMiAgendaUseCase(reservaRepository)
+    val guardarYPublicarAgenda = GuardarYPublicarAgendaUseCase(reservaRepository, publicarSemana)
     private val turnoRepository: TurnoRepository = FirestoreTurnoRepository()
     val observeTurnos = ObserveTurnosUseCase(turnoRepository)
+    val calcularResumenBarbero = ar.edu.unaj.am.myapplication.core.domain.usecase.CalcularResumenBarberoUseCase()
+    val marcarTurnoRealizado = ar.edu.unaj.am.myapplication.core.domain.usecase.MarcarTurnoRealizadoUseCase(turnoRepository)
 
     // ---------- Tareas: API simulada + base local en memoria (offline-first) ----------
 
@@ -74,6 +105,7 @@ class AppContainer {
         FirebaseAuthRepository()
 
     val login = LoginUseCase(authRepository)
+    val logout = LogoutUseCase(authRepository)
     val loginWithGoogle = LoginWithGoogleUseCase(authRepository)
     val register = RegisterUseCase(authRepository)
     private val clienteRepository: ClienteRepository = FirestoreClienteRepository()
@@ -81,7 +113,6 @@ class AppContainer {
 
     fun isLoggedIn(): Boolean = authRepository.isLoggedIn()
 
-    fun logout() = authRepository.logout()
 }
 
 private const val API_BOOKS_TAG = "API_BOOKS"

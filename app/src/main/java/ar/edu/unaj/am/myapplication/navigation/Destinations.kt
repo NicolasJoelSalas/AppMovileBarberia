@@ -23,4 +23,16 @@ data class BookDetailDestination(val bookId: Int) : NavKey
 data object PlaygroundDestination : NavKey
 
 @Serializable
+data object HomeDestination : NavKey
+
+@Serializable
 data object TurnosListDestination : NavKey
+
+@Serializable
+data object AgendaSemanalDestination : NavKey
+
+@Serializable
+data object ResumenBarberoDestination : NavKey
+
+@Serializable
+data class ReservarTurnoDestination(val barberoId: String? = null) : NavKey

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ar.edu.unaj.am.myapplication.core.domain.model.AppResult
 import ar.edu.unaj.am.myapplication.core.domain.usecase.LoginUseCase
+import ar.edu.unaj.am.myapplication.core.domain.usecase.LogoutUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.LoginWithGoogleUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.RegisterUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.EnsureClienteProfileUseCase
@@ -19,6 +20,7 @@ class LoginViewModel(
     private val loginWithGoogle: LoginWithGoogleUseCase,
     private val register: RegisterUseCase,
     private val ensureClienteProfile: EnsureClienteProfileUseCase,
+    private val logout: LogoutUseCase,
     initiallyLoggedIn: Boolean
 ) : ViewModel() {
 
@@ -27,6 +29,12 @@ class LoginViewModel(
     )
 
     val uiState = _uiState.asStateFlow()
+
+    fun onLogout() {
+        if (!_uiState.value.isAuthenticated || _uiState.value.isLoading) return
+        logout()
+        _uiState.value = LoginUiState()
+    }
 
     init {
         if (initiallyLoggedIn) viewModelScope.launch { completeSession() }

@@ -6,6 +6,7 @@ import ar.edu.unaj.am.myapplication.core.domain.model.AppResult
 import ar.edu.unaj.am.myapplication.core.domain.model.DomainError
 import ar.edu.unaj.am.myapplication.core.domain.model.Turno
 import ar.edu.unaj.am.myapplication.core.domain.usecase.ObserveTurnosUseCase
+import ar.edu.unaj.am.myapplication.core.domain.usecase.FiltrarTurnosPorSemanaUseCase
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -18,11 +19,28 @@ sealed interface TurnosListUiState {
 }
 
 class TurnoListViewModel(
-    private val observeTurnos: ObserveTurnosUseCase
+    private val observeTurnos: ObserveTurnosUseCase,
+    private val comoCliente: Boolean = false,
+    private val filtrarSemana: FiltrarTurnosPorSemanaUseCase = FiltrarTurnosPorSemanaUseCase()
 ) : ViewModel() {
     private val mutableUiState = MutableStateFlow<TurnosListUiState>(TurnosListUiState.Loading)
     val uiState = mutableUiState.asStateFlow()
     private var observation: Job? = null
+    private var todosLosTurnos: List<Turno> = emptyList()
+    private val mutableSemanaOffset = MutableStateFlow(0)
+    val semanaOffset = mutableSemanaOffset.asStateFlow()
+
+    fun seleccionarSemana(offset: Int) {
+        if (offset !in 0..1) return
+        mutableSemanaOffset.value = offset
+        actualizarSemana()
+    }
+
+    fun actualizarSemana() {
+        if (mutableUiState.value is TurnosListUiState.Success) {
+            mutableUiState.value = TurnosListUiState.Success(filtrarSemana(todosLosTurnos, mutableSemanaOffset.value))
+        }
+    }
 
     init { onRetry() }
 
@@ -30,9 +48,12 @@ class TurnoListViewModel(
         observation?.cancel()
         mutableUiState.value = TurnosListUiState.Loading
         observation = viewModelScope.launch {
-            observeTurnos().collect { result ->
+            observeTurnos(comoCliente).collect { result ->
                 mutableUiState.value = when (result) {
-                    is AppResult.Success -> TurnosListUiState.Success(result.data)
+                    is AppResult.Success -> {
+                        todosLosTurnos = result.data
+                        TurnosListUiState.Success(filtrarSemana(result.data, mutableSemanaOffset.value))
+                    }
                     is AppResult.Error -> TurnosListUiState.Error(result.error)
                 }
             }

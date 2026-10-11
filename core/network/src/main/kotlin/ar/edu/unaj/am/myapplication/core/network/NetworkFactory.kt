@@ -10,6 +10,12 @@ import java.util.concurrent.TimeUnit
 
 /** Arma el cliente HTTP. Lo usa AppContainer; nadie más conoce Retrofit ni OkHttp. */
 object NetworkFactory {
+    fun createCloudinaryApi(): CloudinaryApi = Retrofit.Builder()
+        .baseUrl("https://api.cloudinary.com/")
+        .client(OkHttpClient.Builder().connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS).writeTimeout(60, TimeUnit.SECONDS).build())
+        .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+        .build().create(CloudinaryApi::class.java)
 
     private const val GUTENDEX_BASE_URL = "https://gutendex.com/"
 

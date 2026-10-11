@@ -76,7 +76,7 @@ class NavigationState(
 
 @Composable
 fun rememberNavigationState(
-    startTab: TopLevelDestination = TopLevelDestination.TODOS
+    startTab: TopLevelDestination = TopLevelDestination.HOME
 ): NavigationState {
     // rememberSaveable / rememberNavBackStack: el tab actual y cada back stack sobreviven a la rotación.
     val currentTab = rememberSaveable { mutableStateOf(startTab) }

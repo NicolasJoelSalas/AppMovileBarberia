@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -15,6 +17,7 @@ import ar.edu.unaj.am.myapplication.core.ui.theme.MyApplicationTheme
 import ar.edu.unaj.am.myapplication.features.auth.detail.LoginRoute
 import ar.edu.unaj.am.myapplication.features.auth.detail.LoginViewModel
 import ar.edu.unaj.am.myapplication.ui.AppShell
+import ar.edu.unaj.am.myapplication.ui.AuthenticatedSessionViewModel
 
 class MainActivity : ComponentActivity() {
 
@@ -25,12 +28,14 @@ class MainActivity : ComponentActivity() {
         val container = (application as ComposeAcademyApp).container
 
         setContent {
+            val sessionOwner: AuthenticatedSessionViewModel = viewModel()
             val loginViewModel: LoginViewModel = viewModel {
                 LoginViewModel(
                     login = container.login,
                     loginWithGoogle = container.loginWithGoogle,
                     register = container.register,
                     ensureClienteProfile = container.ensureClienteProfile,
+                    logout = container.logout,
                     initiallyLoggedIn = container.isLoggedIn()
                 )
             }
@@ -44,7 +49,13 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     if (loginState.isAuthenticated) {
-                        AppShell(container = container)
+                        // Cada sesión tiene sus propios ViewModels de navegación y datos.
+                        CompositionLocalProvider(LocalViewModelStoreOwner provides sessionOwner) {
+                            AppShell(container = container, onLogout = {
+                                loginViewModel.onLogout()
+                                sessionOwner.clearSession()
+                            })
+                        }
                     } else {
                         // Google Services generates this resource when the JSON contains a web OAuth client.
                         val clientIdResource = resources.getIdentifier(

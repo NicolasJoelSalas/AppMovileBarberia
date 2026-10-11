@@ -34,6 +34,27 @@ class TurnosFirestoreReadTest {
         )
         assertFalse("La consulta debe provenir del servidor.", snapshot.metadata.isFromCache)
         assertTrue(snapshot.documents.all { it.getString("BarberoId") == uid })
+        for (doc in snapshot.documents.take(5)) {
+            for ((field, collection, nameField) in listOf(
+                Triple("ClienteId", "clientes", "Nombre"),
+                Triple("ServicioId", "servicios", "NombreCorte")
+            )) {
+                val value = doc.get(field)
+                Log.i("TURNOS_READ_TEST", "Turno ${doc.id}: $field=$value")
+                val reference = when (value) {
+                    is String -> value.takeIf { it.isNotBlank() }?.let {
+                        FirebaseFirestore.getInstance().collection(collection).document(it)
+                    }
+                    is com.google.firebase.firestore.DocumentReference -> value
+                    else -> null
+                }
+                if (reference != null) {
+                    val related = Tasks.await(reference.get(Source.SERVER), 30, TimeUnit.SECONDS)
+                    Log.i("TURNOS_READ_TEST",
+                        "${reference.path}: existe=${related.exists()}, $nameField=${related.get(nameField)}")
+                }
+            }
+        }
         val result = runBlocking {
             withTimeout(30000) { FirestoreTurnoRepository().observeTurnos().first() }
         }

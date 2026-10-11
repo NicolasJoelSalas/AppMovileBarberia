@@ -19,8 +19,8 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private val zonaBarberia = ZoneId.of("America/Argentina/Buenos_Aires")
-private val fechaFormatter = DateTimeFormatter.ofPattern("EEEE d 'de' MMMM yyyy", Locale.forLanguageTag("es-AR"))
 private val horaFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.forLanguageTag("es-AR"))
+private val fechaFormatter = DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", Locale.forLanguageTag("es-AR"))
 
 @Composable
 fun TurnoCard(turno: Turno, modifier: Modifier = Modifier) {
@@ -35,17 +35,22 @@ fun TurnoCard(turno: Turno, modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = inicio?.format(fechaFormatter) ?: "Fecha sin configurar",
+                text = turno.clienteNombre.ifBlank { "Cliente sin nombre" },
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = inicio?.format(fechaFormatter) ?: "Fecha sin configurar",
+                style = MaterialTheme.typography.bodyMedium
             )
             Text(
                 text = "Horario: ${inicio?.format(horaFormatter) ?: "--:--"} a ${fin?.format(horaFormatter) ?: "--:--"}",
                 style = MaterialTheme.typography.bodyLarge
             )
-            Text(text = "Estado: ${turno.estado}", color = MaterialTheme.colorScheme.primary)
-            Text(text = "Barbero (ID): ${turno.barberoId.ifBlank { "Sin asignar" }}")
-            Text(text = "Servicio (ID): ${turno.servicioId.ifBlank { "Sin asignar" }}")
+            Text(
+                text = turno.servicioNombre.ifBlank { "Servicio sin asignar" },
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
     }
 }
