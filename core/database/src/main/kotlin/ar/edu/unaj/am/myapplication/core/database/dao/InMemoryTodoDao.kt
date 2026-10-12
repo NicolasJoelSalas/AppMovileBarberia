@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.update
  * "Base de datos" en memoria. Igual que Room, expone un Flow que vuelve a emitir
  * cada vez que la tabla cambia: la UI se actualiza sola, sin volver a pedir los datos.
  */
+//NO BORRAR, FUTURA IMPLEMENTACION DEL ALMACENAMIENTO LOCAL
 class InMemoryTodoDao : TodoDao {
 
     private val table = MutableStateFlow<Map<Int, TodoEntity>>(emptyMap())
@@ -28,3 +29,5 @@ class InMemoryTodoDao : TodoDao {
         table.update { it - id }
     }
 }
+
+//NO BORRAR, FUTURA IMPLEMENTACION DEL ALMACENAMIENTO LOCAL

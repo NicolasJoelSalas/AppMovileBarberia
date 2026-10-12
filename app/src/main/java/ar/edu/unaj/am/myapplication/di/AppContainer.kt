@@ -29,15 +29,7 @@ import ar.edu.unaj.am.myapplication.core.domain.usecase.LogoutUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.LoginWithGoogleUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.RegisterUseCase
 
-/**
- * Inyección de dependencias MANUAL: acá se decide qué implementación concreta usa cada contrato.
- *
- * - ¿Queremos la API real? Cambiamos FakeTodoApi por Retrofit.create(TodoApi::class.java).
- * - ¿Queremos Room? Cambiamos InMemoryTodoDao por database.todoDao().
- *
- * Ni el dominio ni las features se enteran del cambio. En proyectos grandes este archivo
- * lo reemplaza una librería como Hilt o Koin, pero la idea es exactamente la misma.
- */
+
 class AppContainer(context: Context) {
     private val publicacionRepository = FirestorePublicacionRepository(
         PreparadorImagenTrabajo(context.applicationContext), NetworkFactory.createCloudinaryApi(),

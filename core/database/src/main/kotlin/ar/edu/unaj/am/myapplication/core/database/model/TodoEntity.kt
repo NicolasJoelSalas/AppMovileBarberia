@@ -10,3 +10,4 @@ data class TodoEntity(
     val description: String,
     val isCompleted: Boolean
 )
+//NO BORRAR, FUTURA IMPLEMENTACION DEL ALMACENAMIENTO LOCAL
