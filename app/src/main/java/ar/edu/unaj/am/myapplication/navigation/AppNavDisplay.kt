@@ -15,21 +15,12 @@ import androidx.navigation3.runtime.rememberDecoratedNavEntries
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import ar.edu.unaj.am.myapplication.di.AppContainer
-import ar.edu.unaj.am.myapplication.features.books.detail.BookDetailRoute
-import ar.edu.unaj.am.myapplication.features.books.detail.BookDetailViewModel
-import ar.edu.unaj.am.myapplication.features.books.list.BookListRoute
-import ar.edu.unaj.am.myapplication.features.books.list.BookListViewModel
-import ar.edu.unaj.am.myapplication.features.playground.PlaygroundScreen
 import ar.edu.unaj.am.myapplication.features.turnos.list.TurnosListRoute
 import ar.edu.unaj.am.myapplication.features.turnos.list.ReservasRoute
 import ar.edu.unaj.am.myapplication.features.turnos.list.ReservarTurnoRoute
 import ar.edu.unaj.am.myapplication.features.turnos.list.ReservasViewModel
 import ar.edu.unaj.am.myapplication.features.turnos.agenda.AgendaRoute
 import ar.edu.unaj.am.myapplication.features.turnos.agenda.AgendaViewModel
-import ar.edu.unaj.am.myapplication.features.todos.detail.TodoDetailRoute
-import ar.edu.unaj.am.myapplication.features.todos.detail.TodoDetailViewModel
-import ar.edu.unaj.am.myapplication.features.todos.list.TodoListRoute
-import ar.edu.unaj.am.myapplication.features.todos.list.TodoListViewModel
 
 /**
  * La navegación vive en :app. Las features no se conocen entre sí:
@@ -49,23 +40,30 @@ fun AppNavDisplay(
     val entryProvider = entryProvider<NavKey> {
         entry<HomeDestination> {
             val homeViewModel = viewModel {
-                HomeViewModel(container.observarPublicaciones, container.publicarTrabajo,
-                    container.eliminarPublicacion, createSavedStateHandle())
+                HomeViewModel(
+                    container.observarPublicaciones, container.publicarTrabajo,
+                    container.eliminarPublicacion, createSavedStateHandle()
+                )
             }
-            HomeRoute(homeViewModel, esBarbero = esBarbero,
+            HomeRoute(
+                homeViewModel, esBarbero = esBarbero,
                 onReservar = { navigationState.navigate(ReservarTurnoDestination(it)) },
-                onEditorVisible = onEditorTrabajoVisible)
+                onEditorVisible = onEditorTrabajoVisible
+            )
         }
 
 
         entry<TurnosListDestination> {
-            ReservasRoute(reservasViewModel,
+            ReservasRoute(
+                reservasViewModel,
                 turnosCliente = {
                     val misTurnosViewModel = viewModel(key = "mis-turnos-cliente") {
                         ar.edu.unaj.am.myapplication.features.turnos.list.TurnoListViewModel(
-                            container.observeTurnos, comoCliente = true)
+                            container.observeTurnos, comoCliente = true
+                        )
                     }
-                    TurnosListRoute(misTurnosViewModel,
+                    TurnosListRoute(
+                        misTurnosViewModel,
                         onReservar = { navigationState.navigate(ReservarTurnoDestination()) })
                 }) { headerContent ->
                 val agendaViewModel = viewModel {
@@ -77,8 +75,10 @@ fun AppNavDisplay(
 
         entry<ReservarTurnoDestination> { key ->
             val reservaViewModel = viewModel {
-                ReservasViewModel(container.cargarCatalogoReservas, container.consultarSemana,
-                    container.reservarTurno, container.publicarSemana)
+                ReservasViewModel(
+                    container.cargarCatalogoReservas, container.consultarSemana,
+                    container.reservarTurno, container.publicarSemana
+                )
             }
             LaunchedEffect(key.barberoId) { key.barberoId?.let(reservaViewModel::barbero) }
             ReservarTurnoRoute(reservaViewModel, onBack = { navigationState.goBackFrom(key) })
@@ -88,7 +88,10 @@ fun AppNavDisplay(
             if (esBarbero) {
                 val resumenViewModel = viewModel {
                     ar.edu.unaj.am.myapplication.features.turnos.resumen.ResumenBarberoViewModel(
-                        container.observeTurnos, container.calcularResumenBarbero, container.marcarTurnoRealizado)
+                        container.observeTurnos,
+                        container.calcularResumenBarbero,
+                        container.marcarTurnoRealizado
+                    )
                 }
                 ar.edu.unaj.am.myapplication.features.turnos.resumen.ResumenBarberoRoute(
                     resumenViewModel, onBack = { navigationState.goBackFrom(key) })
@@ -106,54 +109,6 @@ fun AppNavDisplay(
             } else {
                 ar.edu.unaj.am.myapplication.core.ui.components.LoadingContent(message = "Verificando acceso a tu agenda…")
             }
-        }
-
-        entry<TodoListDestination> {
-            // viewModel { } crea el ViewModel UNA vez por entrada del back stack:
-            // sobrevive a rotaciones y recomposiciones, y se destruye cuando la pantalla sale del stack.
-            val viewModel = viewModel {
-                TodoListViewModel(
-                    observeTodos = container.observeTodos,
-                    refreshTodos = container.refreshTodos,
-                    addTodo = container.addTodo,
-                    toggleTodo = container.toggleTodo,
-                    deleteTodo = container.deleteTodo
-                )
-            }
-            TodoListRoute(
-                viewModel = viewModel,
-                onTodoClick = { todoId -> navigationState.navigate(TodoDetailDestination(todoId)) }
-            )
-        }
-
-        entry<TodoDetailDestination> { key ->
-            val viewModel = viewModel {
-                TodoDetailViewModel(
-                    todoId = key.todoId,
-                    getTodo = container.getTodo,
-                    updateTodo = container.updateTodo
-                )
-            }
-            TodoDetailRoute(viewModel = viewModel, onBack = { navigationState.goBackFrom(key) })
-        }
-
-        entry<BookListDestination> {
-            val viewModel = viewModel { BookListViewModel(getBooks = container.getBooks) }
-            BookListRoute(
-                viewModel = viewModel,
-                onBookClick = { bookId -> navigationState.navigate(BookDetailDestination(bookId)) }
-            )
-        }
-
-        entry<BookDetailDestination> { key ->
-            val viewModel = viewModel {
-                BookDetailViewModel(bookId = key.bookId, getBook = container.getBook)
-            }
-            BookDetailRoute(viewModel = viewModel, onBack = { navigationState.goBackFrom(key) })
-        }
-
-        entry<PlaygroundDestination> {
-            PlaygroundScreen()
         }
     }
 

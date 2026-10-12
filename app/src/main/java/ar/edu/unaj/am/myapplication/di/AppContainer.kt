@@ -1,6 +1,5 @@
 package ar.edu.unaj.am.myapplication.di
 
-import android.util.Log
 import android.content.Context
 import ar.edu.unaj.am.myapplication.core.data.images.PreparadorImagenTrabajo
 import ar.edu.unaj.am.myapplication.core.data.repository.FirestorePublicacionRepository
@@ -8,8 +7,6 @@ import ar.edu.unaj.am.myapplication.core.domain.usecase.ObservarPublicacionesUse
 import ar.edu.unaj.am.myapplication.core.domain.usecase.PublicarTrabajoUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.EliminarPublicacionUseCase
 import ar.edu.unaj.am.myapplication.BuildConfig
-import ar.edu.unaj.am.myapplication.core.data.repository.BookRepositoryImpl
-import ar.edu.unaj.am.myapplication.core.data.repository.TodoRepositoryImpl
 import ar.edu.unaj.am.myapplication.core.data.repository.FirestoreTurnoRepository
 import ar.edu.unaj.am.myapplication.core.data.repository.FirestoreClienteRepository
 import ar.edu.unaj.am.myapplication.core.domain.repository.ClienteRepository
@@ -24,23 +21,7 @@ import ar.edu.unaj.am.myapplication.core.domain.usecase.ObtenerMiAgendaUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.GuardarYPublicarAgendaUseCase
 import ar.edu.unaj.am.myapplication.core.domain.repository.TurnoRepository
 import ar.edu.unaj.am.myapplication.core.domain.usecase.ObserveTurnosUseCase
-import ar.edu.unaj.am.myapplication.core.database.dao.InMemoryTodoDao
-import ar.edu.unaj.am.myapplication.core.database.dao.TodoDao
-import ar.edu.unaj.am.myapplication.core.domain.repository.BookRepository
-import ar.edu.unaj.am.myapplication.core.domain.repository.TodoRepository
-import ar.edu.unaj.am.myapplication.core.domain.usecase.AddTodoUseCase
-import ar.edu.unaj.am.myapplication.core.domain.usecase.DeleteTodoUseCase
-import ar.edu.unaj.am.myapplication.core.domain.usecase.GetBookUseCase
-import ar.edu.unaj.am.myapplication.core.domain.usecase.GetBooksUseCase
-import ar.edu.unaj.am.myapplication.core.domain.usecase.GetTodoUseCase
-import ar.edu.unaj.am.myapplication.core.domain.usecase.ObserveTodosUseCase
-import ar.edu.unaj.am.myapplication.core.domain.usecase.RefreshTodosUseCase
-import ar.edu.unaj.am.myapplication.core.domain.usecase.ToggleTodoUseCase
-import ar.edu.unaj.am.myapplication.core.domain.usecase.UpdateTodoUseCase
-import ar.edu.unaj.am.myapplication.core.network.BookApi
 import ar.edu.unaj.am.myapplication.core.network.NetworkFactory
-import ar.edu.unaj.am.myapplication.core.network.TodoApi
-import ar.edu.unaj.am.myapplication.core.network.fake.FakeTodoApi
 import ar.edu.unaj.am.myapplication.core.auth.repository.FirebaseAuthRepository
 import ar.edu.unaj.am.myapplication.core.domain.repository.AuthRepository
 import ar.edu.unaj.am.myapplication.core.domain.usecase.LoginUseCase
@@ -77,30 +58,6 @@ class AppContainer(context: Context) {
     val calcularResumenBarbero = ar.edu.unaj.am.myapplication.core.domain.usecase.CalcularResumenBarberoUseCase()
     val marcarTurnoRealizado = ar.edu.unaj.am.myapplication.core.domain.usecase.MarcarTurnoRealizadoUseCase(turnoRepository)
 
-    // ---------- Tareas: API simulada + base local en memoria (offline-first) ----------
-
-    private val todoApi: TodoApi = FakeTodoApi()
-    private val todoDao: TodoDao = InMemoryTodoDao()
-    private val todoRepository: TodoRepository = TodoRepositoryImpl(todoApi, todoDao)
-
-    val observeTodos = ObserveTodosUseCase(todoRepository)
-    val refreshTodos = RefreshTodosUseCase(todoRepository)
-    val getTodo = GetTodoUseCase(todoRepository)
-    val addTodo = AddTodoUseCase(todoRepository)
-    val updateTodo = UpdateTodoUseCase(todoRepository)
-    val toggleTodo = ToggleTodoUseCase(todoRepository)
-    val deleteTodo = DeleteTodoUseCase(todoRepository)
-
-    // ---------- Libros: API real de Gutendex con Retrofit (network-only) ----------
-
-    // En Logcat: filtrar por tag:API_BOOKS. Solo en debug; en release no se loguea nada.
-    private val bookApi: BookApi = NetworkFactory.createBookApi(
-        logger = if (BuildConfig.DEBUG) { message -> Log.d(API_BOOKS_TAG, message) } else null
-    )
-    private val bookRepository: BookRepository = BookRepositoryImpl(bookApi)
-
-    val getBooks = GetBooksUseCase(bookRepository)
-    val getBook = GetBookUseCase(bookRepository)
     private val authRepository: AuthRepository =
         FirebaseAuthRepository()
 
@@ -115,4 +72,4 @@ class AppContainer(context: Context) {
 
 }
 
-private const val API_BOOKS_TAG = "API_BOOKS"
+

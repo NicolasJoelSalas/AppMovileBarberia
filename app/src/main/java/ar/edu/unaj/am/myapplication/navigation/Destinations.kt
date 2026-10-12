@@ -8,21 +8,6 @@ import kotlinx.serialization.Serializable
 // @Serializable permite guardar esa lista al rotar la pantalla o si el sistema mata el proceso.
 
 @Serializable
-data object TodoListDestination : NavKey
-
-@Serializable
-data class TodoDetailDestination(val todoId: Int) : NavKey
-
-@Serializable
-data object BookListDestination : NavKey
-
-@Serializable
-data class BookDetailDestination(val bookId: Int) : NavKey
-
-@Serializable
-data object PlaygroundDestination : NavKey
-
-@Serializable
 data object HomeDestination : NavKey
 
 @Serializable

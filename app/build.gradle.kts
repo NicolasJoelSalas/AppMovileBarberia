@@ -46,9 +46,6 @@ android {
 dependencies {
     // :app es el "composition root": el único módulo que conoce TODAS las capas
     // para poder conectarlas (inyección de dependencias manual en AppContainer).
-    implementation(project(":features:todos"))
-    implementation(project(":features:books"))
-    implementation(project(":features:playground"))
     implementation(project(":features:auth"))
     implementation(project(":features:turnos"))
     implementation(project(":features:home"))

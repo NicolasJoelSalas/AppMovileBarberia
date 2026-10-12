@@ -27,9 +27,6 @@ include(":app")
 
 // Capa de presentación: un módulo por feature (una capacidad del usuario), con sus pantallas adentro.
 // Se separa un detalle en su propio módulo solo si se abre desde varios lugares (ver docs/decisiones.md).
-include(":features:todos")
-include(":features:books")
-include(":features:playground")
 
 
 // Capas compartidas
