@@ -32,7 +32,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
-
+//Comentario de prueba
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeRoute(viewModel: HomeViewModel, esBarbero: Boolean, onReservar: (String) -> Unit,
