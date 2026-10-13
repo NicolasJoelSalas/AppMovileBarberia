@@ -28,9 +28,15 @@ import ar.edu.unaj.am.myapplication.core.domain.usecase.LoginUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.LogoutUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.LoginWithGoogleUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.RegisterUseCase
+import ar.edu.unaj.am.myapplication.core.data.repository.FirestorePerfilRepository
+import ar.edu.unaj.am.myapplication.core.domain.usecase.ObtenerMiPerfilUseCase
+import ar.edu.unaj.am.myapplication.core.domain.usecase.ActualizarMiNombreUseCase
 
 
 class AppContainer(context: Context) {
+    private val perfilRepository = FirestorePerfilRepository()
+    val obtenerMiPerfil = ObtenerMiPerfilUseCase(perfilRepository)
+    val actualizarMiNombre = ActualizarMiNombreUseCase(perfilRepository)
     private val publicacionRepository = FirestorePublicacionRepository(
         PreparadorImagenTrabajo(context.applicationContext), NetworkFactory.createCloudinaryApi(),
         BuildConfig.CLOUDINARY_CLOUD_NAME, BuildConfig.CLOUDINARY_UPLOAD_PRESET)

@@ -1,0 +1,15 @@
+<resources>
+    <string name="cuenta_titulo">Mi cuenta</string>
+    <string name="cuenta_cargando">Cargando tu perfil…</string>
+    <string name="cuenta_nombre">Nombre</string>
+    <string name="cuenta_nombre_ayuda">Ingresá entre 1 y 120 caracteres.</string>
+    <string name="cuenta_correo">Correo electrónico</string>
+    <string name="cuenta_correo_ayuda">El correo es de solo lectura.</string>
+    <string name="cuenta_sin_correo">Correo no disponible</string>
+    <string name="cuenta_barbero">Tipo de cuenta: Barbero</string>
+    <string name="cuenta_cliente">Tipo de cuenta: Cliente</string>
+    <string name="cuenta_guardar">Guardar cambios</string>
+    <string name="cuenta_guardando">Guardando…</string>
+    <string name="cuenta_reintentar">Reintentar</string>
+    <string name="cuenta_cerrar_sesion">Cerrar sesión</string>
+</resources>

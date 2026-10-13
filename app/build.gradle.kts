@@ -49,6 +49,7 @@ dependencies {
     implementation(project(":features:auth"))
     implementation(project(":features:turnos"))
     implementation(project(":features:home"))
+    implementation(project(":features:cuenta"))
     implementation(project(":core:ui"))
     implementation(project(":core:domain"))
     implementation(project(":core:data"))

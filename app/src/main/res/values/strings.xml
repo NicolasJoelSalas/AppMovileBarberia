@@ -1,4 +1,5 @@
 <resources>
+    <string name="tab_mi_cuenta">Mi cuenta</string>
     <string name="app_name">BarberApp</string>
     <string name="tab_todos">Tareas</string>
     <string name="tab_turnos">Turnos</string>

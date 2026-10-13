@@ -121,7 +121,6 @@ service cloud.firestore {
         && request.resource.data.CreadoEn == request.time;
       allow update: if request.auth != null && request.auth.uid == uid
         && !exists(/databases/$(database)/documents/barberos/$(uid))
-        && resource.data.Nombre == ''
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['Nombre'])
         && request.resource.data.Nombre is string && request.resource.data.Nombre.size() > 0
         && request.resource.data.Nombre.size() <= 120;

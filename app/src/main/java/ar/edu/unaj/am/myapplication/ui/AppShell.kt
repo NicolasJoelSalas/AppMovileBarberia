@@ -4,10 +4,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
@@ -15,7 +11,6 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -57,16 +52,11 @@ fun AppShell(
                 enter = slideInVertically { it },
                 exit = slideOutVertically { it }
             ) {
-                Column {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(onClick = onLogout) { Text("Cerrar sesión") }
-                    }
-                    AppBottomBar(
-                        currentTab = navigationState.currentTab,
-                        esBarbero = esBarbero,
-                        onTabClick = navigationState::selectTab
-                    )
-                }
+                AppBottomBar(
+                    currentTab = navigationState.currentTab,
+                    esBarbero = esBarbero,
+                    onTabClick = navigationState::selectTab
+                )
             }
         }
     ) { innerPadding ->
@@ -76,6 +66,7 @@ fun AppShell(
             reservasViewModel = reservasViewModel,
             esBarbero = esBarbero,
             onEditorTrabajoVisible = { editorTrabajoVisible = it },
+            onLogout = onLogout,
             // consumeWindowInsets: la bottom bar ya ocupa el espacio de la barra de navegación,
             // así las pantallas no vuelven a sumarlo.
             modifier = Modifier

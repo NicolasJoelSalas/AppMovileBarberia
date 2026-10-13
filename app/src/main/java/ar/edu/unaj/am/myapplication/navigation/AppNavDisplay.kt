@@ -21,6 +21,8 @@ import ar.edu.unaj.am.myapplication.features.turnos.list.ReservarTurnoRoute
 import ar.edu.unaj.am.myapplication.features.turnos.list.ReservasViewModel
 import ar.edu.unaj.am.myapplication.features.turnos.agenda.AgendaRoute
 import ar.edu.unaj.am.myapplication.features.turnos.agenda.AgendaViewModel
+import ar.edu.unaj.am.myapplication.features.cuenta.MiCuentaRoute
+import ar.edu.unaj.am.myapplication.features.cuenta.MiCuentaViewModel
 
 /**
  * La navegación vive en :app. Las features no se conocen entre sí:
@@ -33,11 +35,18 @@ fun AppNavDisplay(
     reservasViewModel: ReservasViewModel,
     esBarbero: Boolean,
     onEditorTrabajoVisible: (Boolean) -> Unit,
+    onLogout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     // entryProvider: "para esta key, mostrá esta pantalla". La key llega ya tipada:
     // key.todoId es un Int, sin getInt("todoId") ni strings de por medio.
     val entryProvider = entryProvider<NavKey> {
+        entry<MiCuentaDestination> {
+            val cuentaViewModel = viewModel {
+                MiCuentaViewModel(container.obtenerMiPerfil, container.actualizarMiNombre)
+            }
+            MiCuentaRoute(cuentaViewModel, onPerfilGuardado = reservasViewModel::cargar, onLogout = onLogout)
+        }
         entry<HomeDestination> {
             val homeViewModel = viewModel {
                 HomeViewModel(

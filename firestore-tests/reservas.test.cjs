@@ -39,6 +39,31 @@ async function publish() {
   await assertSucceeds(setDoc(doc(db('barbero'),`horarios/${horarioId}`),slot()));
 }
 
+test('mi cuenta: permite editar un nombre existente y conserva el resto del perfil', async () => {
+  const ref = doc(db('ana'), 'clientes/ana');
+  await assertSucceeds(updateDoc(ref, {Nombre:'Ana'}));
+  await assertSucceeds(updateDoc(ref, {Nombre:'Ana Pérez'}));
+  const perfil = (await getDoc(ref)).data();
+  assert.equal(perfil.Nombre, 'Ana Pérez');
+  assert.equal(perfil.Correo, 'ana@example.com');
+});
+
+test('mi cuenta: rechaza cambios ajenos, de correo, de rol y nombres invalidos', async () => {
+  const ref = doc(db('ana'), 'clientes/ana');
+  await assertFails(updateDoc(doc(db('juan'), 'clientes/ana'), {Nombre:'Otro'}));
+  await assertFails(updateDoc(ref, {Correo:'otro@example.com'}));
+  await assertFails(updateDoc(ref, {Nombre:'Ana', Estado:true}));
+  await assertFails(updateDoc(ref, {Nombre:''}));
+  await assertFails(updateDoc(ref, {Nombre:'a'.repeat(121)}));
+  await assertFails(updateDoc(doc(env.unauthenticatedContext().firestore(), 'clientes/ana'), {Nombre:'Ana'}));
+});
+
+test('mi cuenta: barbero edita solamente su perfil y no puede cambiar su habilitacion', async () => {
+  await assertSucceeds(updateDoc(doc(db('barbero'), 'barberos/barbero'), {Nombre:'Nuevo nombre'}));
+  await assertFails(updateDoc(doc(db('otro'), 'barberos/barbero'), {Nombre:'Otro'}));
+  await assertFails(updateDoc(doc(db('barbero'), 'barberos/barbero'), {Estado:false}));
+});
+
 async function turnoFinalizado(futuro = false) {
   await env.withSecurityRulesDisabled(async ctx => {
     await setDoc(doc(ctx.firestore(),'turnos/resumen'), {...booking('ana'),
