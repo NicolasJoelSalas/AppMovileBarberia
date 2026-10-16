@@ -61,12 +61,13 @@ service cloud.firestore {
       allow update: if esBarberoHabilitado()
         && resource.data.BarberoId == request.auth.uid
         && (resource.data.Estado == true || resource.data.Estado in ['confirmado', 'Confirmado', 'pendiente', 'Pendiente'])
-        && resource.data.Fin is timestamp && resource.data.Fin <= request.time
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['Estado', 'PrecioCobrado', 'RealizadoEn'])
+        && resource.data.Inicio is timestamp && resource.data.Inicio <= request.time
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['Estado', 'RealizadoEn', 'PrecioCobrado'])
         && request.resource.data.Estado == 'realizado'
         && request.resource.data.RealizadoEn == request.time
         && request.resource.data.PrecioCobrado is number
         && request.resource.data.PrecioCobrado >= 0 && request.resource.data.PrecioCobrado <= 1000000000
+        && request.resource.data.PrecioCobrado * 100 == math.round(request.resource.data.PrecioCobrado * 100)
         && request.resource.data.PrecioCobrado == get(/databases/$(database)/documents/servicios/$(resource.data.ServicioId)).data.Precio;
       allow delete: if false;
     }

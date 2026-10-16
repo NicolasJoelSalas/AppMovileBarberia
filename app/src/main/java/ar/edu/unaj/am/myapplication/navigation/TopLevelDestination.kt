@@ -2,8 +2,6 @@ package ar.edu.unaj.am.myapplication.navigation
 
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.filled.Home
@@ -43,12 +41,6 @@ enum class TopLevelDestination(
         selectedIcon = Icons.AutoMirrored.Filled.EventNote,
         unselectedIcon = Icons.AutoMirrored.Outlined.EventNote,
         label = R.string.tab_agenda
-    ),
-    RESUMEN(
-        startKey = ResumenBarberoDestination,
-        selectedIcon = Icons.Filled.BarChart,
-        unselectedIcon = Icons.Outlined.BarChart,
-        label = R.string.tab_resumen
     ),
     MI_CUENTA(
         startKey = MiCuentaDestination,

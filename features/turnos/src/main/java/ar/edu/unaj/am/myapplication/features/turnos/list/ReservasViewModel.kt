@@ -22,7 +22,6 @@ data class ReservasUiState(
     val nombre: String = "",
     val reservando: Boolean = false,
     val reservaConfirmada: Boolean = false,
-    val publicando: Boolean = false,
     val error: DomainError? = null,
     val mensaje: String? = null
 )
@@ -30,26 +29,13 @@ data class ReservasUiState(
 class ReservasViewModel(
     private val catalogo: CargarCatalogoReservasUseCase,
     private val consultar: ConsultarSemanaUseCase,
-    private val reservar: ReservarTurnoUseCase,
-    private val publicar: PublicarSemanaUseCase
+    private val reservar: ReservarTurnoUseCase
 ) : ViewModel() {
     private val state = MutableStateFlow(ReservasUiState())
     val uiState = state.asStateFlow()
     private var availabilityJob: Job? = null
     private var requestId: String? = null
     init { cargar() }
-
-    fun publicarSemana() {
-        if (state.value.publicando || state.value.catalogo?.esBarbero != true) return
-        state.update { it.copy(publicando = true, error = null, mensaje = null) }
-        viewModelScope.launch {
-            when (val result = publicar()) {
-                is AppResult.Success -> state.update { it.copy(publicando = false,
-                    mensaje = "Semana actualizada: ${result.data} horarios libres publicados.") }
-                is AppResult.Error -> state.update { it.copy(publicando = false, error = result.error) }
-            }
-        }
-    }
 
     fun cargar() {
         if (state.value.reservando) return

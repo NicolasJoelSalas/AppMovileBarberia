@@ -4,7 +4,6 @@
     <string name="tab_todos">Tareas</string>
     <string name="tab_turnos">Turnos</string>
     <string name="tab_agenda">Agenda</string>
-    <string name="tab_resumen">Mi resumen</string>
     <string name="tab_playground">Playground</string>
     <string name="tab_home">Inicio</string>
 </resources>

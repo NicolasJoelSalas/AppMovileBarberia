@@ -16,10 +16,6 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.DocumentSnapshot
 import java.util.concurrent.Executor
-import java.math.BigDecimal
-import java.math.RoundingMode
-import com.google.firebase.firestore.FieldValue
-import com.google.android.gms.tasks.Task
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -60,7 +56,7 @@ class FirestoreTurnoRepository(
                         servicioId = doc.getString("ServicioId").orEmpty(),
                         inicioMillis = doc.getTimestamp("Inicio")?.toDate()?.time,
                         finMillis = doc.getTimestamp("Fin")?.toDate()?.time,
-                        precioCobradoCentavos = precioCentavos(doc.get("PrecioCobrado")),
+                        precioCobradoCentavos = importeCentavos(doc.get("PrecioCobrado")),
                         estado = when (val estado = doc.get("Estado")) {
                             is String -> estado.ifBlank { "Sin estado" }
                             is Boolean -> if (estado) "Confirmado" else "Cancelado"
@@ -93,8 +89,7 @@ class FirestoreTurnoRepository(
                 AppResult.Success(result.data.map { turno ->
                     turno.copy(
                         clienteNombre = clientes[turno.clienteId].orEmpty(),
-                        servicioNombre = servicios[turno.servicioId]?.getString("NombreCorte").orEmpty(),
-                        precioServicioCentavos = precioCentavos(servicios[turno.servicioId]?.get("Precio"))
+                        servicioNombre = servicios[turno.servicioId]?.getString("NombreCorte").orEmpty()
                     )
                 })
             } catch (exception: CancellationException) {
@@ -107,58 +102,46 @@ class FirestoreTurnoRepository(
             }
         }
     }
-
-    override suspend fun marcarRealizado(turnoId: String, precioEsperadoCentavos: Long): AppResult<Unit> = try {
+    override suspend fun marcarRealizado(turnoId: String): AppResult<Unit> = try {
         val uid = auth.currentUser?.uid ?: error("Iniciá sesión nuevamente.")
         val referencia = firestore.collection("turnos").document(turnoId)
-        firestore.runTransaction { tx ->
+        val task = firestore.runTransaction { tx ->
             val doc = tx.get(referencia)
             val perfil = tx.get(firestore.collection("barberos").document(uid))
             check(perfil.getBoolean("Estado") == true && doc.getString("BarberoId") == uid) {
-                "Solo podés completar los turnos de tu sesión de barbero."
+                "Solo podés completar tus propios turnos como barbero habilitado."
             }
-            val estado = doc.get("Estado")
-            if (estado is String && estado.lowercase() in listOf("realizado", "completado")) {
-                return@runTransaction Unit
-            }
-            check(estado == true || estado in listOf("confirmado", "Confirmado", "pendiente", "Pendiente")) {
+            if (doc.get("Estado") == "realizado") return@runTransaction Unit
+            check(doc.get("Estado") == true || doc.get("Estado") in
+                listOf("confirmado", "Confirmado", "pendiente", "Pendiente")) {
                 "El turno ya no está pendiente."
             }
-            val fin = doc.getTimestamp("Fin")?.toDate()?.time
-            check(fin != null && fin <= System.currentTimeMillis()) { "El horario del turno todavía no terminó." }
+            val inicio = doc.getTimestamp("Inicio")?.toDate()?.time
+            check(inicio != null && inicio <= System.currentTimeMillis()) {
+                "Todavía no llegó la hora del turno."
+            }
             val servicioId = doc.getString("ServicioId").orEmpty()
             check(servicioId.isNotBlank()) { "El turno no tiene un servicio asignado." }
-            val servicio = tx.get(firestore.collection("servicios").document(servicioId))
-            val precio = servicio.get("Precio")
-            check(precioCentavos(precio) != null) { "Configurá Precio como número válido en el servicio." }
-            check(precioCentavos(precio) == precioEsperadoCentavos) {
-                "El precio del servicio cambió. Actualizá el resumen y confirmá el nuevo importe."
-            }
+            val precio = tx.get(firestore.collection("servicios").document(servicioId)).get("Precio")
+            check(importeCentavos(precio) != null) { "El servicio necesita un precio num�rico v�lido." }
             tx.update(referencia, mapOf("Estado" to "realizado", "PrecioCobrado" to precio,
-                "RealizadoEn" to FieldValue.serverTimestamp()))
+                "RealizadoEn" to com.google.firebase.firestore.FieldValue.serverTimestamp()))
             Unit
-        }.esperarTurno()
+        }
+        suspendCancellableCoroutine<Unit> { continuation ->
+            task.addOnCompleteListener(Executor { it.run() }) {
+                if (continuation.isActive) {
+                    if (it.isSuccessful) continuation.resume(Unit)
+                    else continuation.resumeWithException(it.exception ?: IllegalStateException("No se pudo completar el turno."))
+                }
+            }
+        }
         AppResult.Success(Unit)
     } catch (e: CancellationException) { throw e
     } catch (e: Exception) {
-        AppResult.Error(DomainError.Unknown(
-            if (e is FirebaseFirestoreException) "No se pudo completar el turno. Revisá la conexión y las reglas de Firestore."
+        AppResult.Error(DomainError.Unknown(if (e is FirebaseFirestoreException)
+            "No se pudo completar el turno. Revisá la conexión, la hora y los permisos."
             else e.message ?: "No se pudo completar el turno."))
-    }
-}
-
-internal fun precioCentavos(value: Any?): Long? = try {
-    if (value !is Number) null else BigDecimal(value.toString())
-        .takeIf { it >= BigDecimal.ZERO && it <= BigDecimal("1000000000") }
-        ?.setScale(2, RoundingMode.UNNECESSARY)?.movePointRight(2)?.longValueExact()
-} catch (e: NumberFormatException) { null } catch (e: ArithmeticException) { null }
-
-private suspend fun <T> Task<T>.esperarTurno(): T = suspendCancellableCoroutine { continuation ->
-    addOnCompleteListener(Executor { it.run() }) { task ->
-        if (continuation.isActive) {
-            if (task.isSuccessful) continuation.resume(task.result)
-            else continuation.resumeWithException(task.exception ?: IllegalStateException("Operación fallida"))
-        }
     }
 }
 
@@ -174,3 +157,9 @@ private suspend fun DocumentReference.readDocument(): DocumentSnapshot =
 
 private fun com.google.firebase.firestore.QuerySnapshot?.orEmptyDocuments() =
     this?.documents.orEmpty()
+
+internal fun importeCentavos(value: Any?): Long? = try {
+    if (value !is Number) null else java.math.BigDecimal(value.toString())
+        .takeIf { it >= java.math.BigDecimal.ZERO && it <= java.math.BigDecimal("1000000000") }
+        ?.setScale(2, java.math.RoundingMode.UNNECESSARY)?.movePointRight(2)?.longValueExact()
+} catch (e: NumberFormatException) { null } catch (e: ArithmeticException) { null }

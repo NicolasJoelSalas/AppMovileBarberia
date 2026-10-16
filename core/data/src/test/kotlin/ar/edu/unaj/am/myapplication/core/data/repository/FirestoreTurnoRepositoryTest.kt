@@ -35,7 +35,6 @@ class FirestoreTurnoRepositoryTest {
     private val repository = FirestoreTurnoRepository(firestore, auth)
     private var clienteNombre: String? = "Nicolás Salas"
     private var servicioNombre: String? = "Corte de cabello"
-    private var precioServicio: Number = 15000.50
     private lateinit var clienteReference: DocumentReference
     private lateinit var servicioReference: DocumentReference
 
@@ -48,7 +47,6 @@ class FirestoreTurnoRepositoryTest {
         `when`(firestore.collection(collectionName)).thenReturn(relatedCollection)
         `when`(relatedCollection.document(id)).thenReturn(reference)
         `when`(doc.getString(field)).thenReturn(name)
-        if (collectionName == "servicios") `when`(doc.get("Precio")).thenReturn(precioServicio)
         `when`(reference.get()).thenReturn(task)
         `when`(task.isSuccessful).thenReturn(true)
         `when`(task.result).thenReturn(doc)
@@ -85,18 +83,6 @@ class FirestoreTurnoRepositoryTest {
         `when`(doc.getTimestamp("Fin")).thenReturn(Timestamp(seconds + 2400, 0))
         `when`(doc.get("Estado")).thenReturn(estado)
         return doc
-    }
-
-    @Test
-    fun `current service price never overwrites historic charged price`() = runTest {
-        val doc = document("realizado", 1000, "realizado")
-        `when`(doc.get("PrecioCobrado")).thenReturn(12500L)
-        val snapshot = mock(QuerySnapshot::class.java)
-        `when`(snapshot.documents).thenReturn(listOf(doc))
-        respond(snapshot)
-        val turno = (repository.observeTurnos().first() as AppResult.Success).data.single()
-        assertEquals(1500050L, turno.precioServicioCentavos)
-        assertEquals(1250000L, turno.precioCobradoCentavos)
     }
 
     @Test

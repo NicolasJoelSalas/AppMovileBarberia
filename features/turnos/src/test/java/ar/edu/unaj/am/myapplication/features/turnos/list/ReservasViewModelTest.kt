@@ -16,7 +16,7 @@ class ReservasViewModelTest {
     @Before fun setup() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
     @After fun cleanup() { Dispatchers.resetMain() }
     private fun vm() = ReservasViewModel(CargarCatalogoReservasUseCase(repo),
-        ConsultarSemanaUseCase(repo), ReservarTurnoUseCase(repo), PublicarSemanaUseCase(repo))
+        ConsultarSemanaUseCase(repo), ReservarTurnoUseCase(repo))
 
     @Test fun `does not request availability until both selections exist`() = runTest {
         val vm=vm()

@@ -36,7 +36,7 @@ fun AppShell(
 ) {
     val reservasViewModel = viewModel(key = "catalogo-sesion") {
         ReservasViewModel(container.cargarCatalogoReservas, container.consultarSemana,
-            container.reservarTurno, container.publicarSemana)
+            container.reservarTurno)
     }
     val reservasState by reservasViewModel.uiState.collectAsStateWithLifecycle()
     val esBarbero = reservasState.catalogo?.esBarbero == true
@@ -84,7 +84,7 @@ private fun AppBottomBar(
 ) {
     NavigationBar {
         TopLevelDestination.entries.filter {
-            esBarbero || (it != TopLevelDestination.AGENDA && it != TopLevelDestination.RESUMEN)
+            esBarbero || it != TopLevelDestination.AGENDA
         }.forEach { tab ->
             val selected = tab == currentTab
             NavigationBarItem(

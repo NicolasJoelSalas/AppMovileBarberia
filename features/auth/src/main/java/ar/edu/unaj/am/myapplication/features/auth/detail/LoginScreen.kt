@@ -1,6 +1,18 @@
 package ar.edu.unaj.am.myapplication.features.auth.detail
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ContentCut
+import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Visibility
+import androidx.compose.material.icons.outlined.VisibilityOff
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import ar.edu.unaj.am.myapplication.features.auth.R
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -71,22 +83,31 @@ fun LoginScreen(
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer
         ) {
             Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("BARBERÍA", style = MaterialTheme.typography.labelLarge)
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Surface(shape = CircleShape,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.12f)) {
+                        Icon(Icons.Outlined.ContentCut, contentDescription = null,
+                            modifier = Modifier.padding(10.dp).size(24.dp))
+                    }
+                    Text("BARBER APP", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                }
+                Spacer(Modifier.height(4.dp))
                 Text(if (isRegistering) "Creá tu cuenta" else "Bienvenido",
                     style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
                 Text(if (isRegistering) "Registrate para reservar tu próximo corte."
-                    else "Ingresá para consultar y gestionar tus turnos.",
+                    else "Tu barbería en un solo lugar. Reservá tu turno o gestioná tu agenda como barbero.",
                     style = MaterialTheme.typography.bodyMedium)
             }
         }
         Spacer(Modifier.height(20.dp))
-        OutlinedCard(
+        Card(
             modifier = Modifier.widthIn(max = 440.dp).fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.outlinedCardColors(containerColor = MaterialTheme.colorScheme.surface)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
         ) {
-            Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) form@ {
-                Text(if (isRegistering) "Crear cuenta" else "Iniciar sesión",
+            Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) form@ {
+                Text(if (isRegistering) "Datos de tu cuenta" else "Iniciar sesión",
                     style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold,
                     modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(20.dp))
@@ -108,6 +129,7 @@ fun LoginScreen(
                     value = email,
                     onValueChange = { email = it },
                     label = { Text("Correo electrónico") },
+                    leadingIcon = { Icon(Icons.Outlined.Email, contentDescription = null) },
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Email, imeAction = ImeAction.Next
                     ),
@@ -124,10 +146,12 @@ fun LoginScreen(
                     value = password,
                     onValueChange = { password = it },
                     label = { Text("Contraseña") },
+                    leadingIcon = { Icon(Icons.Outlined.Lock, contentDescription = null) },
                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     trailingIcon = {
-                        TextButton(onClick = { passwordVisible = !passwordVisible }, enabled = !isLoading) {
-                            Text(if (passwordVisible) "Ocultar" else "Ver")
+                        IconButton(onClick = { passwordVisible = !passwordVisible }, enabled = !isLoading) {
+                            Icon(if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                                contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña")
                         }
                     },
                     shape = RoundedCornerShape(14.dp),
@@ -149,6 +173,7 @@ fun LoginScreen(
                         value = confirmation,
                         onValueChange = { confirmation = it },
                         label = { Text("Confirmar contraseña") },
+                        leadingIcon = { Icon(Icons.Outlined.Lock, contentDescription = null) },
                         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         shape = RoundedCornerShape(14.dp),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, imeAction = ImeAction.Done),
@@ -182,6 +207,8 @@ fun LoginScreen(
                 Button(
                     onClick = submit,
                     enabled = canSubmit,
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer),
                     shape = RoundedCornerShape(14.dp),
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
                 ) {
@@ -209,12 +236,19 @@ fun LoginScreen(
                 }
 
                 OutlinedButton(
-                    onClick = onGoogleLogin,
+                    onClick = { focusManager.clearFocus(); onGoogleLogin() },
                     enabled = !isLoading,
+                    colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White,
+                        contentColor = Color(0xFF1F1F1F), disabledContainerColor = Color.White.copy(alpha = 0.38f),
+                        disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)),
+                    border = BorderStroke(1.dp, Color(0xFF747775)),
                     shape = RoundedCornerShape(14.dp),
                     modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
                 ) {
-                    Text("Continuar con Google")
+                    Image(painterResource(R.drawable.ic_google), contentDescription = null,
+                        modifier = Modifier.size(20.dp), alpha = if (isLoading) 0.38f else 1f)
+                    Spacer(Modifier.width(12.dp))
+                    Text("Continuar con Google", fontWeight = FontWeight.Medium)
                 }
 
                 Spacer(Modifier.height(8.dp))

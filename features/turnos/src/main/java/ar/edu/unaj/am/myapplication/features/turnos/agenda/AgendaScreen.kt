@@ -1,12 +1,19 @@
 package ar.edu.unaj.am.myapplication.features.turnos.agenda
 
+import ar.edu.unaj.am.myapplication.features.turnos.components.SemanaSelector
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -54,18 +61,56 @@ fun AgendaRoute(viewModel: AgendaViewModel, onBack: () -> Unit) {
             actions = {
             TextButton(onClick = salir, enabled = !state.guardando) { Text("Volver") }
         })
+    }, bottomBar = {
+        if (state.agenda != null) {
+            Box(Modifier.fillMaxWidth().imePadding().padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Button(onClick = viewModel::guardar, enabled = !state.guardando && !state.cargando,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
+                        .shadow(8.dp, CircleShape), shape = CircleShape) {
+                    if (state.guardando) {
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onSurface)
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text(if (state.guardando) "Guardando y publicando…" else "Guardar y publicar semana")
+                }
+            }
+        }
     }) { padding ->
         LazyColumn(modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = state.semanaOffset == 0, onClick = { viewModel.semana(0) },
-                        enabled = !state.guardando && !state.cargando, label = { Text("Semana actual") })
-                    FilterChip(selected = state.semanaOffset == 1, onClick = { viewModel.semana(1) },
-                        enabled = !state.guardando && !state.cargando, label = { Text("Próxima semana") })
+                SemanaSelector(semanaOffset = state.semanaOffset, onSemanaChange = viewModel::semana,
+                    enabled = !state.guardando && !state.cargando)
+                Spacer(Modifier.height(12.dp))
+                Surface(shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f),
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer) {
+                    Column(Modifier.fillMaxWidth().padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Icon(Icons.Outlined.CalendarToday, contentDescription = null,
+                                modifier = Modifier.size(22.dp))
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text("Hoy", style = MaterialTheme.typography.labelMedium)
+                                Text(hoy.format(dateFormat), style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                        HorizontalDivider(color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f))
+                        Row(verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Icon(Icons.Outlined.DateRange, contentDescription = null,
+                                modifier = Modifier.size(22.dp))
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text("Semana seleccionada", style = MaterialTheme.typography.labelMedium)
+                                Text("${lunes.format(dateFormat)} al ${lunes.plusDays(5).format(dateFormat)}",
+                                    style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    }
                 }
-                Text("Hoy: ${hoy.format(dateFormat)}")
-                Text("Semana del ${lunes.format(dateFormat)} al ${lunes.plusDays(5).format(dateFormat)}")
             }
             if (state.cargando) item { CircularProgressIndicator() }
             state.error?.let { error -> item {
@@ -110,12 +155,6 @@ fun AgendaRoute(viewModel: AgendaViewModel, onBack: () -> Unit) {
                             }
                         }
                     }
-                }
-            }
-            if (state.agenda != null) item {
-                Button(onClick = viewModel::guardar, enabled = !state.guardando && !state.cargando,
-                    modifier = Modifier.fillMaxWidth()) {
-                    Text(if (state.guardando) "Guardando y publicando…" else "Guardar y publicar semana")
                 }
             }
         }

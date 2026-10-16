@@ -38,14 +38,18 @@ fun AppNavDisplay(
     onLogout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // entryProvider: "para esta key, mostrá esta pantalla". La key llega ya tipada:
+    // entryProvider: "para esta key, mostra esta pantalla". La key llega ya tipada:
     // key.todoId es un Int, sin getInt("todoId") ni strings de por medio.
     val entryProvider = entryProvider<NavKey> {
         entry<MiCuentaDestination> {
             val cuentaViewModel = viewModel {
                 MiCuentaViewModel(container.obtenerMiPerfil, container.actualizarMiNombre)
             }
-            MiCuentaRoute(cuentaViewModel, onPerfilGuardado = reservasViewModel::cargar, onLogout = onLogout)
+            val reporteViewModel = viewModel {
+                ar.edu.unaj.am.myapplication.features.cuenta.ReporteGananciasViewModel(container.observeTurnos)
+            }
+            MiCuentaRoute(cuentaViewModel, onPerfilGuardado = reservasViewModel::cargar,
+                onLogout = onLogout, reporteViewModel = reporteViewModel)
         }
         entry<HomeDestination> {
             val homeViewModel = viewModel {
@@ -74,11 +78,12 @@ fun AppNavDisplay(
                     TurnosListRoute(
                         misTurnosViewModel,
                         onReservar = { navigationState.navigate(ReservarTurnoDestination()) })
-                }) { headerContent ->
+                }) {
                 val agendaViewModel = viewModel {
-                    ar.edu.unaj.am.myapplication.features.turnos.list.TurnoListViewModel(container.observeTurnos)
+                    ar.edu.unaj.am.myapplication.features.turnos.list.TurnoListViewModel(container.observeTurnos,
+                        completarTurno = container.marcarTurnoRealizado)
                 }
-                TurnosListRoute(viewModel = agendaViewModel, headerContent = headerContent)
+                TurnosListRoute(viewModel = agendaViewModel)
             }
         }
 
@@ -86,27 +91,11 @@ fun AppNavDisplay(
             val reservaViewModel = viewModel {
                 ReservasViewModel(
                     container.cargarCatalogoReservas, container.consultarSemana,
-                    container.reservarTurno, container.publicarSemana
+                    container.reservarTurno
                 )
             }
             LaunchedEffect(key.barberoId) { key.barberoId?.let(reservaViewModel::barbero) }
             ReservarTurnoRoute(reservaViewModel, onBack = { navigationState.goBackFrom(key) })
-        }
-
-        entry<ResumenBarberoDestination> { key ->
-            if (esBarbero) {
-                val resumenViewModel = viewModel {
-                    ar.edu.unaj.am.myapplication.features.turnos.resumen.ResumenBarberoViewModel(
-                        container.observeTurnos,
-                        container.calcularResumenBarbero,
-                        container.marcarTurnoRealizado
-                    )
-                }
-                ar.edu.unaj.am.myapplication.features.turnos.resumen.ResumenBarberoRoute(
-                    resumenViewModel, onBack = { navigationState.goBackFrom(key) })
-            } else {
-                ar.edu.unaj.am.myapplication.core.ui.components.LoadingContent(message = "Verificando acceso…")
-            }
         }
 
         entry<AgendaSemanalDestination> { key ->

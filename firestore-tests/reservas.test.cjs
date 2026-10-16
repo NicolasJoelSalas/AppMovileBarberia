@@ -64,42 +64,37 @@ test('mi cuenta: barbero edita solamente su perfil y no puede cambiar su habilit
   await assertFails(updateDoc(doc(db('barbero'), 'barberos/barbero'), {Estado:false}));
 });
 
-async function turnoFinalizado(futuro = false) {
+test('turnos: solo el barbero dueño completa desde la hora de inicio', async () => {
   await env.withSecurityRulesDisabled(async ctx => {
-    await setDoc(doc(ctx.firestore(),'turnos/resumen'), {...booking('ana'),
-      Inicio:Timestamp.fromMillis(Date.now() - 7200000),
-      Fin:Timestamp.fromMillis(Date.now() + (futuro ? 7200000 : -3600000))});
+    await setDoc(doc(ctx.firestore(), 'turnos/iniciado'), {...booking('ana'),
+      Inicio:Timestamp.fromMillis(Date.now() - 60000), Fin:Timestamp.fromMillis(Date.now() + 2340000)});
+    await setDoc(doc(ctx.firestore(), 'turnos/futuro'), booking('ana'));
+    await setDoc(doc(ctx.firestore(), 'turnos/pasado'), {...booking('ana'),
+      Inicio:Timestamp.fromMillis(Date.now() - 7200000), Fin:Timestamp.fromMillis(Date.now() - 4800000)});
+    await setDoc(doc(ctx.firestore(), 'turnos/cancelado'), {...booking('ana'),
+      Inicio:Timestamp.fromMillis(Date.now() - 60000), Estado:'cancelado'});
   });
-}
-const completarTurno = () => ({Estado:'realizado',PrecioCobrado:12500,RealizadoEn:serverTimestamp()});
-
-test('resumen: solo el dueÃ±o completa y captura precio sin poder reescribir el historial', async () => {
-  await turnoFinalizado();
-  await assertFails(updateDoc(doc(db('ana'),'turnos/resumen'),completarTurno()));
-  await assertFails(updateDoc(doc(db('otro'),'turnos/resumen'),completarTurno()));
-  await assertSucceeds(updateDoc(doc(db('barbero'),'turnos/resumen'),completarTurno()));
-  assert.equal((await getDoc(doc(db('barbero'),'turnos/resumen'))).data().PrecioCobrado,12500);
-  await assertFails(updateDoc(doc(db('barbero'),'turnos/resumen'),{...completarTurno(),PrecioCobrado:13000}));
-});
-
-test('resumen: rechaza precio falso cambio de identidad y fecha cliente', async () => {
-  await turnoFinalizado();
-  const ref=doc(db('barbero'),'turnos/resumen');
-  await assertFails(updateDoc(ref,{...completarTurno(),PrecioCobrado:1}));
-  await assertFails(updateDoc(ref,{...completarTurno(),ClienteId:'juan'}));
-  await assertFails(updateDoc(ref,{...completarTurno(),BarberoId:'otro'}));
-  await assertFails(updateDoc(ref,{...completarTurno(),ServicioId:'inventado'}));
-  await assertFails(updateDoc(ref,{...completarTurno(),RealizadoEn:start}));
-});
-
-test('resumen: rechaza turnos futuros y barberos deshabilitados', async () => {
-  await turnoFinalizado(true);
-  await assertFails(updateDoc(doc(db('barbero'),'turnos/resumen'),completarTurno()));
-  await turnoFinalizado();
+  const completar = () => ({Estado:'realizado', PrecioCobrado:12500, RealizadoEn:serverTimestamp()});
+  for (const uid of ['ana', 'otro']) {
+    await assertFails(updateDoc(doc(db(uid), 'turnos/iniciado'), completar()));
+  }
+  const store = db('barbero');
+  await assertFails(updateDoc(doc(store, 'turnos/futuro'), completar()));
+  await assertFails(updateDoc(doc(store, 'turnos/cancelado'), completar()));
+  await assertFails(updateDoc(doc(store, 'turnos/iniciado'), {...completar(), ClienteId:'juan'}));
+  await assertFails(updateDoc(doc(store, 'turnos/iniciado'), {...completar(), RealizadoEn:start}));
+  await assertFails(updateDoc(doc(store, 'turnos/iniciado'), {...completar(), PrecioCobrado:1}));
+  await assertSucceeds(updateDoc(doc(store, 'turnos/iniciado'), completar()));
+  assert.equal((await getDoc(doc(store, 'turnos/iniciado'))).data().PrecioCobrado, 12500);
+  assert.equal((await getDoc(doc(store, 'turnos/iniciado'))).data().Estado, 'realizado');
+  await assertFails(updateDoc(doc(store, 'turnos/iniciado'), {Estado:'confirmado'}));
+  await assertSucceeds(updateDoc(doc(store, 'turnos/pasado'), completar()));
   await env.withSecurityRulesDisabled(async ctx => {
-    await updateDoc(doc(ctx.firestore(),'barberos/barbero'),{Estado:false});
+    await updateDoc(doc(ctx.firestore(), 'barberos/barbero'), {Estado:false});
+    await setDoc(doc(ctx.firestore(), 'turnos/deshabilitado'), {...booking('ana'),
+      Inicio:Timestamp.fromMillis(Date.now() - 60000)});
   });
-  await assertFails(updateDoc(doc(db('barbero'),'turnos/resumen'),completarTurno()));
+  await assertFails(updateDoc(doc(store, 'turnos/deshabilitado'), completar()));
 });
 
 const publicacion = () => ({BarberoId:'barbero',BarberoNombre:'Barbero',

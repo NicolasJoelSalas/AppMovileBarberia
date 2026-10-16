@@ -6,6 +6,7 @@ import ar.edu.unaj.am.myapplication.core.domain.model.AppResult
 import ar.edu.unaj.am.myapplication.core.domain.model.DomainError
 import ar.edu.unaj.am.myapplication.core.domain.model.Turno
 import ar.edu.unaj.am.myapplication.core.domain.usecase.ObserveTurnosUseCase
+import ar.edu.unaj.am.myapplication.core.domain.usecase.MarcarTurnoRealizadoUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.FiltrarTurnosPorSemanaUseCase
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,7 +22,8 @@ sealed interface TurnosListUiState {
 class TurnoListViewModel(
     private val observeTurnos: ObserveTurnosUseCase,
     private val comoCliente: Boolean = false,
-    private val filtrarSemana: FiltrarTurnosPorSemanaUseCase = FiltrarTurnosPorSemanaUseCase()
+    private val filtrarSemana: FiltrarTurnosPorSemanaUseCase = FiltrarTurnosPorSemanaUseCase(),
+    private val completarTurno: MarcarTurnoRealizadoUseCase? = null
 ) : ViewModel() {
     private val mutableUiState = MutableStateFlow<TurnosListUiState>(TurnosListUiState.Loading)
     val uiState = mutableUiState.asStateFlow()
@@ -29,6 +31,31 @@ class TurnoListViewModel(
     private var todosLosTurnos: List<Turno> = emptyList()
     private val mutableSemanaOffset = MutableStateFlow(0)
     val semanaOffset = mutableSemanaOffset.asStateFlow()
+    val puedeCompletar: Boolean get() = !comoCliente && completarTurno != null
+    private val mutableCompletandoId = MutableStateFlow<String?>(null)
+    val completandoId = mutableCompletandoId.asStateFlow()
+    private val mutableErrorCompletar = MutableStateFlow<DomainError?>(null)
+    val errorCompletar = mutableErrorCompletar.asStateFlow()
+
+    fun marcarRealizado(turno: Turno) {
+        val completar = completarTurno ?: return
+        if (!puedeCompletar || mutableCompletandoId.value != null) return
+        mutableCompletandoId.value = turno.id
+        mutableErrorCompletar.value = null
+        viewModelScope.launch {
+            try {
+                when (val result = completar(turno)) {
+                    is AppResult.Success -> {
+                        todosLosTurnos = todosLosTurnos.map {
+                            if (it.id == turno.id) it.copy(estado = "realizado") else it
+                        }
+                        actualizarSemana()
+                    }
+                    is AppResult.Error -> mutableErrorCompletar.value = result.error
+                }
+            } finally { mutableCompletandoId.value = null }
+        }
+    }
 
     fun seleccionarSemana(offset: Int) {
         if (offset !in 0..1) return

@@ -23,27 +23,10 @@ private val hourFormat = DateTimeFormatter.ofPattern("HH:mm")
 @Composable
 fun ReservasRoute(viewModel: ReservasViewModel,
     turnosCliente: @Composable () -> Unit,
-    agendaBarbero: @Composable (@Composable () -> Unit) -> Unit) {
+    agendaBarbero: @Composable () -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val error = state.error
-    if (state.catalogo?.esBarbero == true) agendaBarbero {
-        OutlinedCard(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp)) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Tu agenda", style = MaterialTheme.typography.titleMedium)
-                Text("Lunes a sábado · turnos de 40 minutos",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Button(onClick = viewModel::publicarSemana, enabled = !state.publicando,
-                    modifier = Modifier.fillMaxWidth()) {
-                    Text(if (state.publicando) "Publicando…" else "Actualizar horarios de esta semana")
-                }
-                state.mensaje?.let { Text(it, style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary) }
-                state.error?.let { Text(it.asMessage(), style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error) }
-            }
-        }
-    }
+    if (state.catalogo?.esBarbero == true) agendaBarbero()
     else if (state.catalogo != null) turnosCliente()
     else if (error != null) ar.edu.unaj.am.myapplication.core.ui.components.ErrorContent(
         title = "No se pudieron cargar tus turnos", message = error.asMessage(), onRetry = viewModel::cargar)

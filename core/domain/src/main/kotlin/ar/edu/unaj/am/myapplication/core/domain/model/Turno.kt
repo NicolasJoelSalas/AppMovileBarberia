@@ -10,6 +10,5 @@ data class Turno(
     val estado: String,
     val clienteNombre: String = "",
     val servicioNombre: String = "",
-    val precioServicioCentavos: Long? = null,
     val precioCobradoCentavos: Long? = null
 )

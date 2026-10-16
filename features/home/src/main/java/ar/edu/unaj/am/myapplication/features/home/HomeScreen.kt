@@ -9,9 +9,16 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.CalendarToday
+import androidx.compose.material.icons.outlined.DateRange
+import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.ContentCut
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -46,33 +53,80 @@ fun HomeRoute(viewModel: HomeViewModel, esBarbero: Boolean, onReservar: (String)
         return
     }
     Scaffold(topBar = {
-        TopAppBar(title = { Text("Inicio", fontWeight = FontWeight.Bold) },
+        TopAppBar(title = {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Inicio", fontWeight = FontWeight.Bold)
+            }
+        },
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer))
-    }, floatingActionButton = {
-        if (esBarbero) ExtendedFloatingActionButton(onClick = viewModel::nueva,
-            icon = { Icon(Icons.Default.Add, contentDescription = null) }, text = { Text("Agregar trabajo") })
+    }, bottomBar = {
+        if (esBarbero) Surface(color = MaterialTheme.colorScheme.surface,
+            shadowElevation = 6.dp) {
+            Button(onClick = viewModel::nueva, enabled = !state.eliminando,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)
+                    .heightIn(min = 50.dp), shape = RoundedCornerShape(14.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer)) {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(10.dp))
+                Text("Agregar trabajo", fontWeight = FontWeight.SemiBold)
+            }
+        }
     }) { padding ->
         when {
             state.cargando -> LoadingContent(message = "Cargando trabajos…", modifier = Modifier.padding(padding))
             state.error != null -> ErrorContent(title = "No se pudieron cargar los trabajos",
                 message = state.error!!.asMessage(), onRetry = viewModel::reintentar, modifier = Modifier.padding(padding))
             else -> LazyColumn(Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 96.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)) {
                 item {
-                    Text("Trabajos de nuestra barbería", style = MaterialTheme.typography.titleLarge)
-                    Text(if (esBarbero) "Compartí tus cortes y estilos con tus clientes."
-                        else "Encontrá tu próximo estilo y reservá tu turno.",
-                        style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    state.mensaje?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                            Surface(shape = RoundedCornerShape(14.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer) {
+                                Icon(Icons.Outlined.ContentCut, contentDescription = null,
+                                    modifier = Modifier.padding(12.dp).size(24.dp))
+                            }
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                Text("NUESTRA BARBERÍA", style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text("Cortes y estilos", style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        Text(if (esBarbero) "Mostrá tu trabajo y compartí tus últimos cortes con tus clientes."
+                            else "Descubrí el trabajo de nuestros barberos y elegí tu próximo corte.",
+                            style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        state.mensaje?.let {
+                            Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                                Text(it, modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer)
+                            }
+                        }
+                    }
                 }
                 if (state.publicaciones.isEmpty()) item {
-                    OutlinedCard(Modifier.fillMaxWidth()) {
-                        Text(if (esBarbero) "Todavía no hay trabajos publicados. Agregá tu primera foto."
-                            else "Pronto vas a encontrar fotos de los trabajos de nuestros barberos.",
-                            modifier = Modifier.padding(24.dp))
+                    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+                        Column(Modifier.fillMaxWidth().padding(28.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Icon(Icons.Outlined.Image, contentDescription = null, modifier = Modifier.size(36.dp),
+                                tint = MaterialTheme.colorScheme.primary)
+                            Text("Todavía no hay publicaciones", style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold)
+                            Text(if (esBarbero) "Agregá una foto para empezar a mostrar tu trabajo."
+                                else "Pronto podrás conocer los cortes y estilos de nuestros barberos.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                 }
                 items(state.publicaciones, key = { it.id }) { publicacion ->
@@ -93,20 +147,56 @@ fun HomeRoute(viewModel: HomeViewModel, esBarbero: Boolean, onReservar: (String)
 @Composable
 private fun TrabajoCard(publicacion: Publicacion, puedeEliminar: Boolean, eliminando: Boolean,
     onEliminar: () -> Unit, onReservar: (() -> Unit)?) {
-    ElevatedCard(Modifier.fillMaxWidth()) {
+    val colors = MaterialTheme.colorScheme
+    ElevatedCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.elevatedCardColors(containerColor = colors.surfaceContainer),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
         FotoTrabajo(publicacion.imagenUrl, "Trabajo de ${publicacion.barberoNombre}", Modifier.fillMaxWidth().aspectRatio(1f))
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(publicacion.barberoNombre.ifBlank { "Barbero" }, style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold)
-            if (publicacion.descripcion.isNotBlank()) Text(publicacion.descripcion)
-            publicacion.creadoEnMillis?.let {
-                Text(Instant.ofEpochMilli(it).atZone(ZoneId.of("America/Argentina/Buenos_Aires"))
-                    .format(DateTimeFormatter.ofPattern("d 'de' MMMM yyyy", Locale.forLanguageTag("es-AR"))),
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Surface(shape = CircleShape, color = colors.primaryContainer,
+                    contentColor = colors.onPrimaryContainer) {
+                    Icon(Icons.Outlined.Person, contentDescription = null,
+                        modifier = Modifier.padding(10.dp).size(22.dp))
+                }
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    Text("Barbero", style = MaterialTheme.typography.labelMedium,
+                        color = colors.onSurfaceVariant)
+                    Text(publicacion.barberoNombre.ifBlank { "Sin nombre" },
+                        style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                }
             }
-            onReservar?.let { OutlinedButton(onClick = it, modifier = Modifier.fillMaxWidth()) { Text("Reservar turno") } }
+            if (publicacion.descripcion.isNotBlank()) Text(publicacion.descripcion,
+                style = MaterialTheme.typography.bodyLarge, color = colors.onSurface)
+            publicacion.creadoEnMillis?.let {
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Icon(Icons.Outlined.CalendarToday, contentDescription = null,
+                        tint = colors.onSurfaceVariant, modifier = Modifier.size(16.dp))
+                    Text(Instant.ofEpochMilli(it).atZone(ZoneId.of("America/Argentina/Buenos_Aires"))
+                        .format(DateTimeFormatter.ofPattern("d 'de' MMMM yyyy", Locale.forLanguageTag("es-AR"))),
+                        style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+                }
+            }
+            if (onReservar != null || puedeEliminar) HorizontalDivider(color = colors.outlineVariant)
+            onReservar?.let { reservar ->
+                Button(onClick = reservar, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = colors.primaryContainer,
+                        contentColor = colors.onPrimaryContainer)) {
+                    Icon(Icons.Outlined.DateRange, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Reservar turno")
+                }
+            }
             if (puedeEliminar) TextButton(onClick = onEliminar, enabled = !eliminando,
-                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Eliminar publicación") }
+                modifier = Modifier.align(Alignment.End),
+                colors = ButtonDefaults.textButtonColors(contentColor = colors.error)) {
+                if (eliminando) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                else Icon(Icons.Outlined.DeleteOutline, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(if (eliminando) "Eliminando…" else "Eliminar publicación")
+            }
         }
     }
 }

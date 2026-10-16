@@ -3,20 +3,19 @@ package ar.edu.unaj.am.myapplication.features.turnos.list
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import ar.edu.unaj.am.myapplication.features.turnos.components.SemanaSelector
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
@@ -29,9 +28,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.Lifecycle
 import kotlinx.coroutines.delay
-import java.time.ZoneId
-import java.time.ZonedDateTime
-import java.time.Duration
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import ar.edu.unaj.am.myapplication.core.domain.model.Turno
 import ar.edu.unaj.am.myapplication.core.ui.components.ErrorContent
 import ar.edu.unaj.am.myapplication.core.ui.components.LoadingContent
@@ -39,22 +40,28 @@ import ar.edu.unaj.am.myapplication.core.ui.components.asMessage
 import ar.edu.unaj.am.myapplication.features.turnos.components.TurnoCard
 
 @Composable
-fun TurnosListRoute(viewModel: TurnoListViewModel, onReservar: (() -> Unit)? = null,
-    headerContent: (@Composable () -> Unit)? = null) {
+fun TurnosListRoute(viewModel: TurnoListViewModel, onReservar: (() -> Unit)? = null) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val semanaOffset by viewModel.semanaOffset.collectAsStateWithLifecycle()
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.actualizarSemana() }
-    LaunchedEffect(viewModel) {
-        val zone = ZoneId.of("America/Argentina/Buenos_Aires")
-        while (true) {
-            val now = ZonedDateTime.now(zone)
-            delay(Duration.between(now, now.toLocalDate().plusDays(1).atStartOfDay(zone))
-                .toMillis().coerceAtLeast(1000))
-            viewModel.actualizarSemana()
+    val completandoId by viewModel.completandoId.collectAsStateWithLifecycle()
+    val errorCompletar by viewModel.errorCompletar.collectAsStateWithLifecycle()
+    var ahoraMillis by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(viewModel, lifecycle) {
+        lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                ahoraMillis = System.currentTimeMillis()
+                viewModel.actualizarSemana()
+                delay(1000)
+            }
         }
     }
     TurnosListScreen(uiState = uiState, onRetry = viewModel::onRetry, onReservar = onReservar,
-        headerContent = headerContent, semanaOffset = semanaOffset, onSemanaChange = viewModel::seleccionarSemana)
+        semanaOffset = semanaOffset, onSemanaChange = viewModel::seleccionarSemana,
+        ahoraMillis = ahoraMillis, completandoId = completandoId,
+        errorCompletar = errorCompletar?.asMessage(),
+        onMarcarRealizado = if (viewModel.puedeCompletar) viewModel::marcarRealizado else null)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -64,9 +71,12 @@ fun TurnosListScreen(
     onRetry: () -> Unit,
     modifier: Modifier = Modifier,
     onReservar: (() -> Unit)? = null,
-    headerContent: (@Composable () -> Unit)? = null,
     semanaOffset: Int = 0,
-    onSemanaChange: (Int) -> Unit = {}
+    onSemanaChange: (Int) -> Unit = {},
+    ahoraMillis: Long = System.currentTimeMillis(),
+    completandoId: String? = null,
+    errorCompletar: String? = null,
+    onMarcarRealizado: ((Turno) -> Unit)? = null
 ) {
     Scaffold(
         modifier = modifier,
@@ -80,14 +90,10 @@ fun TurnosListScreen(
             }) }
     ) { paddingValues ->
         Column(Modifier.fillMaxSize().padding(paddingValues)) {
-        headerContent?.invoke()
-        Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(selected = semanaOffset == 0, onClick = { onSemanaChange(0) },
-                label = { Text("Esta semana") })
-            FilterChip(selected = semanaOffset == 1, onClick = { onSemanaChange(1) },
-                label = { Text("Próxima semana") })
-        }
+        SemanaSelector(semanaOffset = semanaOffset, onSemanaChange = onSemanaChange,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
+        errorCompletar?.let { Text(it, color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.padding(horizontal = 16.dp)) }
         val contentModifier = Modifier.weight(1f).fillMaxSize()
         when (uiState) {
             TurnosListUiState.Loading -> LoadingContent(
@@ -113,7 +119,11 @@ fun TurnosListScreen(
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         items(uiState.turnos, key = { it.id }) { turno ->
-                            TurnoCard(turno = turno)
+                            TurnoCard(turno = turno,
+                                onMarcarRealizado = onMarcarRealizado?.let { action -> { action(turno) } },
+                                habilitado = completandoId == null &&
+                                    turno.inicioMillis?.let { it <= ahoraMillis } == true,
+                                completando = completandoId == turno.id)
                         }
                     }
                 }

@@ -1,0 +1,32 @@
+package ar.edu.unaj.am.myapplication.core.domain.usecase
+
+import ar.edu.unaj.am.myapplication.core.domain.model.Turno
+import java.time.*
+import java.time.temporal.TemporalAdjusters
+
+data class ReporteGanancias(
+    val desde: LocalDate,
+    val hasta: LocalDate,
+    val realizados: List<Turno>,
+    val totalCentavos: Long,
+    val sinImporte: Int
+)
+
+class CalcularReporteGananciasUseCase(
+    private val clock: Clock = Clock.system(ZoneId.of("America/Argentina/Buenos_Aires"))
+) {
+    operator fun invoke(turnos: List<Turno>, mensual: Boolean, offset: Int): ReporteGanancias {
+        val hoy = LocalDate.now(clock)
+        val desde = if (mensual) hoy.withDayOfMonth(1).plusMonths(offset.toLong())
+            else hoy.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).plusWeeks(offset.toLong())
+        val fin = if (mensual) desde.plusMonths(1) else desde.plusWeeks(1)
+        val inicioMillis = desde.atStartOfDay(clock.zone).toInstant().toEpochMilli()
+        val finMillis = fin.atStartOfDay(clock.zone).toInstant().toEpochMilli()
+        val realizados = turnos.filter { it.estado.lowercase() in listOf("realizado", "completado") &&
+            it.inicioMillis?.let { fecha -> fecha >= inicioMillis && fecha < finMillis } == true }
+            .sortedByDescending { it.inicioMillis }
+        return ReporteGanancias(desde, fin.minusDays(1), realizados,
+            realizados.sumOf { it.precioCobradoCentavos?.takeIf { precio -> precio >= 0 } ?: 0 },
+            realizados.count { it.precioCobradoCentavos == null || it.precioCobradoCentavos < 0 })
+    }
+}

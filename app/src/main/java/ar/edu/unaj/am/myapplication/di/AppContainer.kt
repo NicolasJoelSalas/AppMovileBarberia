@@ -48,12 +48,11 @@ class AppContainer(context: Context) {
     val cargarCatalogoReservas = CargarCatalogoReservasUseCase(reservaRepository)
     val consultarSemana = ConsultarSemanaUseCase(reservaRepository)
     val reservarTurno = ReservarTurnoUseCase(reservaRepository)
-    val publicarSemana = PublicarSemanaUseCase(reservaRepository)
+    private val publicarSemana = PublicarSemanaUseCase(reservaRepository)
     val obtenerMiAgenda = ObtenerMiAgendaUseCase(reservaRepository)
     val guardarYPublicarAgenda = GuardarYPublicarAgendaUseCase(reservaRepository, publicarSemana)
     private val turnoRepository: TurnoRepository = FirestoreTurnoRepository()
     val observeTurnos = ObserveTurnosUseCase(turnoRepository)
-    val calcularResumenBarbero = ar.edu.unaj.am.myapplication.core.domain.usecase.CalcularResumenBarberoUseCase()
     val marcarTurnoRealizado = ar.edu.unaj.am.myapplication.core.domain.usecase.MarcarTurnoRealizadoUseCase(turnoRepository)
 
     private val authRepository: AuthRepository =

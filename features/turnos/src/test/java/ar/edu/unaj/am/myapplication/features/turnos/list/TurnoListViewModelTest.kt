@@ -33,8 +33,8 @@ class TurnoListViewModelTest {
         val source = MutableStateFlow<AppResult<List<Turno>>>(AppResult.Success(listOf(actual, proximo)))
         var consultaCliente = false
         val repo = object : TurnoRepository {
-            override suspend fun marcarRealizado(turnoId: String, precioEsperadoCentavos: Long) = AppResult.Success(Unit)
             override fun observeTurnos(comoCliente: Boolean) = source.also { consultaCliente = comoCliente }
+            override suspend fun marcarRealizado(turnoId: String) = AppResult.Success(Unit)
         }
         val vm = TurnoListViewModel(ObserveTurnosUseCase(repo), comoCliente = true,
             filtrarSemana = FiltrarTurnosPorSemanaUseCase(Clock.fixed(
