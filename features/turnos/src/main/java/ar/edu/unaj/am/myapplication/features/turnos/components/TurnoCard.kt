@@ -21,7 +21,6 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val zonaBarberia = ZoneId.of("America/Argentina/Buenos_Aires")
 private val horaFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.forLanguageTag("es-AR"))
 private val fechaFormatter = DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", Locale.forLanguageTag("es-AR"))
 
@@ -30,6 +29,7 @@ fun TurnoCard(turno: Turno, modifier: Modifier = Modifier,
     onMarcarRealizado: (() -> Unit)? = null, habilitado: Boolean = false,
     completando: Boolean = false, onRecordatorio: (() -> Unit)? = null,
     recordatorioActivo: Boolean = false, recordatorioHabilitado: Boolean = false) {
+    val zonaBarberia = ZoneId.systemDefault()
     val inicio = turno.inicioMillis?.let { Instant.ofEpochMilli(it).atZone(zonaBarberia) }
     val fin = turno.finMillis?.let { Instant.ofEpochMilli(it).atZone(zonaBarberia) }
     val realizado = turno.estado.lowercase() in listOf("realizado", "completado")
@@ -67,13 +67,13 @@ fun TurnoCard(turno: Turno, modifier: Modifier = Modifier,
                     Icon(Icons.Outlined.NotificationsActive, contentDescription = null,
                         modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(if (recordatorioActivo) "Cancelar recordatorio" else "Recordarme 1 hora antes")
+                    Text(if (recordatorioActivo) "Desactivar avisos" else "Activar avisos del turno")
                 }
                 Text(when {
-                    recordatorioActivo -> "Recordatorio activado en este teléfono."
+                    recordatorioActivo -> "Avisos automáticos un día y una hora antes (hora local). Solo se envían los que aún no pasaron."
                     turno.inicioMillis == null -> "El turno necesita una fecha y hora de inicio."
                     !recordatorioHabilitado -> "La hora del recordatorio ya pasó."
-                    else -> "Recibí un aviso con sonido una hora antes del turno."
+                    else -> "Avisos un día antes y una hora antes. Habilitá los permisos para recibirlos."
                 }, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
             }
             if (realizado) {

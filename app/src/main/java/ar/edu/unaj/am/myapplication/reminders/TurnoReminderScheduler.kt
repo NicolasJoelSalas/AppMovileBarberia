@@ -13,13 +13,13 @@ import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
 import ar.edu.unaj.am.myapplication.core.domain.model.Turno
-import ar.edu.unaj.am.myapplication.core.domain.usecase.instanteRecordatorio
+import ar.edu.unaj.am.myapplication.core.domain.usecase.instantesRecordatorios
+import ar.edu.unaj.am.myapplication.core.domain.usecase.anticipacionesRecordatorio
 import com.google.firebase.auth.FirebaseAuth
 import org.json.JSONObject
 
-internal data class TurnoReminder(val id: String, val owner: String, val inicio: Long) {
-    val trigger: Long get() = inicio - 3_600_000L
-}
+internal data class TurnoReminder(val id: String, val owner: String, val inicio: Long,
+    val pending: List<Long> = anticipacionesRecordatorio, val disabled: Boolean = false, val version: Int = 2)
 
 internal class TurnoReminderScheduler(private val context: Context) {
     private val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -38,7 +38,7 @@ internal class TurnoReminderScheduler(private val context: Context) {
 
     fun createChannel() {
         val channel = NotificationChannel(CHANNEL, "Recordatorios de turnos", NotificationManager.IMPORTANCE_HIGH)
-        channel.description = "Aviso una hora antes de tus turnos"
+        channel.description = "Avisos un día y una hora antes de tus turnos"
         channel.enableVibration(true)
         channel.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
             AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).build())
@@ -48,46 +48,74 @@ internal class TurnoReminderScheduler(private val context: Context) {
     fun reminders(): List<TurnoReminder> = prefs.all.mapNotNull { (_, value) ->
         runCatching {
             val json = JSONObject(value as String)
-            TurnoReminder(json.getString("id"), json.getString("owner"), json.getLong("inicio"))
+            val pending = json.optJSONArray("pending")
+            TurnoReminder(json.getString("id"), json.getString("owner"), json.getLong("inicio"),
+                pending?.let { array -> (0 until array.length()).map { array.getLong(it) } } ?: listOf(3_600_000L),
+                json.optBoolean("disabled", false), json.optInt("version", 1))
         }.getOrNull()
     }
 
     fun activeIds(): Set<String> = if (!canScheduleExact() || !canNotify()) emptySet() else
-        reminders().filter { it.owner == owner && it.trigger > System.currentTimeMillis() }.map { it.id }.toSet()
+        reminders().filter { it.owner == owner && !it.disabled &&
+            it.pending.any { offset -> it.inicio - offset > System.currentTimeMillis() } }.map { it.id }.toSet()
 
-    fun schedule(turno: Turno): Boolean {
-        val uid = owner ?: return false
-        if (uid != turno.clienteId || instanteRecordatorio(turno, System.currentTimeMillis()) == null ||
-            !canScheduleExact() || !canNotify()) return false
-        val reminder = TurnoReminder(turno.id, uid, turno.inicioMillis!!)
-        // La identidad estable del PendingIntent reemplaza una alarma anterior del mismo turno.
+    fun hasAskedPermissions(): Boolean = prefs.getBoolean("permissions_asked_$owner", false)
+    fun markPermissionsAsked() { prefs.edit().putBoolean("permissions_asked_$owner", true).apply() }
+
+    private fun save(reminder: TurnoReminder): Boolean = prefs.edit().putString(reminder.id,
+        JSONObject().put("id", reminder.id).put("owner", reminder.owner).put("inicio", reminder.inicio)
+            .put("pending", org.json.JSONArray(reminder.pending)).put("disabled", reminder.disabled)
+            .put("version", 2).toString()).commit()
+
+    private fun arm(reminder: TurnoReminder): Boolean {
+        if (!canScheduleExact() || !canNotify()) return false
         return try {
-            alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, reminder.trigger, operation(reminder.id))
-            val json = JSONObject().put("id", reminder.id).put("owner", uid).put("inicio", reminder.inicio)
-            if (!prefs.edit().putString(reminder.id, json.toString()).commit()) {
-                alarms.cancel(operation(reminder.id))
-                false
-            } else true
+            reminder.pending.filter { reminder.inicio - it > System.currentTimeMillis() }.forEach { offset ->
+                alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, reminder.inicio - offset,
+                    operation(reminder.id, offset))
+            }
+            true
         } catch (_: SecurityException) { false }
     }
 
-    fun cancel(id: String) {
-        alarms.cancel(operation(id))
-        prefs.edit().remove(id).commit()
-        notifications.cancel(id, 0)
+    fun schedule(turno: Turno): Boolean {
+        val uid = owner ?: return false
+        val now = System.currentTimeMillis()
+        val inicio = turno.inicioMillis ?: return false
+        if (uid != turno.clienteId || instantesRecordatorios(turno, now).isEmpty()) return false
+        remove(turno.id)
+        val reminder = TurnoReminder(turno.id, uid, inicio,
+            anticipacionesRecordatorio.filter { inicio - it > now })
+        return save(reminder) && arm(reminder)
     }
 
-    fun cancelAll() { reminders().forEach { cancel(it.id) } }
+    fun cancel(id: String) {
+        val reminder = reminders().find { it.id == id }
+        remove(id)
+        // Guarda la elección para que una sincronización no lo reactive automáticamente.
+        if (reminder != null) save(reminder.copy(disabled = true, pending = emptyList()))
+    }
+
+    private fun remove(id: String) {
+        alarms.cancel(operation(id)) // Migración de la alarma de la versión anterior.
+        anticipacionesRecordatorio.forEach { alarms.cancel(operation(id, it)) }
+        prefs.edit().remove(id).commit()
+        notifications.cancel(id, 0)
+        anticipacionesRecordatorio.forEach { notifications.cancel("$id-$it", 0) }
+    }
+
+    fun cancelAll() { reminders().forEach { remove(it.id) } }
+
+    fun consume(id: String, offset: Long) {
+        val reminder = reminders().find { it.id == id } ?: return
+        save(reminder.copy(pending = reminder.pending - offset))
+    }
 
     /** Conserva alarmas tras reiniciar y elimina recordatorios vencidos o de otra sesión. */
     fun restore() {
         reminders().forEach {
-            if (it.owner != owner || it.trigger <= System.currentTimeMillis()) cancel(it.id)
-            else if (canScheduleExact() && canNotify()) {
-                try {
-                    alarms.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, it.trigger, operation(it.id))
-                } catch (_: SecurityException) { /* Se reintentará al recuperar el permiso. */ }
-            }
+            if (it.owner != owner || it.inicio <= System.currentTimeMillis()) remove(it.id)
+            else if (!it.disabled) arm(it)
         }
     }
 
@@ -95,21 +123,24 @@ internal class TurnoReminderScheduler(private val context: Context) {
     fun reconcile(turnos: List<Turno>) {
         val existing = reminders().associateBy { it.id }
         val ids = turnos.map { it.id }.toSet()
-        existing.values.filter { it.owner != owner || it.id !in ids }.forEach { cancel(it.id) }
+        existing.values.filter { it.owner != owner || it.id !in ids }.forEach { remove(it.id) }
         turnos.forEach { turno ->
-            val saved = existing[turno.id] ?: return@forEach
-            if (saved.owner != owner || instanteRecordatorio(turno, System.currentTimeMillis()) == null) cancel(turno.id)
-            else if (saved.inicio != turno.inicioMillis) {
-                cancel(turno.id)
-                schedule(turno)
-            }
+            val saved = existing[turno.id]
+            val inicio = turno.inicioMillis
+            if (turno.clienteId != owner || inicio == null || inicio <= System.currentTimeMillis() ||
+                turno.estado.lowercase() !in setOf("confirmado", "pendiente")) remove(turno.id)
+            else if (saved?.disabled == true) {
+                if (saved.inicio != inicio) save(saved.copy(inicio = inicio))
+            } else if (saved == null || saved.inicio != turno.inicioMillis || saved.version < 2) schedule(turno)
+            else arm(saved)
         }
     }
 
-    private fun operation(id: String): PendingIntent = PendingIntent.getBroadcast(context, 0,
+    private fun operation(id: String, offset: Long? = null): PendingIntent = PendingIntent.getBroadcast(context, 0,
         Intent(context, TurnoReminderReceiver::class.java).apply {
             action = FIRE
-            data = Uri.Builder().scheme("barberia").authority("recordatorio").appendPath(id).build()
+            data = Uri.Builder().scheme("barberia").authority("recordatorio").appendPath(id)
+                .apply { if (offset != null) appendPath(offset.toString()) }.build()
         }, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 
     companion object {

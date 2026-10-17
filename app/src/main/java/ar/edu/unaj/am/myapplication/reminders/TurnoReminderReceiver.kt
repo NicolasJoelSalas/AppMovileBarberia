@@ -21,16 +21,18 @@ class TurnoReminderReceiver : BroadcastReceiver() {
                     Intent.ACTION_TIMEZONE_CHANGED, "android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED")) scheduler.restore()
             return
         }
-        val id = intent.data?.lastPathSegment ?: return
+        val id = intent.data?.pathSegments?.firstOrNull() ?: return
+        val offset = intent.data?.pathSegments?.getOrNull(1)?.toLongOrNull() ?: 3_600_000L
         val reminder = scheduler.reminders().find { it.id == id } ?: return
+        if (reminder.disabled || offset !in reminder.pending) return
         val now = System.currentTimeMillis()
         // Nunca mostrar información de otra cuenta ni avisos de un turno que ya empezó.
         if (reminder.owner != FirebaseAuth.getInstance().currentUser?.uid || now >= reminder.inicio) {
             scheduler.cancel(id)
             return
         }
-        if (now < reminder.trigger) return
-        scheduler.cancel(id)
+        if (now < reminder.inicio - offset) return
+        scheduler.consume(id, offset)
         if (!scheduler.canNotify()) return
         val hora = Instant.ofEpochMilli(reminder.inicio).atZone(ZoneId.systemDefault())
             .format(DateTimeFormatter.ofPattern("HH:mm"))
@@ -39,14 +41,14 @@ class TurnoReminderReceiver : BroadcastReceiver() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val notification = Notification.Builder(context, TurnoReminderScheduler.CHANNEL)
             .setSmallIcon(R.drawable.ic_turno_reminder)
-            .setContentTitle("Tu turno es en una hora")
-            .setContentText("Tenés un turno en la barbería a las $hora.")
+            .setContentTitle(if (offset == 86_400_000L) "Tu turno es mañana" else "Tu turno es en una hora")
+            .setContentText("Tu turno es a las $hora.")
             .setCategory(Notification.CATEGORY_REMINDER)
             .setContentIntent(openApp)
             .setAutoCancel(true)
             .build()
         try {
-            context.getSystemService(NotificationManager::class.java).notify(id, 0, notification)
+            context.getSystemService(NotificationManager::class.java).notify("$id-$offset", 0, notification)
         } catch (_: SecurityException) { /* El usuario puede revocar notificaciones en cualquier momento. */ }
     }
 }

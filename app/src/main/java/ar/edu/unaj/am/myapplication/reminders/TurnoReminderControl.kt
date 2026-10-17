@@ -19,6 +19,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import ar.edu.unaj.am.myapplication.core.domain.model.Turno
+import ar.edu.unaj.am.myapplication.core.domain.usecase.instantesRecordatorios
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -41,8 +42,11 @@ internal fun rememberTurnoReminderControl(turnos: List<Turno>?): TurnoReminderCo
         when {
             !scheduler.canNotify() -> message("Habilitá las notificaciones de la app y el canal Recordatorios de turnos en Ajustes.")
             !scheduler.canScheduleExact() -> message("Para activar el recordatorio, permití Alarmas y recordatorios en Ajustes.")
-            turno == null || !scheduler.schedule(turno) -> message("No se pudo activar el recordatorio. Revisá que falte más de una hora para el turno e intentá nuevamente.")
-            else -> message("Recordatorio activado una hora antes del turno.")
+            turno == null || !scheduler.schedule(turno) -> message("No se pudieron activar los avisos. Revisá que falte más de una hora para el turno e intentá nuevamente.")
+            else -> {
+                scheduler.reconcile(latestTurnos)
+                message("Avisos activados para los horarios que aún no pasaron.")
+            }
         }
         activeIds = scheduler.activeIds()
     }
@@ -59,6 +63,7 @@ internal fun rememberTurnoReminderControl(turnos: List<Turno>?): TurnoReminderCo
     }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         scheduler.restore()
+        if (turnos != null) scheduler.reconcile(turnos)
         activeIds = scheduler.activeIds()
     }
     DisposableEffect(scheduler) {
@@ -72,16 +77,21 @@ internal fun rememberTurnoReminderControl(turnos: List<Turno>?): TurnoReminderCo
     LaunchedEffect(turnos) {
         if (turnos != null) scheduler.reconcile(turnos)
         activeIds = scheduler.activeIds()
+        val eligible = turnos?.firstOrNull { instantesRecordatorios(it, System.currentTimeMillis()).isNotEmpty() }
+        if (eligible != null && (!scheduler.canNotify() || !scheduler.canScheduleExact()) && !scheduler.hasAskedPermissions()) {
+            scheduler.markPermissionsAsked()
+            selectedId = eligible.id
+        }
     }
     val selected = turnos?.find { it.id == selectedId }
     if (selected != null) {
-        val fecha = selected.inicioMillis?.minus(3_600_000L)?.let {
+        val fechas = instantesRecordatorios(selected, System.currentTimeMillis()).joinToString(" y ") {
             Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault())
                 .format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'a las' HH:mm"))
-        }.orEmpty()
+        }
         AlertDialog(onDismissRequest = { selectedId = null },
-            title = { Text("Recordar mi turno") },
-            text = { Text("Te avisaremos el $fecha, una hora antes del turno. El sonido depende de los ajustes de notificaciones del teléfono. El recordatorio se guarda en este teléfono.") },
+            title = { Text("Avisos de tus turnos") },
+            text = { Text("Tus turnos incluyen avisos un día antes y una hora antes. Para este turno, los próximos avisos son: $fechas (hora local). Necesitamos los permisos del teléfono para enviarlos. El sonido depende de los ajustes de notificaciones.") },
             confirmButton = { TextButton(onClick = {
                 pendingId = selected.id
                 selectedId = null

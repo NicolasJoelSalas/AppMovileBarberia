@@ -4,7 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import ar.edu.unaj.am.myapplication.reminders.rememberTurnoReminderControl
+import ar.edu.unaj.am.myapplication.core.domain.model.Turno
 import ar.edu.unaj.am.myapplication.features.home.HomeRoute
 import ar.edu.unaj.am.myapplication.features.home.HomeViewModel
 import androidx.compose.ui.Modifier
@@ -39,6 +39,8 @@ fun AppNavDisplay(
     esBarbero: Boolean,
     onEditorTrabajoVisible: (Boolean) -> Unit,
     onLogout: () -> Unit,
+    onRecordatorio: (Turno) -> Unit,
+    recordatoriosActivos: Set<String>,
     modifier: Modifier = Modifier
 ) {
     // entryProvider: "para esta key, mostra esta pantalla". La key llega ya tipada:
@@ -78,12 +80,10 @@ fun AppNavDisplay(
                             container.observeTurnos, comoCliente = true
                         )
                     }
-                    val misTurnos by misTurnosViewModel.turnosParaRecordatorios.collectAsStateWithLifecycle()
-                    val recordatorios = rememberTurnoReminderControl(misTurnos)
                     TurnosListRoute(
                         misTurnosViewModel,
-                        onRecordatorio = recordatorios.onClick,
-                        recordatoriosActivos = recordatorios.activeIds,
+                        onRecordatorio = onRecordatorio,
+                        recordatoriosActivos = recordatoriosActivos,
                         onReservar = { navigationState.navigate(ReservarTurnoDestination()) })
                 }) {
                 val agendaViewModel = viewModel {

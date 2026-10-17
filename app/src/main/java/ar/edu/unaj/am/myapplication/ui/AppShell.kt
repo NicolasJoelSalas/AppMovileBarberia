@@ -16,6 +16,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
+import ar.edu.unaj.am.myapplication.core.domain.model.AppResult
+import ar.edu.unaj.am.myapplication.core.domain.model.Turno
+import ar.edu.unaj.am.myapplication.reminders.rememberTurnoReminderControl
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import ar.edu.unaj.am.myapplication.features.turnos.list.ReservasViewModel
@@ -40,6 +44,16 @@ fun AppShell(
     }
     val reservasState by reservasViewModel.uiState.collectAsStateWithLifecycle()
     val esBarbero = reservasState.catalogo?.esBarbero == true
+    var turnosParaAvisos by remember { mutableStateOf<List<Turno>?>(null) }
+    LaunchedEffect(reservasState.catalogo?.esBarbero) {
+        turnosParaAvisos = null
+        if (reservasState.catalogo?.esBarbero == false) {
+            container.observeTurnos(comoCliente = true).collect { result ->
+                if (result is AppResult.Success) turnosParaAvisos = result.data
+            }
+        }
+    }
+    val recordatorios = rememberTurnoReminderControl(turnosParaAvisos)
     var editorTrabajoVisible by remember { mutableStateOf(false) }
     Scaffold(
         // Los insets (status bar, barra de gestos) los maneja el Scaffold de cada pantalla.
@@ -67,6 +81,8 @@ fun AppShell(
             esBarbero = esBarbero,
             onEditorTrabajoVisible = { editorTrabajoVisible = it },
             onLogout = onLogout,
+            onRecordatorio = recordatorios.onClick,
+            recordatoriosActivos = recordatorios.activeIds,
             // consumeWindowInsets: la bottom bar ya ocupa el espacio de la barra de navegación,
             // así las pantallas no vuelven a sumarlo.
             modifier = Modifier
