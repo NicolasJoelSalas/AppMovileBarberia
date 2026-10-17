@@ -30,6 +30,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
+import ar.edu.unaj.am.myapplication.core.ui.components.AppTopBar
 import ar.edu.unaj.am.myapplication.core.ui.components.asMessage
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,16 +60,13 @@ fun MiCuentaScreen(
     }
     BackHandler(enabled = verReportes || editando) { volverAlMenu() }
     Scaffold(topBar = {
-        TopAppBar(title = { Text(if (verReportes) "Ganancias" else if (editando) "Modificar perfil"
-                else stringResource(R.string.cuenta_titulo), fontWeight = FontWeight.Bold) },
+        AppTopBar(title = if (verReportes) "Ganancias" else if (editando) "Modificar perfil"
+                else stringResource(R.string.cuenta_titulo),
             navigationIcon = {
                 if (verReportes || editando) IconButton(onClick = { volverAlMenu() }, enabled = !uiState.guardando) {
                     Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Volver a Mi cuenta")
                 }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = colors.primaryContainer,
-                titleContentColor = colors.onPrimaryContainer))
+            })
     }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding).imePadding()
             .verticalScroll(rememberScrollState()).padding(16.dp),

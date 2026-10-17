@@ -7,6 +7,7 @@ import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ContentCut
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -27,7 +28,8 @@ private val fechaFormatter = DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", Loc
 @Composable
 fun TurnoCard(turno: Turno, modifier: Modifier = Modifier,
     onMarcarRealizado: (() -> Unit)? = null, habilitado: Boolean = false,
-    completando: Boolean = false) {
+    completando: Boolean = false, onRecordatorio: (() -> Unit)? = null,
+    recordatorioActivo: Boolean = false, recordatorioHabilitado: Boolean = false) {
     val inicio = turno.inicioMillis?.let { Instant.ofEpochMilli(it).atZone(zonaBarberia) }
     val fin = turno.finMillis?.let { Instant.ofEpochMilli(it).atZone(zonaBarberia) }
     val realizado = turno.estado.lowercase() in listOf("realizado", "completado")
@@ -57,6 +59,23 @@ fun TurnoCard(turno: Turno, modifier: Modifier = Modifier,
                 }
             }
             DatoTurno(Icons.Outlined.ContentCut, turno.servicioNombre.ifBlank { "Servicio sin asignar" })
+            if (onRecordatorio != null && !realizado &&
+                turno.estado.lowercase() in listOf("confirmado", "pendiente")) {
+                OutlinedButton(onClick = onRecordatorio,
+                    enabled = recordatorioHabilitado || recordatorioActivo,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Icon(Icons.Outlined.NotificationsActive, contentDescription = null,
+                        modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(if (recordatorioActivo) "Cancelar recordatorio" else "Recordarme 1 hora antes")
+                }
+                Text(when {
+                    recordatorioActivo -> "Recordatorio activado en este teléfono."
+                    turno.inicioMillis == null -> "El turno necesita una fecha y hora de inicio."
+                    !recordatorioHabilitado -> "La hora del recordatorio ya pasó."
+                    else -> "Recibí un aviso con sonido una hora antes del turno."
+                }, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
+            }
             if (realizado) {
                 HorizontalDivider(color = colors.outlineVariant)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

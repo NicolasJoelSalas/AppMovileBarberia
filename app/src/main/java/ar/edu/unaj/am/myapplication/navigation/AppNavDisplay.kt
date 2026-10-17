@@ -2,6 +2,9 @@ package ar.edu.unaj.am.myapplication.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import ar.edu.unaj.am.myapplication.reminders.rememberTurnoReminderControl
 import ar.edu.unaj.am.myapplication.features.home.HomeRoute
 import ar.edu.unaj.am.myapplication.features.home.HomeViewModel
 import androidx.compose.ui.Modifier
@@ -75,8 +78,12 @@ fun AppNavDisplay(
                             container.observeTurnos, comoCliente = true
                         )
                     }
+                    val misTurnos by misTurnosViewModel.turnosParaRecordatorios.collectAsStateWithLifecycle()
+                    val recordatorios = rememberTurnoReminderControl(misTurnos)
                     TurnosListRoute(
                         misTurnosViewModel,
+                        onRecordatorio = recordatorios.onClick,
+                        recordatoriosActivos = recordatorios.activeIds,
                         onReservar = { navigationState.navigate(ReservarTurnoDestination()) })
                 }) {
                 val agendaViewModel = viewModel {

@@ -52,6 +52,7 @@ class MainActivity : ComponentActivity() {
                         // Cada sesión tiene sus propios ViewModels de navegación y datos.
                         CompositionLocalProvider(LocalViewModelStoreOwner provides sessionOwner) {
                             AppShell(container = container, onLogout = {
+                                ar.edu.unaj.am.myapplication.reminders.TurnoReminderScheduler(applicationContext).cancelAll()
                                 loginViewModel.onLogout()
                                 sessionOwner.clearSession()
                             })

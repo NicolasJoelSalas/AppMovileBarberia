@@ -1,5 +1,8 @@
 package ar.edu.unaj.am.myapplication.features.turnos.agenda
 
+import ar.edu.unaj.am.myapplication.core.ui.components.AppTopBar
+import ar.edu.unaj.am.myapplication.features.turnos.components.AgendaInfoRow
+import ar.edu.unaj.am.myapplication.features.turnos.components.FranjaHorariaFields
 import ar.edu.unaj.am.myapplication.features.turnos.components.SemanaSelector
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
@@ -54,11 +57,7 @@ fun AgendaRoute(viewModel: AgendaViewModel, onBack: () -> Unit) {
     }
     BackHandler(onBack = salir)
     Scaffold(topBar = {
-        TopAppBar(title = { Text("Gestionar semana", fontWeight = FontWeight.Bold) },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer),
-            actions = {
+        AppTopBar(title = "Gestionar semana", actions = {
             TextButton(onClick = salir, enabled = !state.guardando) { Text("Volver") }
         })
     }, bottomBar = {
@@ -88,27 +87,10 @@ fun AgendaRoute(viewModel: AgendaViewModel, onBack: () -> Unit) {
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer) {
                     Column(Modifier.fillMaxWidth().padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Icon(Icons.Outlined.CalendarToday, contentDescription = null,
-                                modifier = Modifier.size(22.dp))
-                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text("Hoy", style = MaterialTheme.typography.labelMedium)
-                                Text(hoy.format(dateFormat), style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold)
-                            }
-                        }
+                        AgendaInfoRow(Icons.Outlined.CalendarToday, "Hoy", hoy.format(dateFormat))
                         HorizontalDivider(color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.15f))
-                        Row(verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Icon(Icons.Outlined.DateRange, contentDescription = null,
-                                modifier = Modifier.size(22.dp))
-                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text("Semana seleccionada", style = MaterialTheme.typography.labelMedium)
-                                Text("${lunes.format(dateFormat)} al ${lunes.plusDays(5).format(dateFormat)}",
-                                    style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                            }
-                        }
+                        AgendaInfoRow(Icons.Outlined.DateRange, "Semana seleccionada",
+                            "${lunes.format(dateFormat)} al ${lunes.plusDays(5).format(dateFormat)}")
                     }
                 }
             }
@@ -130,21 +112,18 @@ fun AgendaRoute(viewModel: AgendaViewModel, onBack: () -> Unit) {
                                         style = MaterialTheme.typography.bodyMedium)
                                 }
                                 Text(if (day.habilitado) "Abierto" else "Cerrado")
+                                Spacer(modifier = Modifier.width(8.dp))
                                 Switch(checked = day.habilitado, onCheckedChange = { viewModel.habilitar(index, it) },
                                     enabled = !state.guardando)
                             }
                             if (day.habilitado) {
                                 day.franjas.forEachIndexed { span, franja ->
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        OutlinedTextField(value = franja.inicio,
-                                            onValueChange = { viewModel.hora(index, span, true, it) },
-                                            label = { Text("Inicio") }, placeholder = { Text("09:00") },
-                                            singleLine = true, enabled = !state.guardando, modifier = Modifier.weight(1f))
-                                        OutlinedTextField(value = franja.fin,
-                                            onValueChange = { viewModel.hora(index, span, false, it) },
-                                            label = { Text("Fin") }, placeholder = { Text("13:00") },
-                                            singleLine = true, enabled = !state.guardando, modifier = Modifier.weight(1f))
-                                    }
+                                    FranjaHorariaFields(
+                                        inicio = franja.inicio, fin = franja.fin,
+                                        onInicioChange = { viewModel.hora(index, span, true, it) },
+                                        onFinChange = { viewModel.hora(index, span, false, it) },
+                                        enabled = !state.guardando
+                                    )
                                     TextButton(onClick = { viewModel.quitar(index, span) }, enabled = !state.guardando) {
                                         Text("Quitar franja ${span + 1}")
                                     }

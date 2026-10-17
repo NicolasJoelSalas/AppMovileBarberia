@@ -29,6 +29,8 @@ class TurnoListViewModel(
     val uiState = mutableUiState.asStateFlow()
     private var observation: Job? = null
     private var todosLosTurnos: List<Turno> = emptyList()
+    private val mutableTurnosParaRecordatorios = MutableStateFlow<List<Turno>?>(null)
+    val turnosParaRecordatorios = mutableTurnosParaRecordatorios.asStateFlow()
     private val mutableSemanaOffset = MutableStateFlow(0)
     val semanaOffset = mutableSemanaOffset.asStateFlow()
     val puedeCompletar: Boolean get() = !comoCliente && completarTurno != null
@@ -49,6 +51,7 @@ class TurnoListViewModel(
                         todosLosTurnos = todosLosTurnos.map {
                             if (it.id == turno.id) it.copy(estado = "realizado") else it
                         }
+                        mutableTurnosParaRecordatorios.value = todosLosTurnos
                         actualizarSemana()
                     }
                     is AppResult.Error -> mutableErrorCompletar.value = result.error
@@ -79,6 +82,7 @@ class TurnoListViewModel(
                 mutableUiState.value = when (result) {
                     is AppResult.Success -> {
                         todosLosTurnos = result.data
+                        mutableTurnosParaRecordatorios.value = result.data
                         TurnosListUiState.Success(filtrarSemana(result.data, mutableSemanaOffset.value))
                     }
                     is AppResult.Error -> TurnosListUiState.Error(result.error)

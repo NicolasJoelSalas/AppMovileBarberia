@@ -13,8 +13,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import ar.edu.unaj.am.myapplication.core.ui.components.AppTopBar
+
 import ar.edu.unaj.am.myapplication.features.turnos.components.SemanaSelector
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -38,9 +38,11 @@ import ar.edu.unaj.am.myapplication.core.ui.components.ErrorContent
 import ar.edu.unaj.am.myapplication.core.ui.components.LoadingContent
 import ar.edu.unaj.am.myapplication.core.ui.components.asMessage
 import ar.edu.unaj.am.myapplication.features.turnos.components.TurnoCard
+import ar.edu.unaj.am.myapplication.core.domain.usecase.instanteRecordatorio
 
 @Composable
-fun TurnosListRoute(viewModel: TurnoListViewModel, onReservar: (() -> Unit)? = null) {
+fun TurnosListRoute(viewModel: TurnoListViewModel, onReservar: (() -> Unit)? = null,
+    onRecordatorio: ((Turno) -> Unit)? = null, recordatoriosActivos: Set<String> = emptySet()) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val semanaOffset by viewModel.semanaOffset.collectAsStateWithLifecycle()
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.actualizarSemana() }
@@ -61,6 +63,7 @@ fun TurnosListRoute(viewModel: TurnoListViewModel, onReservar: (() -> Unit)? = n
         semanaOffset = semanaOffset, onSemanaChange = viewModel::seleccionarSemana,
         ahoraMillis = ahoraMillis, completandoId = completandoId,
         errorCompletar = errorCompletar?.asMessage(),
+        onRecordatorio = onRecordatorio, recordatoriosActivos = recordatoriosActivos,
         onMarcarRealizado = if (viewModel.puedeCompletar) viewModel::marcarRealizado else null)
 }
 
@@ -76,16 +79,13 @@ fun TurnosListScreen(
     ahoraMillis: Long = System.currentTimeMillis(),
     completandoId: String? = null,
     errorCompletar: String? = null,
-    onMarcarRealizado: ((Turno) -> Unit)? = null
+    onMarcarRealizado: ((Turno) -> Unit)? = null,
+    onRecordatorio: ((Turno) -> Unit)? = null,
+    recordatoriosActivos: Set<String> = emptySet()
 ) {
     Scaffold(
         modifier = modifier,
-        topBar = { TopAppBar(title = { Text(if (onReservar != null) "Mis turnos" else "Turnos",
-            fontWeight = FontWeight.Bold) },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer),
-            actions = {
+        topBar = { AppTopBar(title = if (onReservar != null) "Mis turnos" else "Turnos", actions = {
                 onReservar?.let { TextButton(onClick = it) { Text("Reservar turno") } }
             }) }
     ) { paddingValues ->
@@ -120,6 +120,9 @@ fun TurnosListScreen(
                     ) {
                         items(uiState.turnos, key = { it.id }) { turno ->
                             TurnoCard(turno = turno,
+                                onRecordatorio = onRecordatorio?.let { action -> { action(turno) } },
+                                recordatorioActivo = turno.id in recordatoriosActivos,
+                                recordatorioHabilitado = instanteRecordatorio(turno, ahoraMillis) != null,
                                 onMarcarRealizado = onMarcarRealizado?.let { action -> { action(turno) } },
                                 habilitado = completandoId == null &&
                                     turno.inicioMillis?.let { it <= ahoraMillis } == true,
