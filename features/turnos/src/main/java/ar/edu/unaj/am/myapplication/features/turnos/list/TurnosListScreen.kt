@@ -12,7 +12,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import ar.edu.unaj.am.myapplication.core.ui.components.ReservarTurnoButton
 import ar.edu.unaj.am.myapplication.core.ui.components.AppTopBar
 
 import ar.edu.unaj.am.myapplication.features.turnos.components.SemanaSelector
@@ -86,7 +86,12 @@ fun TurnosListScreen(
     Scaffold(
         modifier = modifier,
         topBar = { AppTopBar(title = if (onReservar != null) "Mis turnos" else "Turnos", actions = {
-                onReservar?.let { TextButton(onClick = it) { Text("Reservar turno") } }
+                onReservar?.let { reservar ->
+                    ReservarTurnoButton(
+                        onClick = reservar,
+                        modifier = Modifier.padding(end = 8.dp)
+                    )
+                }
             }) }
     ) { paddingValues ->
         Column(Modifier.fillMaxSize().padding(paddingValues)) {

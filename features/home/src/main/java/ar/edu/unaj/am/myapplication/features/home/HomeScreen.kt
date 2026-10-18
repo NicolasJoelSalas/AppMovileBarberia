@@ -16,7 +16,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.CalendarToday
-import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.ContentCut
 import androidx.compose.material3.*
@@ -181,13 +180,7 @@ private fun TrabajoCard(publicacion: Publicacion, puedeEliminar: Boolean, elimin
             }
             if (onReservar != null || puedeEliminar) HorizontalDivider(color = colors.outlineVariant)
             onReservar?.let { reservar ->
-                Button(onClick = reservar, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = colors.primaryContainer,
-                        contentColor = colors.onPrimaryContainer)) {
-                    Icon(Icons.Outlined.DateRange, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Reservar turno")
-                }
+                ReservarTurnoButton(onClick = reservar, modifier = Modifier.fillMaxWidth())
             }
             if (puedeEliminar) TextButton(onClick = onEliminar, enabled = !eliminando,
                 modifier = Modifier.align(Alignment.End),
