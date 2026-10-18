@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -26,6 +28,8 @@ import ar.edu.unaj.am.myapplication.features.turnos.list.ReservasViewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import ar.edu.unaj.am.myapplication.di.AppContainer
 import ar.edu.unaj.am.myapplication.navigation.AppNavDisplay
 import ar.edu.unaj.am.myapplication.navigation.NavigationState
@@ -46,11 +50,28 @@ fun AppShell(
     val reservasState by reservasViewModel.uiState.collectAsStateWithLifecycle()
     val esBarbero = reservasState.catalogo?.esBarbero == true
     var turnosParaAvisos by remember { mutableStateOf<List<Turno>?>(null) }
+    var turnosPendientes by remember { mutableStateOf(0) }
     LaunchedEffect(reservasState.catalogo?.esBarbero) {
         turnosParaAvisos = null
-        if (reservasState.catalogo?.esBarbero == false) {
-            container.observeTurnos(comoCliente = true).collect { result ->
-                if (result is AppResult.Success) turnosParaAvisos = result.data
+        turnosPendientes = 0
+        val rolBarbero = reservasState.catalogo?.esBarbero
+        if (rolBarbero != null) {
+            container.observeTurnos(comoCliente = !rolBarbero).collect { result ->
+                when (result) {
+                    is AppResult.Success -> {
+                        if (rolBarbero) {
+                            turnosPendientes = result.data.count {
+                                it.estado.lowercase() in listOf("confirmado", "pendiente")
+                            }
+                        } else {
+                            turnosParaAvisos = result.data
+                        }
+                    }
+                    is AppResult.Error -> {
+                        turnosPendientes = 0
+                        turnosParaAvisos = null
+                    }
+                }
             }
         }
     }
@@ -70,6 +91,7 @@ fun AppShell(
                 AppBottomBar(
                     currentTab = navigationState.currentTab,
                     esBarbero = esBarbero,
+                    turnosPendientes = turnosPendientes,
                     onTabClick = navigationState::selectTab
                 )
             }
@@ -97,6 +119,7 @@ fun AppShell(
 private fun AppBottomBar(
     currentTab: TopLevelDestination,
     esBarbero: Boolean,
+    turnosPendientes: Int,
     onTabClick: (TopLevelDestination) -> Unit
 ) {
     NavigationBar {
@@ -108,10 +131,23 @@ private fun AppBottomBar(
                 selected = selected,
                 onClick = { onTabClick(tab) },
                 icon = {
-                    Icon(
-                        imageVector = if (selected) tab.selectedIcon else tab.unselectedIcon,
-                        contentDescription = null
-                    )
+                    BadgedBox(badge = {
+                        if (esBarbero && tab == TopLevelDestination.TURNOS && turnosPendientes > 0) {
+                            Badge {
+                                Text(
+                                    turnosPendientes.toString(),
+                                    modifier = Modifier.semantics {
+                                        contentDescription = "$turnosPendientes turnos pendientes"
+                                    }
+                                )
+                            }
+                        }
+                    }) {
+                        Icon(
+                            imageVector = if (selected) tab.selectedIcon else tab.unselectedIcon,
+                            contentDescription = null
+                        )
+                    }
                 },
                 label = {
                     Text(stringResource(tab.label), maxLines = 1, overflow = TextOverflow.Ellipsis)
