@@ -3,15 +3,25 @@ package ar.edu.unaj.am.myapplication.features.turnos.list
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.ContentCut
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.Lifecycle
 import kotlinx.coroutines.delay
 import ar.edu.unaj.am.myapplication.core.ui.components.asMessage
+import ar.edu.unaj.am.myapplication.core.ui.components.AppTopBar
+import ar.edu.unaj.am.myapplication.features.turnos.components.SemanaSelector
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -60,34 +70,37 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
             }
         }
     }
-    Scaffold(topBar = { TopAppBar(title = { Text("Reservar turno") }, actions = {
+    Scaffold(topBar = { AppTopBar(title = "Reservar turno", actions = {
         TextButton(onClick = onBack, enabled = !state.reservando) { Text("Volver") }
     }) }) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                Text("Reservas para dos semanas · lunes a sábado", style = MaterialTheme.typography.titleMedium)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = state.semanaOffset == 0, onClick = { vm.semana(0) },
-                        enabled = !state.reservando, label = { Text("Semana actual") })
-                    FilterChip(selected = state.semanaOffset == 1, onClick = { vm.semana(1) },
-                        enabled = !state.reservando, label = { Text("Próxima semana") })
-                }
-                Text("Elegí barbero, servicio y un horario disponible.")
+                SemanaSelector(semanaOffset = state.semanaOffset, onSemanaChange = vm::semana,
+                    enabled = !state.reservando)
             }
             state.catalogo?.let { catalogo ->
                 item {
-                    Selector("Barbero", state.barberoId, catalogo.barberos.map { it.id to it.nombre },
-                        !state.reservando, vm::barbero)
-                    Spacer(Modifier.height(8.dp))
-                    Selector("Servicio", state.servicioId,
-                        catalogo.servicios.map { it.id to "${it.nombre} · ${it.duracion} min" },
-                        !state.reservando, vm::servicio)
-                    if (catalogo.barberos.isEmpty()) Text("No hay barberos habilitados.")
-                    if (catalogo.servicios.isEmpty()) Text("No hay servicios habilitados de 40 minutos.")
+                    Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
+                        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Text("Elegí tu turno", style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold)
+                            Text("Seleccioná barbero, servicio y un horario disponible de lunes a sábado.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Selector("Barbero", state.barberoId, catalogo.barberos.map { it.id to it.nombre },
+                                !state.reservando, Icons.Outlined.Person, vm::barbero)
+                            Selector("Servicio", state.servicioId,
+                                catalogo.servicios.map { it.id to "${it.nombre} · ${it.duracion} min" },
+                                !state.reservando, Icons.Outlined.ContentCut, vm::servicio)
+                            if (catalogo.barberos.isEmpty()) Text("No hay barberos habilitados.")
+                            if (catalogo.servicios.isEmpty()) Text("No hay servicios habilitados de 40 minutos.")
+                        }
+                    }
                 }
             }
             if (state.loading) item { CircularProgressIndicator() }
@@ -107,14 +120,23 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
                         Instant.ofEpochMilli(it.inicioMillis).atZone(zone).toLocalDate() == day
                     }
                     item(key = "dia-$day") {
-                        Text(day.format(dayFormat), style = MaterialTheme.typography.titleMedium)
-                        if (slots.isEmpty()) Text("Sin horarios disponibles.")
+                        Text(day.format(dayFormat), style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold)
+                        if (slots.isEmpty()) Text("Sin horarios disponibles.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     items(slots, key = { it.inicioMillis }) { slot ->
-                        OutlinedButton(
+                        FilledTonalButton(
                             onClick = { vm.seleccionar(slot) }, enabled = !state.reservando,
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                            shape = RoundedCornerShape(14.dp),
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                contentColor = MaterialTheme.colorScheme.onSurface)
                         ) {
+                            Icon(Icons.Outlined.Schedule, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
                             Text("${Instant.ofEpochMilli(slot.inicioMillis).atZone(zone).format(hourFormat)} a " +
                                 Instant.ofEpochMilli(slot.finMillis).atZone(zone).format(hourFormat))
                         }
@@ -134,7 +156,7 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
             onDismissRequest = { vm.seleccionar(null) },
             title = { Text("Confirmar reserva") },
             text = {
-                Column {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(state.catalogo?.barberos?.find { it.id == state.barberoId }?.nombre.orEmpty())
                     Text(state.catalogo?.servicios?.find { it.id == state.servicioId }?.nombre.orEmpty())
                     Text(start.format(dayFormat) + " · " + start.format(hourFormat))
@@ -156,17 +178,35 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Selector(label: String, value: String, options: List<Pair<String, String>>, enabled: Boolean,
-    select: (String) -> Unit) {
+    icon: ImageVector, select: (String) -> Unit) {
     var expanded by remember { mutableStateOf(false) }
-    Box {
-        OutlinedButton(onClick = { expanded = true }, enabled = enabled, modifier = Modifier.fillMaxWidth()) {
-            Text("$label: " + (options.find { it.first == value }?.second ?: "Seleccionar"))
-        }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+    val canSelect = enabled && options.isNotEmpty()
+    val optionTextStyle = MaterialTheme.typography.bodyLarge
+    ExposedDropdownMenuBox(expanded = expanded && canSelect,
+        onExpandedChange = { if (canSelect) expanded = it }) {
+        OutlinedTextField(
+            value = options.find { it.first == value }?.second.orEmpty(),
+            onValueChange = {}, readOnly = true, enabled = canSelect,
+            textStyle = optionTextStyle.copy(textAlign = TextAlign.Center),
+            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable,
+                enabled = canSelect).fillMaxWidth(),
+            label = { Text(label) }, placeholder = {
+                Text("Seleccionar", modifier = Modifier.fillMaxWidth(),
+                    style = optionTextStyle, textAlign = TextAlign.Center)
+            },
+            leadingIcon = { Icon(icon, contentDescription = null) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded && canSelect) },
+            shape = RoundedCornerShape(12.dp)
+        )
+        ExposedDropdownMenu(expanded = expanded && canSelect, onDismissRequest = { expanded = false }) {
             options.forEach { option ->
-                DropdownMenuItem(text = { Text(option.second) }, onClick = {
+                DropdownMenuItem(text = {
+                    Text(option.second, modifier = Modifier.fillMaxWidth(),
+                        style = optionTextStyle, textAlign = TextAlign.Center)
+                }, onClick = {
                     expanded = false
                     select(option.first)
                 })
