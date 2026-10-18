@@ -2,7 +2,6 @@ package ar.edu.unaj.am.myapplication.features.turnos.list
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Person
@@ -120,25 +119,26 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
                         Instant.ofEpochMilli(it.inicioMillis).atZone(zone).toLocalDate() == day
                     }
                     item(key = "dia-$day") {
-                        Text(day.format(dayFormat), style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold)
-                        if (slots.isEmpty()) Text("Sin horarios disponibles.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    items(slots, key = { it.inicioMillis }) { slot ->
-                        FilledTonalButton(
-                            onClick = { vm.seleccionar(slot) }, enabled = !state.reservando,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                contentColor = MaterialTheme.colorScheme.onSurface)
-                        ) {
-                            Icon(Icons.Outlined.Schedule, contentDescription = null, modifier = Modifier.size(20.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("${Instant.ofEpochMilli(slot.inicioMillis).atZone(zone).format(hourFormat)} a " +
-                                Instant.ofEpochMilli(slot.finMillis).atZone(zone).format(hourFormat))
+                        key(day, state.barberoId, state.servicioId) {
+                            Selector(
+                                label = day.format(dayFormat),
+                                value = "",
+                                options = slots.map { slot ->
+                                    slot.inicioMillis.toString() to
+                                        ("${Instant.ofEpochMilli(slot.inicioMillis).atZone(zone).format(hourFormat)} a " +
+                                            Instant.ofEpochMilli(slot.finMillis).atZone(zone).format(hourFormat))
+                                },
+                                enabled = !state.reservando,
+                                icon = Icons.Outlined.Schedule,
+                                hint = when (slots.size) {
+                                    0 -> "Sin horarios disponibles"
+                                    1 -> "1 horario disponible"
+                                    else -> "${slots.size} horarios disponibles"
+                                },
+                                select = { id ->
+                                    slots.find { it.inicioMillis.toString() == id }?.let(vm::seleccionar)
+                                }
+                            )
                         }
                     }
                 }
@@ -181,27 +181,28 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Selector(label: String, value: String, options: List<Pair<String, String>>, enabled: Boolean,
-    icon: ImageVector, select: (String) -> Unit) {
+    icon: ImageVector, select: (String) -> Unit, hint: String = "Seleccionar") {
     var expanded by remember { mutableStateOf(false) }
     val canSelect = enabled && options.isNotEmpty()
     val optionTextStyle = MaterialTheme.typography.bodyLarge
     ExposedDropdownMenuBox(expanded = expanded && canSelect,
         onExpandedChange = { if (canSelect) expanded = it }) {
         OutlinedTextField(
-            value = options.find { it.first == value }?.second.orEmpty(),
+            value = options.find { it.first == value }?.second ?: if (value.isEmpty()) hint else "",
             onValueChange = {}, readOnly = true, enabled = canSelect,
             textStyle = optionTextStyle.copy(textAlign = TextAlign.Center),
             modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable,
                 enabled = canSelect).fillMaxWidth(),
             label = { Text(label) }, placeholder = {
-                Text("Seleccionar", modifier = Modifier.fillMaxWidth(),
+                Text(hint, modifier = Modifier.fillMaxWidth(),
                     style = optionTextStyle, textAlign = TextAlign.Center)
             },
             leadingIcon = { Icon(icon, contentDescription = null) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded && canSelect) },
             shape = RoundedCornerShape(12.dp)
         )
-        ExposedDropdownMenu(expanded = expanded && canSelect, onDismissRequest = { expanded = false }) {
+        ExposedDropdownMenu(expanded = expanded && canSelect, onDismissRequest = { expanded = false },
+            modifier = Modifier.heightIn(max = 280.dp)) {
             options.forEach { option ->
                 DropdownMenuItem(text = {
                     Text(option.second, modifier = Modifier.fillMaxWidth(),
