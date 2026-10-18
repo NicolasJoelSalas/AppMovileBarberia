@@ -54,7 +54,7 @@ fun HomeRoute(viewModel: HomeViewModel, esBarbero: Boolean, onReservar: (String)
     Scaffold(topBar = {
         TopAppBar(title = {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("Inicio", fontWeight = FontWeight.Bold)
+                Text(if (esBarbero) "Publicaciones" else "Inicio", fontWeight = FontWeight.Bold)
             }
         },
             colors = TopAppBarDefaults.topAppBarColors(
@@ -138,7 +138,7 @@ fun HomeRoute(viewModel: HomeViewModel, esBarbero: Boolean, onReservar: (String)
     }
     borrar?.let { publicacion -> AlertDialog(
         onDismissRequest = { borrar = null }, title = { Text("¿Eliminar publicación?") },
-        text = { Text("Este trabajo dejará de aparecer en Inicio.") },
+        text = { Text("Este trabajo dejará de aparecer en las publicaciones.") },
         confirmButton = { TextButton(onClick = { viewModel.eliminar(publicacion); borrar = null }) { Text("Eliminar") } },
         dismissButton = { TextButton(onClick = { borrar = null }) { Text("Cancelar") } }) }
 }

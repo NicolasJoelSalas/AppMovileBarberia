@@ -6,7 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.ChevronRight
-import androidx.compose.material.icons.outlined.BarChart
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -40,30 +39,24 @@ fun MiCuentaScreen(
     onNombreChange: (String) -> Unit,
     onGuardar: () -> Unit,
     onReintentar: () -> Unit,
-    onLogout: () -> Unit,
-    reporteState: ReporteGananciasUiState,
-    onPeriodo: (Boolean) -> Unit,
-    onMover: (Int) -> Unit,
-    onReintentarReporte: () -> Unit
+    onLogout: () -> Unit
 ) {
-    var verReportes by rememberSaveable { mutableStateOf(false) }
     var editando by rememberSaveable { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val colors = MaterialTheme.colorScheme
     val volverAlMenu = {
         if (!uiState.guardando) {
             uiState.perfil?.let { onNombreChange(it.nombre) }
-            verReportes = false
             editando = false
             focusManager.clearFocus()
         }
     }
-    BackHandler(enabled = verReportes || editando) { volverAlMenu() }
+    BackHandler(enabled = editando) { volverAlMenu() }
     Scaffold(topBar = {
-        AppTopBar(title = if (verReportes) "Ganancias" else if (editando) "Modificar perfil"
+        AppTopBar(title = if (editando) "Modificar perfil"
                 else stringResource(R.string.cuenta_titulo),
             navigationIcon = {
-                if (verReportes || editando) IconButton(onClick = { volverAlMenu() }, enabled = !uiState.guardando) {
+                if (editando) IconButton(onClick = { volverAlMenu() }, enabled = !uiState.guardando) {
                     Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Volver a Mi cuenta")
                 }
             })
@@ -78,7 +71,7 @@ fun MiCuentaScreen(
                 }
                 uiState.perfil != null -> {
                     val perfil = uiState.perfil
-                    if (!verReportes && !editando) Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(
+                    if (!editando) Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(
                         containerColor = colors.primaryContainer, contentColor = colors.onPrimaryContainer)) {
                         Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -94,20 +87,16 @@ fun MiCuentaScreen(
                             }
                         }
                     }
-                    if (!verReportes && !editando) {
+                    if (!editando) {
                         Column(Modifier.fillMaxWidth()) {
                             OpcionCuenta(Icons.Outlined.Edit, "Modificar perfil",
                                 "Actualizá tus datos personales", onClick = { editando = true })
-                            if (perfil.esBarbero) OpcionCuenta(Icons.Outlined.BarChart, "Reporte de ganancias",
-                                "Consultá tus ingresos semanales y mensuales", onClick = { verReportes = true })
                             HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
                             OpcionCuenta(Icons.AutoMirrored.Outlined.Logout, "Cerrar sesión",
                                 "Salir de tu cuenta", onClick = onLogout, destructive = true)
                         }
                     }
-                    if (verReportes && perfil.esBarbero) {
-                        ReporteGananciasContent(reporteState, onPeriodo, onMover, onReintentarReporte)
-                    } else if (editando) {
+                    if (editando) {
                         Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
                             color = colors.primaryContainer, contentColor = colors.onPrimaryContainer) {
                             Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically,

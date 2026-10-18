@@ -25,6 +25,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import ar.edu.unaj.am.myapplication.features.turnos.list.ReservasViewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import ar.edu.unaj.am.myapplication.di.AppContainer
 import ar.edu.unaj.am.myapplication.navigation.AppNavDisplay
 import ar.edu.unaj.am.myapplication.navigation.NavigationState
@@ -100,7 +101,7 @@ private fun AppBottomBar(
 ) {
     NavigationBar {
         TopLevelDestination.entries.filter {
-            esBarbero || it != TopLevelDestination.AGENDA
+            esBarbero || (it != TopLevelDestination.AGENDA && it != TopLevelDestination.PUBLICACIONES)
         }.forEach { tab ->
             val selected = tab == currentTab
             NavigationBarItem(
@@ -112,7 +113,9 @@ private fun AppBottomBar(
                         contentDescription = null
                     )
                 },
-                label = { Text(stringResource(tab.label)) }
+                label = {
+                    Text(stringResource(tab.label), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             )
         }
     }

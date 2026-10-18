@@ -5,6 +5,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.automirrored.filled.EventNote
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Collections
+import androidx.compose.material.icons.outlined.Collections
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.automirrored.outlined.EventNote
 import androidx.compose.material.icons.outlined.Home
@@ -29,6 +31,12 @@ enum class TopLevelDestination(
         selectedIcon = Icons.Filled.Home,
         unselectedIcon = Icons.Outlined.Home,
         label = R.string.tab_home
+    ),
+    PUBLICACIONES(
+        startKey = PublicacionesDestination,
+        selectedIcon = Icons.Filled.Collections,
+        unselectedIcon = Icons.Outlined.Collections,
+        label = R.string.tab_publicaciones
     ),
     TURNOS(
         startKey = TurnosListDestination,

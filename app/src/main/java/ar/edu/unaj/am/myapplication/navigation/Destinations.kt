@@ -11,6 +11,9 @@ import kotlinx.serialization.Serializable
 data object HomeDestination : NavKey
 
 @Serializable
+data object PublicacionesDestination : NavKey
+
+@Serializable
 data object MiCuentaDestination : NavKey
 
 @Serializable

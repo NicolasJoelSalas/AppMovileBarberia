@@ -50,24 +50,23 @@ fun AppNavDisplay(
             val cuentaViewModel = viewModel {
                 MiCuentaViewModel(container.obtenerMiPerfil, container.actualizarMiNombre)
             }
-            val reporteViewModel = viewModel {
-                ar.edu.unaj.am.myapplication.features.cuenta.ReporteGananciasViewModel(container.observeTurnos)
-            }
             MiCuentaRoute(cuentaViewModel, onPerfilGuardado = reservasViewModel::cargar,
-                onLogout = onLogout, reporteViewModel = reporteViewModel)
+                onLogout = onLogout)
         }
         entry<HomeDestination> {
-            val homeViewModel = viewModel {
-                HomeViewModel(
-                    container.observarPublicaciones, container.publicarTrabajo,
-                    container.eliminarPublicacion, createSavedStateHandle()
-                )
+            if (esBarbero) {
+                val reporteViewModel = viewModel {
+                    ar.edu.unaj.am.myapplication.features.cuenta.ReporteGananciasViewModel(container.observeTurnos)
+                }
+                ar.edu.unaj.am.myapplication.features.cuenta.ReporteGananciasRoute(reporteViewModel)
+            } else {
+                PublicacionesRoute(container, navigationState, esBarbero, onEditorTrabajoVisible)
             }
-            HomeRoute(
-                homeViewModel, esBarbero = esBarbero,
-                onReservar = { navigationState.navigate(ReservarTurnoDestination(it)) },
-                onEditorVisible = onEditorTrabajoVisible
-            )
+        }
+        entry<PublicacionesDestination> {
+            if (esBarbero) {
+                PublicacionesRoute(container, navigationState, esBarbero, onEditorTrabajoVisible)
+            }
         }
 
 
@@ -147,4 +146,24 @@ private fun NavigationState.toEntries(
         )
     }
     return visibleTabs.flatMap { tab -> entriesByTab.getValue(tab) }
+}
+
+@Composable
+private fun PublicacionesRoute(
+    container: AppContainer,
+    navigationState: NavigationState,
+    esBarbero: Boolean,
+    onEditorTrabajoVisible: (Boolean) -> Unit
+) {
+    val homeViewModel = viewModel {
+        HomeViewModel(
+            container.observarPublicaciones, container.publicarTrabajo,
+            container.eliminarPublicacion, createSavedStateHandle()
+        )
+    }
+    HomeRoute(
+        homeViewModel, esBarbero = esBarbero,
+        onReservar = { navigationState.navigate(ReservarTurnoDestination(it)) },
+        onEditorVisible = onEditorTrabajoVisible
+    )
 }
