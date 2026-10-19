@@ -12,6 +12,9 @@ import kotlinx.coroutines.launch
 import java.util.UUID
 
 data class ReservasUiState(
+    val turnoId: String? = null,
+    val inicioOriginal: Long? = null,
+    val barberoOriginal: String? = null,
     val loading: Boolean = true,
     val catalogo: CatalogoReservas? = null,
     val barberoId: String = "",
@@ -29,7 +32,8 @@ data class ReservasUiState(
 class ReservasViewModel(
     private val catalogo: CargarCatalogoReservasUseCase,
     private val consultar: ConsultarSemanaUseCase,
-    private val reservar: ReservarTurnoUseCase
+    private val reservar: ReservarTurnoUseCase,
+    private val modificar: ModificarTurnoUseCase? = null
 ) : ViewModel() {
     private val state = MutableStateFlow(ReservasUiState())
     val uiState = state.asStateFlow()
@@ -49,6 +53,16 @@ class ReservasViewModel(
                 }
             }
         }
+    }
+    fun editar(turnoId: String, barberoId: String, servicioId: String, inicio: Long) {
+        if (state.value.turnoId == turnoId) return
+        val zone = java.time.ZoneId.of("America/Argentina/Buenos_Aires")
+        val hoy = java.time.LocalDate.now(zone)
+        val lunes = hoy.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
+        val fecha = java.time.Instant.ofEpochMilli(inicio).atZone(zone).toLocalDate()
+        state.update { it.copy(turnoId = turnoId, inicioOriginal = inicio, barberoOriginal = barberoId, barberoId = barberoId, servicioId = servicioId,
+            semanaOffset = if (fecha >= lunes.plusWeeks(1)) 1 else 0) }
+        refrescar()
     }
     fun nombre(value: String) { if (!state.value.reservando) state.update { it.copy(nombre = value) } }
     fun semana(offset: Int) {
@@ -92,14 +106,16 @@ class ReservasViewModel(
         if (current.reservando) return
         state.update { it.copy(reservando = true, error = null, mensaje = null) }
         viewModelScope.launch {
-            val result = reservar(SolicitudReserva(
+            val solicitud = SolicitudReserva(
                 requestId ?: UUID.randomUUID().toString().also { requestId = it },
                 current.barberoId, current.servicioId, selected.inicioMillis, current.nombre
-            ))
+            )
+            val result = if (current.turnoId != null) modificar?.invoke(current.turnoId, solicitud)
+                ?: AppResult.Error(DomainError.Unknown("No se pudo modificar el turno.")) else reservar(solicitud)
             when (result) {
                 is AppResult.Success -> {
                     state.update { it.copy(reservando = false, selected = null, reservaConfirmada = true,
-                        mensaje = "¡Turno reservado correctamente!") }
+                        mensaje = if (current.turnoId != null) "¡Turno modificado correctamente!" else "¡Turno reservado correctamente!") }
                     requestId = null
                     refrescar()
                 }

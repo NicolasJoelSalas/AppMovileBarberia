@@ -91,6 +91,62 @@ class FirestoreReservaRepositoryTest {
         }
     }
 
+    private fun editableBooking() {
+        setup(occupied = true, existing = true)
+        val turno = docs.getValue("turnos/solicitud")
+        `when`(turno.getString("Estado")).thenReturn("confirmado")
+        `when`(turno.getTimestamp("Inicio")).thenReturn(Timestamp(Date(start)))
+        `when`(turno.get("CreadoEn")).thenReturn(Timestamp(Date(start - 86400000)))
+        val slot = docs.getValue("horarios/$slotId")
+        `when`(slot.getString("TurnoId")).thenReturn("solicitud")
+        `when`(slot.getString("BarberoId")).thenReturn("barbero")
+    }
+    @Test fun `cancellation frees slot and preserves booking as cancelled`() = runTest {
+        editableBooking()
+        assertTrue(repo.cancelar("solicitud") is AppResult.Success)
+        @Suppress("UNCHECKED_CAST")
+        val fields = ArgumentCaptor.forClass(Map::class.java) as ArgumentCaptor<Map<String, Any>>
+        verify(tx).update(eq(refs.getValue("horarios/$slotId")), fields.capture())
+        assertEquals("libre", (fields.value as Map<*, *>)["Estado"])
+        verify(tx).update(eq(refs.getValue("turnos/solicitud")), fields.capture())
+        assertEquals("cancelado", (fields.value as Map<*, *>)["Estado"])
+    }
+    @Test fun `cancellation rejects another client without writes`() = runTest {
+        editableBooking()
+        `when`(docs.getValue("turnos/solicitud").getString("ClienteId")).thenReturn("otro")
+        assertTrue(repo.cancelar("solicitud") is AppResult.Error)
+        verify(tx, never()).update(any(DocumentReference::class.java), anyMap<String, Any>())
+    }
+    @Test fun `cancellation blocks slot when agenda changed`() = runTest {
+        editableBooking()
+        `when`(docs.getValue("barberos/barbero/agenda/semanal").data).thenReturn(mapOf("Lunes" to false))
+        assertTrue(repo.cancelar("solicitud") is AppResult.Success)
+        @Suppress("UNCHECKED_CAST")
+        val fields = ArgumentCaptor.forClass(Map::class.java) as ArgumentCaptor<Map<String, Any>>
+        verify(tx).update(eq(refs.getValue("horarios/$slotId")), fields.capture())
+        assertEquals("bloqueado", (fields.value as Map<*, *>)["Estado"])
+    }
+    @Test fun `modification keeps booking identity and creation time`() = runTest {
+        editableBooking()
+        assertTrue(repo.modificar("solicitud", request) is AppResult.Success)
+        val fields = ArgumentCaptor.forClass(Any::class.java)
+        verify(tx).set(eq(refs.getValue("turnos/solicitud")), fields.capture())
+        assertEquals(docs.getValue("turnos/solicitud").get("CreadoEn"), (fields.value as Map<*, *>)["CreadoEn"])
+        verify(tx, never()).update(eq(refs.getValue("horarios/$slotId")), anyMap<String, Any>())
+    }
+    @Test fun `modification cannot take another occupied slot`() = runTest {
+        editableBooking()
+        val next = start + 2400000
+        val other = mock(DocumentSnapshot::class.java)
+        docs["horarios/barbero_$next"] = other
+        `when`(other.exists()).thenReturn(true)
+        `when`(other.getString("Estado")).thenReturn("ocupado")
+        `when`(other.getString("TurnoId")).thenReturn("ajeno")
+        assertTrue(repo.modificar("solicitud", request.copy(inicioMillis = next)) is AppResult.Error)
+        verify(tx, never()).set(any(DocumentReference::class.java), any<Any>())
+        verify(tx, never()).update(any(DocumentReference::class.java), anyMap<String, Any>())
+    }
+
     @Test fun `reservation uses authenticated UID and atomically occupies slot with booking`() = runTest {
         setup()
         assertTrue(repo.reservar(request) is AppResult.Success)

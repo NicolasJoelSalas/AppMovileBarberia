@@ -23,4 +23,4 @@ data object TurnosListDestination : NavKey
 data object AgendaSemanalDestination : NavKey
 
 @Serializable
-data class ReservarTurnoDestination(val barberoId: String? = null) : NavKey
+data class ReservarTurnoDestination(val barberoId: String? = null, val turnoId: String? = null, val servicioId: String? = null, val inicioMillis: Long? = null) : NavKey

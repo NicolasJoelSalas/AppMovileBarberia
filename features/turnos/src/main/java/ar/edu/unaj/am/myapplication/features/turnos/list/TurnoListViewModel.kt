@@ -23,7 +23,8 @@ class TurnoListViewModel(
     private val observeTurnos: ObserveTurnosUseCase,
     private val comoCliente: Boolean = false,
     private val filtrarSemana: FiltrarTurnosPorSemanaUseCase = FiltrarTurnosPorSemanaUseCase(),
-    private val completarTurno: MarcarTurnoRealizadoUseCase? = null
+    private val completarTurno: MarcarTurnoRealizadoUseCase? = null,
+    private val cancelarTurno: ar.edu.unaj.am.myapplication.core.domain.usecase.CancelarTurnoUseCase? = null
 ) : ViewModel() {
     private val mutableUiState = MutableStateFlow<TurnosListUiState>(TurnosListUiState.Loading)
     val uiState = mutableUiState.asStateFlow()
@@ -39,6 +40,21 @@ class TurnoListViewModel(
     private val mutableErrorCompletar = MutableStateFlow<DomainError?>(null)
     val errorCompletar = mutableErrorCompletar.asStateFlow()
 
+    val puedeCancelar: Boolean get() = comoCliente && cancelarTurno != null
+    fun cancelar(turno: Turno) {
+        val accion = cancelarTurno ?: return
+        if (!puedeCancelar || mutableCompletandoId.value != null) return
+        mutableCompletandoId.value = turno.id
+        mutableErrorCompletar.value = null
+        viewModelScope.launch {
+            try {
+                when (val result = accion(turno.id)) {
+                    is AppResult.Error -> mutableErrorCompletar.value = result.error
+                    is AppResult.Success -> Unit
+                }
+            } finally { mutableCompletandoId.value = null }
+        }
+    }
     fun marcarRealizado(turno: Turno) {
         val completar = completarTurno ?: return
         if (!puedeCompletar || mutableCompletandoId.value != null) return

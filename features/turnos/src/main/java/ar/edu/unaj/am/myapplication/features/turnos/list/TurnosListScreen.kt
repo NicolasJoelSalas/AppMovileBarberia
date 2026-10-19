@@ -47,6 +47,7 @@ import ar.edu.unaj.am.myapplication.core.domain.usecase.instanteRecordatorio
 
 @Composable
 fun TurnosListRoute(viewModel: TurnoListViewModel, onReservar: (() -> Unit)? = null,
+    onModificar: ((Turno) -> Unit)? = null,
     onRecordatorio: ((Turno) -> Unit)? = null, recordatoriosActivos: Set<String> = emptySet()) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val semanaOffset by viewModel.semanaOffset.collectAsStateWithLifecycle()
@@ -69,6 +70,7 @@ fun TurnosListRoute(viewModel: TurnoListViewModel, onReservar: (() -> Unit)? = n
         ahoraMillis = ahoraMillis, completandoId = completandoId,
         errorCompletar = errorCompletar?.asMessage(),
         onRecordatorio = onRecordatorio, recordatoriosActivos = recordatoriosActivos,
+        onModificar = onModificar, onCancelar = if (viewModel.puedeCancelar) viewModel::cancelar else null,
         onMarcarRealizado = if (viewModel.puedeCompletar) viewModel::marcarRealizado else null)
 }
 
@@ -86,8 +88,16 @@ fun TurnosListScreen(
     errorCompletar: String? = null,
     onMarcarRealizado: ((Turno) -> Unit)? = null,
     onRecordatorio: ((Turno) -> Unit)? = null,
-    recordatoriosActivos: Set<String> = emptySet()
+    recordatoriosActivos: Set<String> = emptySet(),
+    onCancelar: ((Turno) -> Unit)? = null, onModificar: ((Turno) -> Unit)? = null
 ) {
+    var cancelar by remember { androidx.compose.runtime.mutableStateOf<Turno?>(null) }
+    cancelar?.let { turno ->
+        androidx.compose.material3.AlertDialog(onDismissRequest = { cancelar = null },
+            title = { Text("Cancelar turno") }, text = { Text("¿Querés cancelar este turno? Se liberará el horario.") },
+            confirmButton = { androidx.compose.material3.TextButton(onClick = { cancelar = null; onCancelar?.invoke(turno) }) { Text("Cancelar turno") } },
+            dismissButton = { androidx.compose.material3.TextButton(onClick = { cancelar = null }) { Text("Volver") } })
+    }
     val context = LocalContext.current
     val abrirRuta: () -> Unit = {
         val destino = "Universidad Nacional Arturo Jauretche, Av. Calchaquí 6200, B1888 Florencio Varela, Provincia de Buenos Aires, Argentina"
@@ -143,6 +153,10 @@ fun TurnosListScreen(
                     ) {
                         items(uiState.turnos, key = { it.id }) { turno ->
                             TurnoCard(turno = turno,
+                                onCancelar = onCancelar?.let { { cancelar = turno } },
+                                onModificar = onModificar?.let { action -> { action(turno) } },
+                                editable = turno.estado.lowercase() in listOf("confirmado", "pendiente") && (turno.inicioMillis ?: 0L) > ahoraMillis,
+                                operando = completandoId != null,
                                 onComoLlegar = if (onReservar != null) abrirRuta else null,
                                 onRecordatorio = onRecordatorio?.let { action -> { action(turno) } },
                                 recordatorioActivo = turno.id in recordatoriosActivos,

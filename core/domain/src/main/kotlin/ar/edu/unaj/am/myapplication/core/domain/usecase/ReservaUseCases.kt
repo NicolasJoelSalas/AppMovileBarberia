@@ -21,3 +21,14 @@ class ReservarTurnoUseCase(private val repository: ReservaRepository) {
             AppResult.Error(DomainError.Unknown("Completá tu nombre, barbero y servicio."))
         else repository.reservar(solicitud.copy(nombreCliente = solicitud.nombreCliente.trim()))
 }
+
+class CancelarTurnoUseCase(private val repository: ReservaRepository) {
+    suspend operator fun invoke(turnoId: String) = repository.cancelar(turnoId)
+}
+class ModificarTurnoUseCase(private val repository: ReservaRepository) {
+    suspend operator fun invoke(turnoId: String, solicitud: SolicitudReserva): AppResult<String> =
+        if (turnoId.isBlank() || solicitud.barberoId.isBlank() || solicitud.servicioId.isBlank() ||
+            solicitud.nombreCliente.isBlank() || solicitud.nombreCliente.trim().length > 120)
+            AppResult.Error(DomainError.Unknown("Completá tu nombre, barbero y servicio."))
+        else repository.modificar(turnoId, solicitud.copy(nombreCliente = solicitud.nombreCliente.trim()))
+}

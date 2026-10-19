@@ -50,6 +50,44 @@ service cloud.firestore {
         && antes.ZonaHoraria == barbero.ZonaHoraria;
     }
 
+    function editable(t) {
+      return esCliente() && t.ClienteId == request.auth.uid
+        && t.Estado in ['confirmado', 'Confirmado', 'pendiente', 'Pendiente'] && t.Inicio > request.time;
+    }
+    function estadoLiberado(h) {
+      return h.Agenda == get(/databases/$(database)/documents/barberos/$(h.BarberoId)/agenda/$(h.AgendaId)).data
+        && h.ZonaHoraria == get(/databases/$(database)/documents/barberos/$(h.BarberoId)).data.ZonaHoraria
+        ? 'libre' : 'bloqueado';
+    }
+    function liberado(horarioId, turnoId) {
+      let antes = get(/databases/$(database)/documents/horarios/$(horarioId)).data;
+      let despues = getAfter(/databases/$(database)/documents/horarios/$(horarioId)).data;
+      return antes.Estado == 'ocupado' && antes.TurnoId == turnoId
+        && despues.Estado == estadoLiberado(antes) && !('TurnoId' in despues);
+    }
+    function cambioValido(id, antes, t) {
+      let h = get(/databases/$(database)/documents/horarios/$(t.HorarioId)).data;
+      let despues = getAfter(/databases/$(database)/documents/horarios/$(t.HorarioId)).data;
+      let b = get(/databases/$(database)/documents/barberos/$(t.BarberoId)).data;
+      return editable(antes)
+        && t.diff(antes).affectedKeys().hasOnly(['BarberoId', 'ServicioId', 'HorarioId', 'Inicio', 'Fin', 'Estado'])
+        && t.Estado == 'confirmado' && b.Estado == true && servicioHabilitado(t.ServicioId)
+        && t.BarberoId == h.BarberoId && t.Inicio == h.Inicio && t.Fin == h.Fin
+        && t.Inicio > request.time && t.Fin - t.Inicio == duration.value(40, 'm')
+        && h.Agenda == get(/databases/$(database)/documents/barberos/$(t.BarberoId)/agenda/$(h.AgendaId)).data
+        && h.ZonaHoraria == b.ZonaHoraria && despues.Estado == 'ocupado' && despues.TurnoId == id
+        && ((antes.HorarioId == t.HorarioId && h.Estado == 'ocupado' && h.TurnoId == id)
+          || (antes.HorarioId != t.HorarioId && h.Estado == 'libre' && liberado(antes.HorarioId, id)));
+    }
+    function liberarHorario(id, h, nuevo) {
+      let antes = get(/databases/$(database)/documents/turnos/$(h.TurnoId)).data;
+      let despues = getAfter(/databases/$(database)/documents/turnos/$(h.TurnoId)).data;
+      return editable(antes) && antes.HorarioId == id && h.Estado == 'ocupado'
+        && nuevo.diff(h).affectedKeys().hasOnly(['Estado', 'TurnoId'])
+        && !('TurnoId' in nuevo) && nuevo.Estado == estadoLiberado(h)
+        && (despues.Estado == 'cancelado' || despues.HorarioId != id);
+    }
+
     match /turnos/{turnoId} {
       allow list: if (esBarberoHabilitado() && resource.data.BarberoId == request.auth.uid)
         || (esCliente() && resource.data.ClienteId == request.auth.uid);
@@ -69,12 +107,25 @@ service cloud.firestore {
         && request.resource.data.PrecioCobrado >= 0 && request.resource.data.PrecioCobrado <= 1000000000
         && request.resource.data.PrecioCobrado * 100 == math.round(request.resource.data.PrecioCobrado * 100)
         && request.resource.data.PrecioCobrado == get(/databases/$(database)/documents/servicios/$(resource.data.ServicioId)).data.Precio;
+      allow update: if (editable(resource.data)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['Estado', 'CanceladoEn'])
+          && request.resource.data.Estado == 'cancelado' && request.resource.data.CanceladoEn == request.time
+          && liberado(resource.data.HorarioId, turnoId))
+        || cambioValido(turnoId, resource.data, request.resource.data);
       allow delete: if false;
     }
 
     // No contiene nombre, correo ni UID de cliente. Solo disponibilidad y referencia opaca al turno.
     match /horarios/{horarioId} {
       allow read: if request.auth != null;
+      allow update: if esCliente() && (
+        (resource.data.Estado == 'ocupado' && liberarHorario(horarioId, resource.data, request.resource.data))
+        || (resource.data.Estado == 'libre' && request.resource.data.Estado == 'ocupado'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['Estado', 'TurnoId'])
+          && getAfter(/databases/$(database)/documents/turnos/$(request.resource.data.TurnoId)).data.HorarioId == horarioId
+          && cambioValido(request.resource.data.TurnoId,
+            get(/databases/$(database)/documents/turnos/$(request.resource.data.TurnoId)).data,
+            getAfter(/databases/$(database)/documents/turnos/$(request.resource.data.TurnoId)).data)));
       allow create: if esBarberoHabilitado() && horarioPublicable(horarioId, request.resource.data);
       allow update: if (esBarberoHabilitado() && resource.data.BarberoId == request.auth.uid
           && resource.data.Estado != 'ocupado'

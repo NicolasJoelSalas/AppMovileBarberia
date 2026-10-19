@@ -47,6 +47,8 @@ class AppContainer(context: Context) {
     private val reservaRepository: ReservaRepository = FirestoreReservaRepository()
     val cargarCatalogoReservas = CargarCatalogoReservasUseCase(reservaRepository)
     val consultarSemana = ConsultarSemanaUseCase(reservaRepository)
+    val cancelarTurno = ar.edu.unaj.am.myapplication.core.domain.usecase.CancelarTurnoUseCase(reservaRepository)
+    val modificarTurno = ar.edu.unaj.am.myapplication.core.domain.usecase.ModificarTurnoUseCase(reservaRepository)
     val reservarTurno = ReservarTurnoUseCase(reservaRepository)
     private val publicarSemana = PublicarSemanaUseCase(reservaRepository)
     val obtenerMiAgenda = ObtenerMiAgendaUseCase(reservaRepository)

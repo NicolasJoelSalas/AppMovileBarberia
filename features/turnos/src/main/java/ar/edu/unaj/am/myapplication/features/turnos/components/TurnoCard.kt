@@ -30,7 +30,8 @@ fun TurnoCard(turno: Turno, modifier: Modifier = Modifier,
     onMarcarRealizado: (() -> Unit)? = null, habilitado: Boolean = false,
     completando: Boolean = false, onRecordatorio: (() -> Unit)? = null,
     recordatorioActivo: Boolean = false, recordatorioHabilitado: Boolean = false,
-    onComoLlegar: (() -> Unit)? = null) {
+    onComoLlegar: (() -> Unit)? = null, onCancelar: (() -> Unit)? = null,
+    onModificar: (() -> Unit)? = null, editable: Boolean = false, operando: Boolean = false) {
     val zonaBarberia = ZoneId.systemDefault()
     val inicio = turno.inicioMillis?.let { Instant.ofEpochMilli(it).atZone(zonaBarberia) }
     val fin = turno.finMillis?.let { Instant.ofEpochMilli(it).atZone(zonaBarberia) }
@@ -61,7 +62,7 @@ fun TurnoCard(turno: Turno, modifier: Modifier = Modifier,
                 }
             }
             DatoTurno(Icons.Outlined.ContentCut, turno.servicioNombre.ifBlank { "Servicio sin asignar" })
-            onComoLlegar?.let { abrirRuta ->
+            onComoLlegar?.takeIf { !realizado && turno.estado.lowercase() != "cancelado" }?.let { abrirRuta ->
                 OutlinedButton(onClick = abrirRuta,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                     Icon(Icons.Outlined.Directions, contentDescription = null,
@@ -87,6 +88,11 @@ fun TurnoCard(turno: Turno, modifier: Modifier = Modifier,
                     else -> "Avisos un día antes y una hora antes. Habilitá los permisos para recibirlos."
                 }, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
             }
+            if (editable) {
+                onModificar?.let { OutlinedButton(onClick = it, enabled = !operando, modifier = Modifier.fillMaxWidth()) { Text("Modificar turno") } }
+                onCancelar?.let { TextButton(onClick = it, enabled = !operando, modifier = Modifier.fillMaxWidth()) { Text(if (operando) "Guardando…" else "Cancelar turno") } }
+            }
+            if (turno.estado.lowercase() == "cancelado") Text("Cancelado", color = colors.error)
             if (realizado) {
                 HorizontalDivider(color = colors.outlineVariant)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

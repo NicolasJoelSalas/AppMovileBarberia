@@ -178,17 +178,50 @@ class FirestoreReservaRepository(
         SemanaDisponible(weekStart, slots, zoneName)
     }
 
-    override suspend fun reservar(solicitud: SolicitudReserva): AppResult<String> = result {
+    private fun validarEditable(turno: DocumentSnapshot) {
+        check(turno.getString("Estado")?.lowercase() in listOf("confirmado", "pendiente") &&
+            (turno.getTimestamp("Inicio")?.toDate()?.time ?: 0L) > System.currentTimeMillis()) {
+            "Solo podés cambiar turnos activos que todavía no comenzaron."
+        }
+    }
+
+    override suspend fun cancelar(turnoId: String): AppResult<Unit> = result {
+        val user = uid()
+        val ref = firestore.collection("turnos").document(turnoId)
+        firestore.runTransaction { tx ->
+            val turno = tx.get(ref)
+            check(turno.getString("ClienteId") == user) { "El turno no te pertenece." }
+            if (turno.getString("Estado") != "cancelado") {
+                validarEditable(turno)
+                val horario = firestore.collection("horarios").document(requireNotNull(turno.getString("HorarioId")))
+                val slot = tx.get(horario)
+                val barber = firestore.collection("barberos").document(requireNotNull(turno.getString("BarberoId")))
+                val agenda = tx.get(barber.collection("agenda").document(agendaId(slot)))
+                val barberDoc = tx.get(barber)
+                check(slot.getString("TurnoId") == turnoId && slot.getString("Estado") == "ocupado")
+                tx.update(horario, mapOf("Estado" to if (slot.get("Agenda") == agenda.data &&
+                    slot.getString("ZonaHoraria") == barberDoc.getString("ZonaHoraria")) "libre" else "bloqueado",
+                    "TurnoId" to FieldValue.delete()))
+                tx.update(ref, mapOf("Estado" to "cancelado", "CanceladoEn" to FieldValue.serverTimestamp()))
+            }
+        }.awaitReserva()
+        Unit
+    }
+
+    override suspend fun modificar(turnoId: String, solicitud: SolicitudReserva) = guardarReserva(solicitud, turnoId)
+    override suspend fun reservar(solicitud: SolicitudReserva) = guardarReserva(solicitud)
+
+    private suspend fun guardarReserva(solicitud: SolicitudReserva, editarId: String? = null): AppResult<String> = result {
         val uid = uid()
         require(solicitud.solicitudId.matches(Regex("[A-Za-z0-9_-]{1,128}"))) { "Solicitud inválida." }
-        val turno = firestore.collection("turnos").document(solicitud.solicitudId)
+        val turno = firestore.collection("turnos").document(editarId ?: solicitud.solicitudId)
         val horario = firestore.collection("horarios").document(slotId(solicitud.barberoId, solicitud.inicioMillis))
         val cliente = firestore.collection("clientes").document(uid)
         val barber = firestore.collection("barberos").document(solicitud.barberoId)
         val service = firestore.collection("servicios").document(solicitud.servicioId)
         firestore.runTransaction { tx ->
             val previous = tx.get(turno)
-            if (previous.exists()) {
+            if (previous.exists() && editarId == null) {
                 check(previous.getString("ClienteId") == uid && previous.getString("BarberoId") == solicitud.barberoId &&
                     previous.getString("ServicioId") == solicitud.servicioId && previous.getString("HorarioId") == horario.id) {
                     "La solicitud corresponde a otra reserva."
@@ -196,6 +229,15 @@ class FirestoreReservaRepository(
                 turno.id
             } else {
                 val slot = tx.get(horario)
+                if (editarId != null) {
+                    check(previous.getString("ClienteId") == uid) { "El turno no te pertenece." }
+                    validarEditable(previous)
+                }
+                val anteriorRef = if (editarId != null) firestore.collection("horarios").document(requireNotNull(previous.getString("HorarioId"))) else null
+                val anterior = anteriorRef?.let { tx.get(it) }
+                val anteriorBarber = anterior?.let { firestore.collection("barberos").document(requireNotNull(it.getString("BarberoId"))) }
+                val anteriorAgenda = anteriorBarber?.let { tx.get(it.collection("agenda").document(agendaId(requireNotNull(anterior)))) }
+                val anteriorBarberDoc = anteriorBarber?.let { tx.get(it) }
                 val profile = tx.get(cliente)
                 val barberDoc = tx.get(barber)
                 val serviceDoc = tx.get(service)
@@ -204,16 +246,22 @@ class FirestoreReservaRepository(
                 check(barberDoc.getBoolean("Estado") == true && enabled(serviceDoc) && serviceDoc.getLong("Duracion") == 40L) {
                     "El barbero o el servicio ya no están disponibles."
                 }
-                check(slot.exists() && slot.getString("Estado") == "libre" && slot.get("Agenda") == agendaDoc.data &&
+                check(slot.exists() && (slot.getString("Estado") == "libre" || (editarId != null && slot.getString("TurnoId") == turno.id)) && slot.get("Agenda") == agendaDoc.data &&
                     slot.getString("ZonaHoraria") == barberDoc.getString("ZonaHoraria") &&
                     (slot.getTimestamp("Inicio")?.toDate()?.time ?: 0) > System.currentTimeMillis()) {
                     "Ese horario ya no está disponible. Actualizá la semana."
                 }
-                tx.update(horario, mapOf("Estado" to "ocupado", "TurnoId" to turno.id))
+                if (anteriorRef != null && anteriorRef.id != horario.id) {
+                    check(anterior?.getString("TurnoId") == turno.id && anterior.getString("Estado") == "ocupado")
+                    tx.update(anteriorRef, mapOf("Estado" to if (anterior.get("Agenda") == anteriorAgenda?.data &&
+                        anterior.getString("ZonaHoraria") == anteriorBarberDoc?.getString("ZonaHoraria")) "libre" else "bloqueado",
+                        "TurnoId" to FieldValue.delete()))
+                }
+                if (anteriorRef?.id != horario.id) tx.update(horario, mapOf("Estado" to "ocupado", "TurnoId" to turno.id))
                 tx.set(turno, mapOf("ClienteId" to uid, "BarberoId" to solicitud.barberoId,
                     "ServicioId" to solicitud.servicioId, "HorarioId" to horario.id,
                     "Inicio" to slot.getTimestamp("Inicio"), "Fin" to slot.getTimestamp("Fin"),
-                    "Estado" to "confirmado", "CreadoEn" to FieldValue.serverTimestamp()))
+                    "Estado" to "confirmado", "CreadoEn" to (if (editarId != null) previous.get("CreadoEn") else FieldValue.serverTimestamp())))
                 if (profile.getString("Nombre") == "") tx.update(cliente, "Nombre", solicitud.nombreCliente.trim())
                 turno.id
             }

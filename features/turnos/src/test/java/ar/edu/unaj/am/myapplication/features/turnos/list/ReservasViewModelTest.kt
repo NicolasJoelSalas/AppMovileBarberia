@@ -16,7 +16,7 @@ class ReservasViewModelTest {
     @Before fun setup() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
     @After fun cleanup() { Dispatchers.resetMain() }
     private fun vm() = ReservasViewModel(CargarCatalogoReservasUseCase(repo),
-        ConsultarSemanaUseCase(repo), ReservarTurnoUseCase(repo))
+        ConsultarSemanaUseCase(repo), ReservarTurnoUseCase(repo), ModificarTurnoUseCase(repo))
 
     @Test fun `does not request availability until both selections exist`() = runTest {
         val vm=vm()
@@ -70,7 +70,23 @@ class ReservasViewModelTest {
         repo.pending!!.complete(AppResult.Success("turno"))
         assertTrue(vm.uiState.value.reservaConfirmada)
     }
+    @Test fun `editing preloads booking and updates it without creating another reservation`() = runTest {
+        val vm = vm()
+        vm.editar("existente", "barbero", "corte", System.currentTimeMillis()+86400000)
+        assertEquals("barbero", vm.uiState.value.barberoId)
+        assertEquals("corte", vm.uiState.value.servicioId)
+        vm.seleccionar(HorarioDisponible(1000,2401000))
+        vm.confirmar()
+        assertEquals("existente", repo.modifiedId)
+        assertTrue(repo.requests.isEmpty())
+        assertTrue(vm.uiState.value.reservaConfirmada)
+    }
     private class Fake: ReservaRepository {
+        var modifiedId: String? = null
+        override suspend fun modificar(turnoId: String, solicitud: SolicitudReserva): AppResult<String> {
+            modifiedId = turnoId
+            return result
+        }
         var offset = 0
         override suspend fun guardarMiAgenda(agenda: AgendaSemanal): AppResult<Unit> = error("No es barbero")
         override suspend fun obtenerMiAgenda(semanaOffset: Int): AppResult<AgendaSemanal> = error("No es barbero")

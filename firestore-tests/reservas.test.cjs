@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { initializeTestEnvironment, assertSucceeds, assertFails } = require('@firebase/rules-unit-testing');
 const { doc, setDoc, getDoc, getDocs, collection, query, where, updateDoc,
-  writeBatch, runTransaction, Timestamp, serverTimestamp, deleteDoc, orderBy, limit } = require('firebase/firestore');
+  writeBatch, runTransaction, Timestamp, serverTimestamp, deleteDoc, deleteField, orderBy, limit } = require('firebase/firestore');
 
 let env, start, end, horarioId;
 const zone = 'America/Argentina/Buenos_Aires';
@@ -64,7 +64,7 @@ test('mi cuenta: barbero edita solamente su perfil y no puede cambiar su habilit
   await assertFails(updateDoc(doc(db('barbero'), 'barberos/barbero'), {Estado:false}));
 });
 
-test('turnos: solo el barbero due�o completa desde la hora de inicio', async () => {
+test('turnos: solo el barbero dueño completa desde la hora de inicio', async () => {
   await env.withSecurityRulesDisabled(async ctx => {
     await setDoc(doc(ctx.firestore(), 'turnos/iniciado'), {...booking('ana'),
       Inicio:Timestamp.fromMillis(Date.now() - 60000), Fin:Timestamp.fromMillis(Date.now() + 2340000)});
@@ -266,4 +266,75 @@ test('horarios antiguos sin referencia semanal requieren republicación', async 
     await setDoc(doc(ctx.firestore(),`horarios/${horarioId}`),old);
   });
   await assertFails(reserve('ana','legacy'));
+});
+
+async function cancelBooking(uid = 'ana', released = 'libre') {
+  const store = db(uid), batch = writeBatch(store);
+  batch.update(doc(store, 'turnos/cambio'), {Estado:'cancelado', CanceladoEn:serverTimestamp()});
+  batch.update(doc(store, `horarios/${horarioId}`), {Estado:released, TurnoId:deleteField()});
+  return batch.commit();
+}
+async function setupChange() { await publish(); await reserve('ana', 'cambio'); }
+test('cancelar: requiere dueño y liberar el horario en la misma operación', async () => {
+  await setupChange();
+  await assertFails(cancelBooking('juan'));
+  await assertFails(updateDoc(doc(db('ana'), 'turnos/cambio'), {Estado:'cancelado',CanceladoEn:serverTimestamp()}));
+  await assertSucceeds(cancelBooking());
+  assert.equal((await getDoc(doc(db('ana'), `horarios/${horarioId}`))).data().Estado, 'libre');
+  await assertFails(updateDoc(doc(db('ana'), 'turnos/cambio'), {Estado:'confirmado'}));
+});
+test('cancelar: agenda cambiada bloquea el horario anterior', async () => {
+  await setupChange();
+  await updateDoc(doc(db('barbero'), 'barberos/barbero/agenda/semanal'), {Lunes:{Estado:false,Franjas:[]}});
+  await assertFails(cancelBooking());
+  await assertSucceeds(cancelBooking('ana', 'bloqueado'));
+});
+async function moveBooking(uid, newId, nextStart, release = true) {
+  const store = db(uid), batch = writeBatch(store);
+  batch.update(doc(store, 'turnos/cambio'), {HorarioId:newId, Inicio:nextStart,
+    Fin:Timestamp.fromMillis(nextStart.toMillis()+2400000)});
+  batch.update(doc(store, `horarios/${newId}`), {Estado:'ocupado',TurnoId:'cambio'});
+  if (release) batch.update(doc(store, `horarios/${horarioId}`), {Estado:'libre',TurnoId:deleteField()});
+  return batch.commit();
+}
+test('modificar: cambia horario atómicamente y rechaza cambios ajenos o sin liberar', async () => {
+  await setupChange();
+  const nextStart = Timestamp.fromMillis(start.toMillis()+2400000), newId = `barbero_${nextStart.toMillis()}`;
+  await setDoc(doc(db('barbero'), `horarios/${newId}`), {...slot(),Inicio:nextStart,Fin:Timestamp.fromMillis(nextStart.toMillis()+2400000)});
+  await assertFails(moveBooking('juan', newId, nextStart));
+  await assertFails(moveBooking('ana', newId, nextStart, false));
+  await assertSucceeds(moveBooking('ana', newId, nextStart));
+  assert.equal((await getDoc(doc(db('ana'), 'turnos/cambio'))).data().HorarioId, newId);
+});
+test('modificar: un horario ocupado conserva la reserva original', async () => {
+  await setupChange();
+  const nextStart = Timestamp.fromMillis(start.toMillis()+2400000), newId = `barbero_${nextStart.toMillis()}`;
+  await env.withSecurityRulesDisabled(async ctx => {
+    await setDoc(doc(ctx.firestore(), `horarios/${newId}`), {...slot(),Inicio:nextStart,
+      Fin:Timestamp.fromMillis(nextStart.toMillis()+2400000),Estado:'ocupado',TurnoId:'otro'});
+  });
+  await assertFails(moveBooking('ana', newId, nextStart));
+  assert.equal((await getDoc(doc(db('ana'), 'turnos/cambio'))).data().HorarioId, horarioId);
+});
+test('cancelar: rechaza turnos que ya comenzaron', async () => {
+  await setupChange();
+  await env.withSecurityRulesDisabled(async ctx => {
+    await updateDoc(doc(ctx.firestore(), 'turnos/cambio'), {Inicio:Timestamp.fromMillis(Date.now()-60000)});
+  });
+  await assertFails(cancelBooking());
+});
+
+test('modificar: no permite ocupar horarios adicionales con el mismo turno', async () => {
+  await setupChange();
+  const nextStart = Timestamp.fromMillis(start.toMillis()+2400000), newId = `barbero_${nextStart.toMillis()}`;
+  const extraStart = Timestamp.fromMillis(start.toMillis()+4800000), extraId = `barbero_${extraStart.toMillis()}`;
+  for (const [id, inicio] of [[newId,nextStart],[extraId,extraStart]]) {
+    await setDoc(doc(db('barbero'), `horarios/${id}`), {...slot(),Inicio:inicio,Fin:Timestamp.fromMillis(inicio.toMillis()+2400000)});
+  }
+  const store = db('ana'), batch = writeBatch(store);
+  batch.update(doc(store, 'turnos/cambio'), {HorarioId:newId,Inicio:nextStart,Fin:extraStart});
+  batch.update(doc(store, `horarios/${horarioId}`), {Estado:'libre',TurnoId:deleteField()});
+  batch.update(doc(store, `horarios/${newId}`), {Estado:'ocupado',TurnoId:'cambio'});
+  batch.update(doc(store, `horarios/${extraId}`), {Estado:'ocupado',TurnoId:'cambio'});
+  await assertFails(batch.commit());
 });

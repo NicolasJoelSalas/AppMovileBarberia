@@ -76,11 +76,13 @@ fun AppNavDisplay(
                 turnosCliente = {
                     val misTurnosViewModel = viewModel(key = "mis-turnos-cliente") {
                         ar.edu.unaj.am.myapplication.features.turnos.list.TurnoListViewModel(
-                            container.observeTurnos, comoCliente = true
+                            container.observeTurnos, comoCliente = true, cancelarTurno = container.cancelarTurno
                         )
                     }
                     TurnosListRoute(
                         misTurnosViewModel,
+                        onModificar = { turno -> navigationState.navigate(ReservarTurnoDestination(
+                            turno.barberoId, turno.id, turno.servicioId, turno.inicioMillis)) },
                         onRecordatorio = onRecordatorio,
                         recordatoriosActivos = recordatoriosActivos,
                         onReservar = { navigationState.navigate(ReservarTurnoDestination()) })
@@ -97,10 +99,14 @@ fun AppNavDisplay(
             val reservaViewModel = viewModel {
                 ReservasViewModel(
                     container.cargarCatalogoReservas, container.consultarSemana,
-                    container.reservarTurno
+                    container.reservarTurno, container.modificarTurno
                 )
             }
-            LaunchedEffect(key.barberoId) { key.barberoId?.let(reservaViewModel::barbero) }
+            LaunchedEffect(key) {
+                if (key.turnoId != null && key.barberoId != null && key.servicioId != null && key.inicioMillis != null)
+                    reservaViewModel.editar(key.turnoId, key.barberoId, key.servicioId, key.inicioMillis)
+                else key.barberoId?.let(reservaViewModel::barbero)
+            }
             ReservarTurnoRoute(reservaViewModel, onBack = { navigationState.goBackFrom(key) })
         }
 

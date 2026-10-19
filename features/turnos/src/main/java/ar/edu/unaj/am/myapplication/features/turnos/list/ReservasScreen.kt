@@ -69,7 +69,7 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
             }
         }
     }
-    Scaffold(topBar = { AppTopBar(title = "Reservar turno", actions = {
+    Scaffold(topBar = { AppTopBar(title = if (state.turnoId != null) "Modificar turno" else "Reservar turno", actions = {
         TextButton(onClick = onBack, enabled = !state.reservando) { Text("Volver") }
     }) }) { padding ->
         LazyColumn(
@@ -77,6 +77,18 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            state.inicioOriginal?.let { inicio ->
+                item {
+                    val fecha = Instant.ofEpochMilli(inicio).atZone(zone)
+                    Text("Horario actual: " + fecha.format(dayFormat) + " · " + fecha.format(hourFormat))
+                    if (state.barberoId == state.barberoOriginal) {
+                        OutlinedButton(onClick = { vm.seleccionar(ar.edu.unaj.am.myapplication.core.domain.model.HorarioDisponible(inicio, inicio + 2400000)) },
+                            enabled = !state.loading && !state.reservando && state.servicioId.isNotBlank()) {
+                            Text("Conservar horario actual")
+                        }
+                    }
+                }
+            }
             item {
                 SemanaSelector(semanaOffset = state.semanaOffset, onSemanaChange = vm::semana,
                     enabled = !state.reservando)
@@ -154,7 +166,7 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
         val start = Instant.ofEpochMilli(slot.inicioMillis).atZone(zone)
         AlertDialog(
             onDismissRequest = { vm.seleccionar(null) },
-            title = { Text("Confirmar reserva") },
+            title = { Text(if (state.turnoId != null) "Confirmar modificación" else "Confirmar reserva") },
             text = {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(state.catalogo?.barberos?.find { it.id == state.barberoId }?.nombre.orEmpty())
@@ -168,7 +180,7 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
             confirmButton = {
                 TextButton(onClick = vm::confirmar,
                     enabled = !state.reservando && state.nombre.isNotBlank() && state.nombre.length <= 120) {
-                    Text(if (state.reservando) "Reservando…" else "Confirmar")
+                    Text(if (state.reservando) "Reservando…" else if (state.turnoId != null) "Guardar cambios" else "Confirmar")
                 }
             },
             dismissButton = {
