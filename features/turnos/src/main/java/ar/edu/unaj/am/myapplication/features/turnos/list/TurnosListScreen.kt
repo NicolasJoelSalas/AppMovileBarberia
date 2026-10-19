@@ -1,5 +1,9 @@
 package ar.edu.unaj.am.myapplication.features.turnos.list
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +25,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -83,6 +88,19 @@ fun TurnosListScreen(
     onRecordatorio: ((Turno) -> Unit)? = null,
     recordatoriosActivos: Set<String> = emptySet()
 ) {
+    val context = LocalContext.current
+    val abrirRuta: () -> Unit = {
+        val destino = "Universidad Nacional Arturo Jauretche, Av. Calchaquí 6200, B1888 Florencio Varela, Provincia de Buenos Aires, Argentina"
+        val uri = Uri.parse("https://www.google.com/maps/dir/").buildUpon()
+            .appendQueryParameter("api", "1")
+            .appendQueryParameter("destination", destino)
+            .build()
+        try {
+            context.startActivity(Intent(Intent.ACTION_VIEW, uri))
+        } catch (_: ActivityNotFoundException) {
+            Toast.makeText(context, "No hay una aplicación disponible para abrir mapas.", Toast.LENGTH_LONG).show()
+        }
+    }
     Scaffold(
         modifier = modifier,
         topBar = { AppTopBar(title = if (onReservar != null) "Mis turnos" else "Turnos", actions = {
@@ -125,6 +143,7 @@ fun TurnosListScreen(
                     ) {
                         items(uiState.turnos, key = { it.id }) { turno ->
                             TurnoCard(turno = turno,
+                                onComoLlegar = if (onReservar != null) abrirRuta else null,
                                 onRecordatorio = onRecordatorio?.let { action -> { action(turno) } },
                                 recordatorioActivo = turno.id in recordatoriosActivos,
                                 recordatorioHabilitado = instanteRecordatorio(turno, ahoraMillis) != null,

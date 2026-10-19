@@ -32,7 +32,7 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.unaj.am.myapplication.core.domain.model.Publicacion
 import ar.edu.unaj.am.myapplication.core.ui.components.*
-import coil3.compose.SubcomposeAsyncImage
+import coil3.compose.SubcomposeAsyncImage   
 import java.io.File
 import java.time.Instant
 import java.time.ZoneId

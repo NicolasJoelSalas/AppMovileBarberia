@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.ContentCut
+import androidx.compose.material.icons.outlined.Directions
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material3.*
@@ -28,7 +29,8 @@ private val fechaFormatter = DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", Loc
 fun TurnoCard(turno: Turno, modifier: Modifier = Modifier,
     onMarcarRealizado: (() -> Unit)? = null, habilitado: Boolean = false,
     completando: Boolean = false, onRecordatorio: (() -> Unit)? = null,
-    recordatorioActivo: Boolean = false, recordatorioHabilitado: Boolean = false) {
+    recordatorioActivo: Boolean = false, recordatorioHabilitado: Boolean = false,
+    onComoLlegar: (() -> Unit)? = null) {
     val zonaBarberia = ZoneId.systemDefault()
     val inicio = turno.inicioMillis?.let { Instant.ofEpochMilli(it).atZone(zonaBarberia) }
     val fin = turno.finMillis?.let { Instant.ofEpochMilli(it).atZone(zonaBarberia) }
@@ -59,6 +61,15 @@ fun TurnoCard(turno: Turno, modifier: Modifier = Modifier,
                 }
             }
             DatoTurno(Icons.Outlined.ContentCut, turno.servicioNombre.ifBlank { "Servicio sin asignar" })
+            onComoLlegar?.let { abrirRuta ->
+                OutlinedButton(onClick = abrirRuta,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Icon(Icons.Outlined.Directions, contentDescription = null,
+                        modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Cómo llegar")
+                }
+            }
             if (onRecordatorio != null && !realizado &&
                 turno.estado.lowercase() in listOf("confirmado", "pendiente")) {
                 OutlinedButton(onClick = onRecordatorio,
