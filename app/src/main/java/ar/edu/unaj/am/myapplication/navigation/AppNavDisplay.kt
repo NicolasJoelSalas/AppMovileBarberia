@@ -164,7 +164,7 @@ private fun PublicacionesRoute(
     val homeViewModel = viewModel {
         HomeViewModel(
             container.observarPublicaciones, container.publicarTrabajo,
-            container.eliminarPublicacion, createSavedStateHandle()
+            container.eliminarPublicacion, container.modificarDescripcionPublicacion, createSavedStateHandle()
         )
     }
     HomeRoute(

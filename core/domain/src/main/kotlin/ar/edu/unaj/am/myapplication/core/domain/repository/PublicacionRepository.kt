@@ -7,4 +7,5 @@ interface PublicacionRepository {
     fun observar(): Flow<AppResult<List<Publicacion>>>
     suspend fun publicar(publicacion: NuevaPublicacion): AppResult<Unit>
     suspend fun eliminar(id: String): AppResult<Unit>
+    suspend fun modificarDescripcion(id: String, descripcion: String): AppResult<Unit>
 }

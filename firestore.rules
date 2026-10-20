@@ -198,7 +198,11 @@ service cloud.firestore {
         && request.resource.data.Descripcion is string && request.resource.data.Descripcion.size() <= 300
         && request.resource.data.CreadoEn == request.time;
       allow delete: if esBarberoHabilitado() && resource.data.BarberoId == request.auth.uid;
-      allow update: if false;
+      allow update: if esBarberoHabilitado()
+        && resource.data.BarberoId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['Descripcion'])
+        && request.resource.data.Descripcion is string
+        && request.resource.data.Descripcion.size() <= 300;
     }
 
     match /{document=**} {

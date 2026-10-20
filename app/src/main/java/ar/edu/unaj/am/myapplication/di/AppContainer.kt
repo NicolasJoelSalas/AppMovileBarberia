@@ -6,6 +6,7 @@ import ar.edu.unaj.am.myapplication.core.data.repository.FirestorePublicacionRep
 import ar.edu.unaj.am.myapplication.core.domain.usecase.ObservarPublicacionesUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.PublicarTrabajoUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.EliminarPublicacionUseCase
+import ar.edu.unaj.am.myapplication.core.domain.usecase.ModificarDescripcionPublicacionUseCase
 import ar.edu.unaj.am.myapplication.BuildConfig
 import ar.edu.unaj.am.myapplication.core.data.repository.FirestoreTurnoRepository
 import ar.edu.unaj.am.myapplication.core.data.repository.FirestoreClienteRepository
@@ -43,6 +44,7 @@ class AppContainer(context: Context) {
     val observarPublicaciones = ObservarPublicacionesUseCase(publicacionRepository)
     val publicarTrabajo = PublicarTrabajoUseCase(publicacionRepository)
     val eliminarPublicacion = EliminarPublicacionUseCase(publicacionRepository)
+    val modificarDescripcionPublicacion = ModificarDescripcionPublicacionUseCase(publicacionRepository)
 
     private val reservaRepository: ReservaRepository = FirestoreReservaRepository()
     val cargarCatalogoReservas = CargarCatalogoReservasUseCase(reservaRepository)

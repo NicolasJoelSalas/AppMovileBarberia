@@ -21,6 +21,11 @@ class HomeViewModelTest {
         var resultado: AppResult<Unit> = AppResult.Success(Unit)
         var pendiente: CompletableDeferred<AppResult<Unit>>? = null
         val borradas = mutableListOf<String>()
+        val modificadas = mutableListOf<Pair<String, String>>()
+        override suspend fun modificarDescripcion(id: String, descripcion: String): AppResult<Unit> {
+            modificadas += id to descripcion
+            return pendiente?.await() ?: resultado
+        }
         override fun observar() = flowOf(AppResult.Success(emptyList<Publicacion>()))
         override suspend fun publicar(publicacion: NuevaPublicacion): AppResult<Unit> {
             solicitudes += publicacion; return pendiente?.await() ?: resultado
@@ -28,7 +33,37 @@ class HomeViewModelTest {
         override suspend fun eliminar(id: String): AppResult<Unit> { borradas += id; return AppResult.Success(Unit) }
     }
     private fun vm(repo: Fake, saved: SavedStateHandle = SavedStateHandle()) = HomeViewModel(
-        ObservarPublicacionesUseCase(repo), PublicarTrabajoUseCase(repo), EliminarPublicacionUseCase(repo), saved)
+        ObservarPublicacionesUseCase(repo), PublicarTrabajoUseCase(repo), EliminarPublicacionUseCase(repo),
+        ModificarDescripcionPublicacionUseCase(repo), saved)
+
+    @Test fun `only own descriptions can be edited and saving blocks duplicate requests`() = runTest {
+        val repo = Fake().apply { pendiente = CompletableDeferred() }
+        val vm = vm(repo)
+        val p = Publicacion("id", "otro", "Otro", "https://foto", "Original", null, false)
+        vm.editarDescripcion(p)
+        assertNull(vm.uiState.value.modificando)
+        vm.editarDescripcion(p.copy(esPropia = true))
+        vm.cambiarDescripcion(" Nueva descripción ")
+        vm.guardarDescripcion(); vm.guardarDescripcion()
+        vm.cerrarDescripcion(); vm.cambiarDescripcion("Otro texto")
+        assertNotNull(vm.uiState.value.modificando)
+        assertEquals(listOf("id" to "Nueva descripción"), repo.modificadas)
+        repo.pendiente!!.complete(AppResult.Success(Unit))
+        assertNull(vm.uiState.value.modificando)
+        assertFalse(vm.uiState.value.guardandoDescripcion)
+    }
+
+    @Test fun `description failure preserves draft for retry`() = runTest {
+        val repo = Fake().apply { resultado = AppResult.Error(DomainError.Unknown("Sin conexión")) }
+        val vm = vm(repo)
+        vm.editarDescripcion(Publicacion("id", "yo", "Yo", "https://foto", "Original", null, true))
+        vm.cambiarDescripcion("Cambio"); vm.guardarDescripcion()
+        assertEquals("Cambio", vm.uiState.value.descripcionModificada)
+        assertNotNull(vm.uiState.value.errorDescripcion)
+        repo.resultado = AppResult.Success(Unit)
+        vm.guardarDescripcion()
+        assertNull(vm.uiState.value.modificando)
+    }
 
     @Test fun `double tap publishes once and blocks draft changes and exit`() = runTest {
         val repo = Fake().apply { pendiente = CompletableDeferred() }

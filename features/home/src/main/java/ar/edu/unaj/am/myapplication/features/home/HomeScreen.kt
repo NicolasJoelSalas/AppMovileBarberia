@@ -14,6 +14,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.DeleteOutline
@@ -63,7 +64,7 @@ fun HomeRoute(viewModel: HomeViewModel, esBarbero: Boolean, onReservar: (String)
     }, bottomBar = {
         if (esBarbero) Surface(color = MaterialTheme.colorScheme.surface,
             shadowElevation = 6.dp) {
-            Button(onClick = viewModel::nueva, enabled = !state.eliminando,
+            Button(onClick = viewModel::nueva, enabled = !state.eliminando && state.modificando == null,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp)
                     .heightIn(min = 50.dp), shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primaryContainer,
@@ -131,11 +132,42 @@ fun HomeRoute(viewModel: HomeViewModel, esBarbero: Boolean, onReservar: (String)
                 items(state.publicaciones, key = { it.id }) { publicacion ->
                     TrabajoCard(publicacion, puedeEliminar = esBarbero && publicacion.esPropia,
                         eliminando = state.eliminando, onEliminar = { borrar = publicacion },
+                        onEditar = { viewModel.editarDescripcion(publicacion) },
                         onReservar = if (esBarbero) null else { { onReservar(publicacion.barberoId) } })
                 }
             }
         }
     }
+    if (esBarbero && state.modificando != null) AlertDialog(
+        onDismissRequest = viewModel::cerrarDescripcion,
+        title = { Text("Modificar descripción") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = state.descripcionModificada,
+                    onValueChange = viewModel::cambiarDescripcion,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !state.guardandoDescripcion,
+                    label = { Text("Descripción (opcional)") },
+                    minLines = 3, maxLines = 6,
+                    supportingText = { Text("${state.descripcionModificada.length}/300") }
+                )
+                state.errorDescripcion?.let { Text(it.asMessage(), color = MaterialTheme.colorScheme.error) }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = viewModel::guardarDescripcion,
+                enabled = !state.guardandoDescripcion &&
+                    state.descripcionModificada.trim() != state.modificando?.descripcion) {
+                Text(if (state.guardandoDescripcion) "Guardando…" else "Guardar cambios")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = viewModel::cerrarDescripcion, enabled = !state.guardandoDescripcion) {
+                Text("Cancelar")
+            }
+        }
+    )
     borrar?.let { publicacion -> AlertDialog(
         onDismissRequest = { borrar = null }, title = { Text("¿Eliminar publicación?") },
         text = { Text("Este trabajo dejará de aparecer en las publicaciones.") },
@@ -145,7 +177,7 @@ fun HomeRoute(viewModel: HomeViewModel, esBarbero: Boolean, onReservar: (String)
 
 @Composable
 private fun TrabajoCard(publicacion: Publicacion, puedeEliminar: Boolean, eliminando: Boolean,
-    onEliminar: () -> Unit, onReservar: (() -> Unit)?) {
+    onEliminar: () -> Unit, onEditar: () -> Unit, onReservar: (() -> Unit)?) {
     val colors = MaterialTheme.colorScheme
     ElevatedCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = colors.surfaceContainer),
@@ -181,6 +213,12 @@ private fun TrabajoCard(publicacion: Publicacion, puedeEliminar: Boolean, elimin
             if (onReservar != null || puedeEliminar) HorizontalDivider(color = colors.outlineVariant)
             onReservar?.let { reservar ->
                 ReservarTurnoButton(onClick = reservar, modifier = Modifier.fillMaxWidth())
+            }
+            if (puedeEliminar) OutlinedButton(onClick = onEditar, enabled = !eliminando,
+                modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Outlined.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Modificar descripción")
             }
             if (puedeEliminar) TextButton(onClick = onEliminar, enabled = !eliminando,
                 modifier = Modifier.align(Alignment.End),

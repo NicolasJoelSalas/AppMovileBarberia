@@ -22,6 +22,10 @@ data class HomeUiState(
     val publicando: Boolean = false,
     val eliminando: Boolean = false,
     val errorEdicion: DomainError? = null,
+    val modificando: Publicacion? = null,
+    val descripcionModificada: String = "",
+    val guardandoDescripcion: Boolean = false,
+    val errorDescripcion: DomainError? = null,
     val mensaje: String? = null
 )
 
@@ -29,6 +33,7 @@ class HomeViewModel(
     private val observar: ObservarPublicacionesUseCase,
     private val publicar: PublicarTrabajoUseCase,
     private val eliminar: EliminarPublicacionUseCase,
+    private val modificarDescripcion: ModificarDescripcionPublicacionUseCase,
     private val savedState: SavedStateHandle = SavedStateHandle()
 ) : ViewModel() {
     private val state = MutableStateFlow(HomeUiState(
@@ -67,7 +72,7 @@ class HomeViewModel(
         }
     }
     fun nueva() {
-        if (state.value.publicando || state.value.eliminando) return
+        if (state.value.publicando || state.value.eliminando || state.value.modificando != null) return
         solicitudId = UUID.randomUUID().toString()
         state.update { it.copy(editando = true, imagen = "", descripcion = "", recorteX = 0f,
             recorteY = 0f, errorEdicion = null, mensaje = null) }
@@ -104,7 +109,37 @@ class HomeViewModel(
             } }
         }
     }
+    fun editarDescripcion(publicacion: Publicacion) {
+        if (!publicacion.esPropia || state.value.eliminando || state.value.publicando || state.value.modificando != null) return
+        state.update { it.copy(modificando = publicacion, descripcionModificada = publicacion.descripcion,
+            errorDescripcion = null, mensaje = null) }
+    }
+    fun cambiarDescripcion(value: String) {
+        if (!state.value.guardandoDescripcion && value.length <= 300)
+            state.update { it.copy(descripcionModificada = value, errorDescripcion = null) }
+    }
+    fun cerrarDescripcion() {
+        if (!state.value.guardandoDescripcion)
+            state.update { it.copy(modificando = null, descripcionModificada = "", errorDescripcion = null) }
+    }
+    fun guardarDescripcion() {
+        val actual = state.value
+        val publicacion = actual.modificando ?: return
+        if (!publicacion.esPropia || actual.guardandoDescripcion) return
+        state.update { it.copy(guardandoDescripcion = true, errorDescripcion = null) }
+        viewModelScope.launch {
+            val result = modificarDescripcion(publicacion.id, actual.descripcionModificada)
+            state.update { when (result) {
+                is AppResult.Success -> it.copy(guardandoDescripcion = false, modificando = null,
+                    publicaciones = it.publicaciones.map { p -> if (p.id == publicacion.id)
+                        p.copy(descripcion = actual.descripcionModificada.trim()) else p },
+                    descripcionModificada = "", mensaje = "Descripción actualizada.")
+                is AppResult.Error -> it.copy(guardandoDescripcion = false, errorDescripcion = result.error)
+            } }
+        }
+    }
     fun eliminar(publicacion: Publicacion) {
+        if (state.value.modificando != null) return
         if (!publicacion.esPropia || state.value.eliminando || state.value.publicando) return
         state.update { it.copy(eliminando = true, mensaje = null) }
         viewModelScope.launch {

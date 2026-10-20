@@ -105,6 +105,24 @@ class FirestorePublicacionRepository(
         }
     }
 
+    override suspend fun modificarDescripcion(id: String, descripcion: String): AppResult<Unit> = try {
+        require(descripcion.length <= 300)
+        val uid = auth.currentUser?.uid ?: error("Iniciá sesión nuevamente.")
+        firestore.runTransaction { tx ->
+            val ref = firestore.collection("publicaciones").document(id)
+            val doc = tx.get(ref)
+            val perfil = tx.get(firestore.collection("barberos").document(uid))
+            check(perfil.getBoolean("Estado") == true && doc.getString("BarberoId") == uid) {
+                "Solo podés modificar tus propias publicaciones."
+            }
+            tx.update(ref, "Descripcion", descripcion)
+        }.esperar()
+        AppResult.Success(Unit)
+    } catch (e: CancellationException) { throw e
+    } catch (e: Exception) {
+        AppResult.Error(DomainError.Unknown("No se pudo guardar la descripción. Revisá tu conexión y tus permisos."))
+    }
+
     override suspend fun eliminar(id: String): AppResult<Unit> = try {
         val uid = auth.currentUser?.uid ?: error("Iniciá sesión nuevamente.")
         firestore.runTransaction { tx ->

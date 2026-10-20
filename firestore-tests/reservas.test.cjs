@@ -112,14 +112,31 @@ test('publicaciones: solo el barbero habilitado publica con identidad propia', a
   await assertFails(setDoc(doc(db('barbero'),'publicaciones/deshabilitado'),publicacion()));
 });
 
-test('publicaciones: clientes leen y solo el dueño elimina, sin modificaciones', async () => {
+test('publicaciones: clientes leen y solo el dueño elimina o edita la descripcion', async () => {
   await assertSucceeds(setDoc(doc(db('barbero'),'publicaciones/trabajo'),publicacion()));
   await assertSucceeds(getDocs(query(collection(db('ana'),'publicaciones'),orderBy('CreadoEn','desc'),limit(50))));
   await assertFails(getDocs(collection(env.unauthenticatedContext().firestore(),'publicaciones')));
   await assertFails(deleteDoc(doc(db('ana'),'publicaciones/trabajo')));
   await assertFails(deleteDoc(doc(db('otro'),'publicaciones/trabajo')));
-  await assertFails(updateDoc(doc(db('barbero'),'publicaciones/trabajo'),{Descripcion:'Cambio'}));
+  await assertSucceeds(updateDoc(doc(db('barbero'),'publicaciones/trabajo'),{Descripcion:'Cambio'}));
+  await assertSucceeds(updateDoc(doc(db('barbero'),'publicaciones/trabajo'),{Descripcion:''}));
+  for (const uid of ['ana', 'otro']) {
+    await assertFails(updateDoc(doc(db(uid),'publicaciones/trabajo'),{Descripcion:'Ajena'}));
+  }
+  await assertFails(updateDoc(doc(env.unauthenticatedContext().firestore(),'publicaciones/trabajo'),{Descripcion:'Sin sesion'}));
+  for (const cambio of [{Descripcion:'a'.repeat(301)}, {Descripcion:123},
+    {Descripcion:'Cambio',BarberoId:'otro'}, {ImagenUrl:'https://otra'}, {CreadoEn:serverTimestamp()}]) {
+    await assertFails(updateDoc(doc(db('barbero'),'publicaciones/trabajo'),cambio));
+  }
   await assertSucceeds(deleteDoc(doc(db('barbero'),'publicaciones/trabajo')));
+});
+
+test('publicaciones: barbero deshabilitado no edita su descripcion', async () => {
+  await assertSucceeds(setDoc(doc(db('barbero'),'publicaciones/trabajo'),publicacion()));
+  await env.withSecurityRulesDisabled(async ctx => {
+    await updateDoc(doc(ctx.firestore(),'barberos/barbero'),{Estado:false});
+  });
+  await assertFails(updateDoc(doc(db('barbero'),'publicaciones/trabajo'),{Descripcion:'Cambio'}));
 });
 
 test('publicaciones: rechaza formatos campos fechas y enlaces incorrectos', async () => {

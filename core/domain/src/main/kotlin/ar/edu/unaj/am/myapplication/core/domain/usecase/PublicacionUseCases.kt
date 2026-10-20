@@ -20,6 +20,14 @@ class PublicarTrabajoUseCase(private val repository: PublicacionRepository) {
     }
 }
 
+class ModificarDescripcionPublicacionUseCase(private val repository: PublicacionRepository) {
+    suspend operator fun invoke(id: String, descripcion: String): AppResult<Unit> {
+        if (id.isBlank() || descripcion.trim().length > 300)
+            return AppResult.Error(DomainError.Unknown("La descripción admite hasta 300 caracteres."))
+        return repository.modificarDescripcion(id, descripcion.trim())
+    }
+}
+
 class EliminarPublicacionUseCase(private val repository: PublicacionRepository) {
     suspend operator fun invoke(id: String): AppResult<Unit> = if (id.isBlank())
         AppResult.Error(DomainError.Unknown("Publicación inválida.")) else repository.eliminar(id)
