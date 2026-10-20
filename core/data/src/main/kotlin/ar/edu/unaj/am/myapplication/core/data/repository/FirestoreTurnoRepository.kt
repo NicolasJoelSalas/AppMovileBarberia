@@ -21,7 +21,8 @@ import kotlin.coroutines.resumeWithException
 
 class FirestoreTurnoRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
+    private val serverOnly: Boolean = false
 ) : TurnoRepository {
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun observeTurnos(comoCliente: Boolean) = callbackFlow<AppResult<List<Turno>>> {
@@ -31,9 +32,9 @@ class FirestoreTurnoRepository(
             close()
             return@callbackFlow
         }
-        val registration = firestore.collection("turnos")
+        val query = firestore.collection("turnos")
             .whereEqualTo(if (comoCliente) "ClienteId" else "BarberoId", uid)
-            .addSnapshotListener { snapshot, error ->
+        val listener = com.google.firebase.firestore.EventListener<com.google.firebase.firestore.QuerySnapshot> listener@{ snapshot, error ->
             if (error != null) {
                 val message = when (error.code) {
                     FirebaseFirestoreException.Code.PERMISSION_DENIED ->
@@ -45,7 +46,10 @@ class FirestoreTurnoRepository(
                     else -> "No se pudieron cargar los turnos."
                 }
                 trySend(AppResult.Error(DomainError.Unknown(message)))
-                return@addSnapshotListener
+                return@listener
+            }
+            if (serverOnly && (snapshot == null || snapshot.metadata.isFromCache || snapshot.metadata.hasPendingWrites())) {
+                return@listener
             }
             try {
                 val turnos = snapshot.orEmptyDocuments().map { doc ->
@@ -71,6 +75,8 @@ class FirestoreTurnoRepository(
                 )))
             }
         }
+        val registration = if (serverOnly) query.addSnapshotListener(com.google.firebase.firestore.MetadataChanges.INCLUDE, listener)
+            else query.addSnapshotListener(listener)
         awaitClose { registration.remove() }
     }.mapLatest { result ->
         when (result) {
@@ -123,7 +129,7 @@ class FirestoreTurnoRepository(
             val servicioId = doc.getString("ServicioId").orEmpty()
             check(servicioId.isNotBlank()) { "El turno no tiene un servicio asignado." }
             val precio = tx.get(firestore.collection("servicios").document(servicioId)).get("Precio")
-            check(importeCentavos(precio) != null) { "El servicio necesita un precio numÈrico v·lido." }
+            check(importeCentavos(precio) != null) { "El servicio necesita un precio num√©rico v√°lido." }
             tx.update(referencia, mapOf("Estado" to "realizado", "PrecioCobrado" to precio,
                 "RealizadoEn" to com.google.firebase.firestore.FieldValue.serverTimestamp()))
             Unit

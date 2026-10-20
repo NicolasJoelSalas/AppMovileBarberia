@@ -53,7 +53,10 @@ class AppContainer(context: Context) {
     private val publicarSemana = PublicarSemanaUseCase(reservaRepository)
     val obtenerMiAgenda = ObtenerMiAgendaUseCase(reservaRepository)
     val guardarYPublicarAgenda = GuardarYPublicarAgendaUseCase(reservaRepository, publicarSemana)
-    private val turnoRepository: TurnoRepository = FirestoreTurnoRepository()
+    private val turnosDatabase = ar.edu.unaj.am.myapplication.core.database.TurnosDatabase.create(context)
+    private val turnoRepository: TurnoRepository = ar.edu.unaj.am.myapplication.core.data.repository.CachedTurnoRepository(
+        FirestoreTurnoRepository(serverOnly = true), turnosDatabase.turnosDao()
+    )
     val observeTurnos = ObserveTurnosUseCase(turnoRepository)
     val marcarTurnoRealizado = ar.edu.unaj.am.myapplication.core.domain.usecase.MarcarTurnoRealizadoUseCase(turnoRepository)
 
