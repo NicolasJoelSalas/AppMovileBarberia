@@ -1,6 +1,12 @@
 package ar.edu.unaj.am.myapplication.features.turnos.list
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
+import androidx.compose.ui.Alignment
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.material.icons.outlined.ExpandLess
+import androidx.compose.material.icons.outlined.ExpandMore
+import ar.edu.unaj.am.myapplication.core.domain.model.HorarioDisponible
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -132,24 +138,12 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
                     }
                     item(key = "dia-$day") {
                         key(day, state.barberoId, state.servicioId) {
-                            Selector(
-                                label = day.format(dayFormat),
-                                value = "",
-                                options = slots.map { slot ->
-                                    slot.inicioMillis.toString() to
-                                        ("${Instant.ofEpochMilli(slot.inicioMillis).atZone(zone).format(hourFormat)} a " +
-                                            Instant.ofEpochMilli(slot.finMillis).atZone(zone).format(hourFormat))
-                                },
-                                enabled = !state.reservando,
-                                icon = Icons.Outlined.Schedule,
-                                hint = when (slots.size) {
-                                    0 -> "Sin horarios disponibles"
-                                    1 -> "1 horario disponible"
-                                    else -> "${slots.size} horarios disponibles"
-                                },
-                                select = { id ->
-                                    slots.find { it.inicioMillis.toString() == id }?.let(vm::seleccionar)
-                                }
+                            HorariosDelDia(
+                                fecha = day.format(dayFormat).replaceFirstChar { it.titlecase() },
+                                slots = slots,
+                                zone = zone,
+                                enabled = !state.loading && !state.reservando,
+                                onSelect = vm::seleccionar
                             )
                         }
                     }
@@ -187,6 +181,92 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
                 TextButton(onClick = { vm.seleccionar(null) }, enabled = !state.reservando) { Text("Volver") }
             }
         )
+    }
+}
+
+@Composable
+private fun HorariosDelDia(
+    fecha: String,
+    slots: List<HorarioDisponible>,
+    zone: ZoneId,
+    enabled: Boolean,
+    onSelect: (HorarioDisponible) -> Unit
+) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val available = slots.isNotEmpty()
+    val colors = MaterialTheme.colorScheme
+    Card(
+        onClick = { expanded = !expanded },
+        enabled = enabled && available,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = colors.surfaceContainer,
+            disabledContainerColor = colors.surfaceContainerLow,
+            disabledContentColor = colors.onSurfaceVariant
+        )
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(Icons.Outlined.Schedule, contentDescription = null,
+                tint = if (available) colors.primary else colors.onSurfaceVariant)
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(fecha, style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold)
+                Text(
+                    when (slots.size) {
+                        0 -> "Sin horarios disponibles"
+                        1 -> "1 horario disponible"
+                        else -> "${slots.size} horarios disponibles"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (available) colors.primary else colors.onSurfaceVariant
+                )
+            }
+            if (available) {
+                Icon(
+                    if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
+                    contentDescription = if (expanded) "Ocultar horarios" else "Ver horarios"
+                )
+            }
+        }
+        AnimatedVisibility(visible = expanded && available) {
+            Column(
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                HorizontalDivider(color = colors.outlineVariant)
+                Text("Elegí un horario", style = MaterialTheme.typography.labelMedium,
+                    color = colors.onSurfaceVariant)
+                slots.chunked(2).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        row.forEach { slot ->
+                            OutlinedButton(
+                                onClick = { onSelect(slot) },
+                                enabled = enabled,
+                                modifier = Modifier.weight(1f).heightIn(min = 72.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 12.dp)
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                    Text(Instant.ofEpochMilli(slot.inicioMillis).atZone(zone).format(hourFormat),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.SemiBold)
+                                    Text("Hasta " + Instant.ofEpochMilli(slot.finMillis).atZone(zone).format(hourFormat),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = colors.onSurfaceVariant)
+                                }
+                            }
+                        }
+                        if (row.size == 1) Spacer(Modifier.weight(1f))
+                    }
+                }
+            }
+        }
     }
 }
 

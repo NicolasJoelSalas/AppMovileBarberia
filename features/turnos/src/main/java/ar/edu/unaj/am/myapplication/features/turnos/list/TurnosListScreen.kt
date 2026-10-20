@@ -12,6 +12,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.FilterChip
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -91,6 +97,7 @@ fun TurnosListScreen(
     recordatoriosActivos: Set<String> = emptySet(),
     onCancelar: ((Turno) -> Unit)? = null, onModificar: ((Turno) -> Unit)? = null
 ) {
+    var filtroEstado by rememberSaveable { mutableStateOf("Todos") }
     var cancelar by remember { androidx.compose.runtime.mutableStateOf<Turno?>(null) }
     cancelar?.let { turno ->
         androidx.compose.material3.AlertDialog(onDismissRequest = { cancelar = null },
@@ -125,6 +132,19 @@ fun TurnosListScreen(
         Column(Modifier.fillMaxSize().padding(paddingValues)) {
         SemanaSelector(semanaOffset = semanaOffset, onSemanaChange = onSemanaChange,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            listOf("Todos", "Pendiente", "Cancelado", "Completado").forEach { estado ->
+                FilterChip(
+                    selected = filtroEstado == estado,
+                    onClick = { filtroEstado = estado },
+                    label = { Text(estado) }
+                )
+            }
+        }
         errorCompletar?.let { Text(it, color = MaterialTheme.colorScheme.error,
             modifier = Modifier.padding(horizontal = 16.dp)) }
         val contentModifier = Modifier.weight(1f).fillMaxSize()
@@ -140,9 +160,21 @@ fun TurnosListScreen(
                 modifier = contentModifier
             )
             is TurnosListUiState.Success -> {
-                if (uiState.turnos.isEmpty()) {
+                val turnosVisibles = remember(uiState.turnos, filtroEstado) {
+                    uiState.turnos.filter { turno ->
+                        when (filtroEstado) {
+                            "Pendiente" -> turno.estado.lowercase() in listOf("pendiente", "confirmado")
+                            "Cancelado" -> turno.estado.lowercase() in listOf("cancelado", "cancelada")
+                            "Completado" -> turno.estado.lowercase() in listOf("realizado", "completado")
+                            else -> true
+                        }
+                    }.sortedByDescending { it.inicioMillis ?: Long.MIN_VALUE }
+                }
+                if (turnosVisibles.isEmpty()) {
                     Box(modifier = contentModifier.padding(24.dp), contentAlignment = Alignment.Center) {
-                        Text(if (onReservar != null) "No tenés turnos reservados para la semana seleccionada." else "No hay turnos para la semana seleccionada.",
+                        Text(if (uiState.turnos.isNotEmpty())
+                            "No hay turnos con estado ${filtroEstado.lowercase()} para la semana seleccionada."
+                            else if (onReservar != null) "No tenés turnos reservados para la semana seleccionada." else "No hay turnos para la semana seleccionada.",
                             style = MaterialTheme.typography.bodyLarge)
                     }
                 } else {
@@ -151,7 +183,7 @@ fun TurnosListScreen(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(uiState.turnos, key = { it.id }) { turno ->
+                        items(turnosVisibles, key = { it.id }) { turno ->
                             TurnoCard(turno = turno,
                                 onCancelar = onCancelar?.let { { cancelar = turno } },
                                 onModificar = onModificar?.let { action -> { action(turno) } },

@@ -4,6 +4,14 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.SystemBarStyle
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.SideEffect
+import ar.edu.unaj.am.myapplication.core.ui.theme.Appearance
+import ar.edu.unaj.am.myapplication.core.ui.theme.LocalAppearance
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -28,6 +36,18 @@ class MainActivity : ComponentActivity() {
         val container = (application as ComposeAcademyApp).container
 
         setContent {
+            val preferences = remember { getSharedPreferences("appearance", MODE_PRIVATE) }
+            val systemDarkTheme = isSystemInDarkTheme()
+            var darkThemePreference by remember {
+                mutableStateOf(if (preferences.contains("dark_theme"))
+                    preferences.getBoolean("dark_theme", false) else null)
+            }
+            val darkTheme = darkThemePreference ?: systemDarkTheme
+            SideEffect {
+                val barStyle = if (darkTheme) SystemBarStyle.dark(android.graphics.Color.TRANSPARENT)
+                    else SystemBarStyle.light(android.graphics.Color.TRANSPARENT, android.graphics.Color.TRANSPARENT)
+                enableEdgeToEdge(statusBarStyle = barStyle, navigationBarStyle = barStyle)
+            }
             val sessionOwner: AuthenticatedSessionViewModel = viewModel()
             val loginViewModel: LoginViewModel = viewModel {
                 LoginViewModel(
@@ -43,7 +63,11 @@ class MainActivity : ComponentActivity() {
             val loginState by loginViewModel.uiState
                 .collectAsStateWithLifecycle()
 
-            MyApplicationTheme {
+            CompositionLocalProvider(LocalAppearance provides Appearance(darkTheme) { dark ->
+                preferences.edit().putBoolean("dark_theme", dark).apply()
+                darkThemePreference = dark
+            }) {
+            MyApplicationTheme(darkTheme = darkTheme) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -68,6 +92,7 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                 }
+            }
             }
         }
     }

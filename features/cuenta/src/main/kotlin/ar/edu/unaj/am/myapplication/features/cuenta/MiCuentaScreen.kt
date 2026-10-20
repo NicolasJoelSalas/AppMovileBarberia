@@ -19,6 +19,10 @@ import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.semantics.Role
+import ar.edu.unaj.am.myapplication.core.ui.theme.LocalAppearance
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -91,6 +95,27 @@ fun MiCuentaScreen(
                         Column(Modifier.fillMaxWidth()) {
                             OpcionCuenta(Icons.Outlined.Edit, "Modificar perfil",
                                 "Actualizá tus datos personales", onClick = { editando = true })
+                            HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
+                            val appearance = LocalAppearance.current
+                            Row(
+                                modifier = Modifier.fillMaxWidth()
+                                    .toggleable(value = appearance.darkTheme, role = Role.Switch,
+                                        onValueChange = appearance.onDarkThemeChange)
+                                    .heightIn(min = 80.dp).padding(horizontal = 8.dp, vertical = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Icon(Icons.Outlined.DarkMode, contentDescription = null,
+                                    modifier = Modifier.size(24.dp))
+                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text("Modo oscuro", style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Medium)
+                                    Text(if (appearance.darkTheme) "Activado" else "Desactivado · modo claro",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = colors.onSurfaceVariant)
+                                }
+                                Switch(checked = appearance.darkTheme, onCheckedChange = null)
+                            }
                             HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
                             OpcionCuenta(Icons.AutoMirrored.Outlined.Logout, "Cerrar sesión",
                                 "Salir de tu cuenta", onClick = onLogout, destructive = true)
