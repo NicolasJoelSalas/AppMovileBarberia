@@ -56,8 +56,6 @@ fun TurnosListRoute(viewModel: TurnoListViewModel, onReservar: (() -> Unit)? = n
     onModificar: ((Turno) -> Unit)? = null,
     onRecordatorio: ((Turno) -> Unit)? = null, recordatoriosActivos: Set<String> = emptySet()) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val cacheInfo by viewModel.cacheInfo.collectAsStateWithLifecycle(
-        ar.edu.unaj.am.myapplication.core.domain.model.TurnosCacheInfo())
     val semanaOffset by viewModel.semanaOffset.collectAsStateWithLifecycle()
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.actualizarSemana() }
     val completandoId by viewModel.completandoId.collectAsStateWithLifecycle()
@@ -75,7 +73,6 @@ fun TurnosListRoute(viewModel: TurnoListViewModel, onReservar: (() -> Unit)? = n
     }
     TurnosListScreen(uiState = uiState, onRetry = viewModel::onRetry, onReservar = onReservar,
         semanaOffset = semanaOffset, onSemanaChange = viewModel::seleccionarSemana,
-        cacheInfo = cacheInfo,
         ahoraMillis = ahoraMillis, completandoId = completandoId,
         errorCompletar = errorCompletar?.asMessage(),
         onRecordatorio = onRecordatorio, recordatoriosActivos = recordatoriosActivos,
@@ -98,8 +95,7 @@ fun TurnosListScreen(
     onMarcarRealizado: ((Turno) -> Unit)? = null,
     onRecordatorio: ((Turno) -> Unit)? = null,
     recordatoriosActivos: Set<String> = emptySet(),
-    onCancelar: ((Turno) -> Unit)? = null, onModificar: ((Turno) -> Unit)? = null,
-    cacheInfo: ar.edu.unaj.am.myapplication.core.domain.model.TurnosCacheInfo = ar.edu.unaj.am.myapplication.core.domain.model.TurnosCacheInfo()
+    onCancelar: ((Turno) -> Unit)? = null, onModificar: ((Turno) -> Unit)? = null
 ) {
     var filtroEstado by rememberSaveable { mutableStateOf("Todos") }
     var cancelar by remember { androidx.compose.runtime.mutableStateOf<Turno?>(null) }
@@ -152,12 +148,6 @@ fun TurnosListScreen(
         errorCompletar?.let { Text(it, color = MaterialTheme.colorScheme.error,
             modifier = Modifier.padding(horizontal = 16.dp)) }
         val contentModifier = Modifier.weight(1f).fillMaxSize()
-        cacheInfo.error?.let {
-            Text("No se pudo sincronizar. ${it.asMessage()}",
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
-            androidx.compose.material3.TextButton(onClick = onRetry) { Text("Reintentar actualización") }
-        }
         when (uiState) {
             TurnosListUiState.Loading -> LoadingContent(
                 message = "Cargando turnos…",

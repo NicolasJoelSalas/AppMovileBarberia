@@ -28,7 +28,6 @@ class TurnoListViewModel(
 ) : ViewModel() {
     private val mutableUiState = MutableStateFlow<TurnosListUiState>(TurnosListUiState.Loading)
     val uiState = mutableUiState.asStateFlow()
-    val cacheInfo = observeTurnos.cacheInfo
     private var observation: Job? = null
     private var todosLosTurnos: List<Turno> = emptyList()
     private val mutableTurnosParaRecordatorios = MutableStateFlow<List<Turno>?>(null)
@@ -93,9 +92,7 @@ class TurnoListViewModel(
 
     fun onRetry() {
         observation?.cancel()
-        if (mutableUiState.value !is TurnosListUiState.Success) {
-            mutableUiState.value = TurnosListUiState.Loading
-        }
+        mutableUiState.value = TurnosListUiState.Loading
         observation = viewModelScope.launch {
             observeTurnos(comoCliente).collect { result ->
                 mutableUiState.value = when (result) {

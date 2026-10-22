@@ -102,10 +102,9 @@ Convenciones de todas las features:
 - `TodoApi` + `FakeTodoApi`: API simulada con latencia. La tarea con id `99` fuerza un error de red para mostrar el estado `Error`
 - `NetworkResult<T>` (`HttpError`, `NetworkError`, `ParseError`) y `safeApiCall {}`
 
-### Database — `:core:database`
+### Database — `:core:database` (simulado)
 
-- `TurnosDatabase` y `TurnosDao`: Room persistente, con turnos completos y fecha de sincronización por UID y rol. `CachedTurnoRepository` mantiene la copia desde Firestore; ver [caché de turnos](docs/cache-turnos.md).
-- `TodoDao` + `InMemoryTodoDao` se conservan como ejemplo en memoria.
+- `TodoDao` (interfaz, como un `@Dao` de Room) + `InMemoryTodoDao`, que expone un `Flow` reactivo
 - `TodoEntity` + `TodoEntityMapper` (entidad → dominio)
 
 ## Tests

@@ -18,7 +18,6 @@ import com.google.firebase.firestore.DocumentReference
 import com.google.android.gms.tasks.OnCompleteListener
 import com.google.android.gms.tasks.Task
 import java.util.concurrent.Executor
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
@@ -27,40 +26,6 @@ import org.mockito.ArgumentMatchers
 import org.mockito.Mockito.*
 
 class FirestoreTurnoRepositoryTest {
-    @Test fun `room sync ignores firestore cache and waits for server metadata`() = runTest {
-        val snapshot = mock(QuerySnapshot::class.java)
-        val metadata = mock(com.google.firebase.firestore.SnapshotMetadata::class.java)
-        `when`(snapshot.metadata).thenReturn(metadata)
-        `when`(metadata.isFromCache).thenReturn(true)
-        `when`(snapshot.documents).thenReturn(emptyList())
-        respond(snapshot)
-        lateinit var listener: EventListener<QuerySnapshot>
-        `when`(query.addSnapshotListener(
-            org.mockito.ArgumentMatchers.eq(com.google.firebase.firestore.MetadataChanges.INCLUDE),
-            ArgumentMatchers.any<EventListener<QuerySnapshot>>()
-        )).thenAnswer {
-            listener = it.getArgument(1)
-            listener.onEvent(snapshot, null)
-            registration
-        }
-        val results = mutableListOf<AppResult<List<ar.edu.unaj.am.myapplication.core.domain.model.Turno>>>()
-        val job = backgroundScope.launch {
-            FirestoreTurnoRepository(firestore, auth, serverOnly = true).observeTurnos().collect { results.add(it) }
-        }
-        testScheduler.runCurrent()
-        assertTrue(results.isEmpty())
-        `when`(metadata.isFromCache).thenReturn(false)
-        `when`(metadata.hasPendingWrites()).thenReturn(true)
-        listener.onEvent(snapshot, null)
-        testScheduler.runCurrent()
-        assertTrue(results.isEmpty())
-        `when`(metadata.hasPendingWrites()).thenReturn(false)
-        listener.onEvent(snapshot, null)
-        testScheduler.runCurrent()
-        assertEquals(emptyList<ar.edu.unaj.am.myapplication.core.domain.model.Turno>(),
-            (results.single() as AppResult.Success).data)
-        job.cancel()
-    }
     private val firestore = mock(FirebaseFirestore::class.java)
     private val auth = mock(FirebaseAuth::class.java)
     private val user = mock(FirebaseUser::class.java)
