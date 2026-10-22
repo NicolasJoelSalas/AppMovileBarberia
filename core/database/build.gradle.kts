@@ -1,21 +1,22 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+// Módulo Kotlin puro: no conoce Android. Se compila y testea en la JVM.
 plugins {
-    alias(libs.plugins.android.library)
-    id("com.google.devtools.ksp") version "2.3.12"
+    alias(libs.plugins.kotlin.jvm)
 }
-android {
-    namespace = "ar.edu.unaj.am.myapplication.core.database"
-    compileSdk = 37
-    defaultConfig { minSdk = 26 }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_11)
     }
 }
-ksp { arg("room.schemaLocation", "$projectDir/schemas") }
+
 dependencies {
     implementation(project(":core:domain"))
     implementation(libs.kotlinx.coroutines.core)
-    api("androidx.room:room-runtime:2.8.4")
-    implementation("androidx.room:room-ktx:2.8.4")
-    ksp("androidx.room:room-compiler:2.8.4")
 }
