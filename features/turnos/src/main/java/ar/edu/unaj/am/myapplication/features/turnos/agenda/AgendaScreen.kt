@@ -118,17 +118,29 @@ fun AgendaRoute(viewModel: AgendaViewModel, onBack: () -> Unit) {
                             }
                             if (day.habilitado) {
                                 day.franjas.forEachIndexed { span, franja ->
+                                    HorizontalDivider()
+                                    Text("Franja ${span + 1}", style = MaterialTheme.typography.labelLarge)
                                     FranjaHorariaFields(
                                         inicio = franja.inicio, fin = franja.fin,
                                         onInicioChange = { viewModel.hora(index, span, true, it) },
                                         onFinChange = { viewModel.hora(index, span, false, it) },
-                                        enabled = !state.guardando
+                                        enabled = !state.guardando,
+                                        superpuesta = day.franjas.withIndex().any { (other, item) ->
+                                            runCatching {
+                                                val start = java.time.LocalTime.parse(franja.inicio)
+                                                val end = java.time.LocalTime.parse(franja.fin)
+                                                val a = java.time.LocalTime.parse(item.inicio)
+                                                val b = java.time.LocalTime.parse(item.fin)
+                                                other != span && start < end && a < b && start < b && a < end
+                                            }.getOrDefault(false)
+                                        }
                                     )
                                     TextButton(onClick = { viewModel.quitar(index, span) }, enabled = !state.guardando) {
                                         Text("Quitar franja ${span + 1}")
                                     }
                                 }
-                                OutlinedButton(onClick = { viewModel.agregar(index) }, enabled = !state.guardando) {
+                                OutlinedButton(onClick = { viewModel.agregar(index) }, enabled = !state.guardando,
+                                    modifier = Modifier.fillMaxWidth()) {
                                     Text("Agregar franja")
                                 }
                             }
