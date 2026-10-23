@@ -25,6 +25,7 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
 
     ksp(libs.androidx.room3.compiler)
+    add("kspTest", libs.androidx.room3.compiler)
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
 }

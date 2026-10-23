@@ -11,6 +11,10 @@ import com.google.firebase.firestore.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flatMapLatest
+import ar.edu.unaj.am.myapplication.core.data.session.SesionClienteLocal
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -25,21 +29,38 @@ class FirestorePublicacionRepository(
     private val cloudName: String,
     private val uploadPreset: String,
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
+    private val local: PublicacionesClienteLocal? = null,
+    private val sesionLocal: SesionClienteLocal? = null
 ) : PublicacionRepository {
     // Reutiliza la foto subida si Firestore falla y el usuario reintenta la misma publicación.
     private val pendientes = ConcurrentHashMap<String, ImagenSubidaDto>()
 
-    override fun observar() = callbackFlow<AppResult<List<Publicacion>>> {
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override fun observar() = flow {
+        val uid = auth.currentUser?.uid
+        if (uid != null && local != null && sesionLocal != null) {
+            emitAll(sesionLocal.observarValidacion(uid).flatMapLatest { cliente ->
+                if (cliente) local.observar(uid, observarRemotos(soloServidor = true))
+                else observarRemotos()
+            })
+        } else emitAll(observarRemotos())
+    }
+
+    private fun observarRemotos(soloServidor: Boolean = false) = callbackFlow<AppResult<List<Publicacion>>> {
         val uid = auth.currentUser?.uid
         if (uid == null) {
             trySend(AppResult.Error(DomainError.Unknown("Iniciá sesión para ver los trabajos.")))
             close(); return@callbackFlow
         }
         val listener = firestore.collection("publicaciones").orderBy("CreadoEn", Query.Direction.DESCENDING)
-            .limit(50).addSnapshotListener { snapshot, error ->
+            .limit(50).addSnapshotListener(MetadataChanges.INCLUDE) { snapshot, error ->
                 if (error != null) {
                     trySend(AppResult.Error(DomainError.Unknown("No se pudieron cargar los trabajos. Revisá la conexión y las reglas de Firestore.")))
+                } else if (soloServidor && snapshot?.metadata?.isFromCache == true) {
+                    trySend(AppResult.Error(DomainError.Network))
+                } else if (soloServidor && (snapshot == null || snapshot.metadata.hasPendingWrites())) {
+                    // No reemplazar la copia completa con escrituras aún no confirmadas.
                 } else try {
                     trySend(AppResult.Success(snapshot?.documents.orEmpty().map { doc ->
                         Publicacion(doc.id, doc.getString("BarberoId").orEmpty(),

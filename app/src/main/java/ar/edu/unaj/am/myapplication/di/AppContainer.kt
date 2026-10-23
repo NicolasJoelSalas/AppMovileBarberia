@@ -50,14 +50,22 @@ class AppContainer(context: Context) {
     private val database = AppDatabase.obtener {
         androidx.room3.Room.databaseBuilder<AppDatabase>(name = databaseFile.absolutePath)
             .setDriver(androidx.sqlite.driver.bundled.BundledSQLiteDriver())
+            .addMigrations(ar.edu.unaj.am.myapplication.core.database.migration.MIGRATION_1_2)
             .build()
     }
     private val turnoDao = database.turnoDao()
+    private val publicacionesLocales = ar.edu.unaj.am.myapplication.core.data.repository.PublicacionesClienteLocal(
+        database.publicacionDao(),
+        ar.edu.unaj.am.myapplication.core.data.images.ImagenesPublicacionesLocales(
+            java.io.File(context.applicationContext.noBackupFilesDir, "publicaciones")),
+        usuarioActual = { clienteActualId() }
+    )
 
 
     private val publicacionRepository = FirestorePublicacionRepository(
         PreparadorImagenTrabajo(context.applicationContext), NetworkFactory.createCloudinaryApi(),
-        BuildConfig.CLOUDINARY_CLOUD_NAME, BuildConfig.CLOUDINARY_UPLOAD_PRESET)
+        BuildConfig.CLOUDINARY_CLOUD_NAME, BuildConfig.CLOUDINARY_UPLOAD_PRESET,
+        local = publicacionesLocales, sesionLocal = sesionClienteLocal)
     val observarPublicaciones = ObservarPublicacionesUseCase(publicacionRepository)
     val publicarTrabajo = PublicarTrabajoUseCase(publicacionRepository)
     val eliminarPublicacion = EliminarPublicacionUseCase(publicacionRepository)
@@ -96,7 +104,11 @@ class AppContainer(context: Context) {
         try {
             turnoRepository.limpiarSesionCliente(uid)
         } finally {
-            sesionClienteLocal.limpiar(uid)
+            try {
+                publicacionesLocales.limpiar(uid)
+            } finally {
+                sesionClienteLocal.limpiar(uid)
+            }
         }
     }
 

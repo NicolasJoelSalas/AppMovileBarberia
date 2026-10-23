@@ -17,6 +17,7 @@ class HomeViewModelTest {
     @Before fun setup() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
     @After fun cleanup() { Dispatchers.resetMain() }
     private class Fake : PublicacionRepository {
+        val publicaciones = kotlinx.coroutines.flow.MutableStateFlow<AppResult<List<Publicacion>>>(AppResult.Success(emptyList()))
         val solicitudes = mutableListOf<NuevaPublicacion>()
         var resultado: AppResult<Unit> = AppResult.Success(Unit)
         var pendiente: CompletableDeferred<AppResult<Unit>>? = null
@@ -26,7 +27,7 @@ class HomeViewModelTest {
             modificadas += id to descripcion
             return pendiente?.await() ?: resultado
         }
-        override fun observar() = flowOf(AppResult.Success(emptyList<Publicacion>()))
+        override fun observar() = publicaciones
         override suspend fun publicar(publicacion: NuevaPublicacion): AppResult<Unit> {
             solicitudes += publicacion; return pendiente?.await() ?: resultado
         }
@@ -35,6 +36,21 @@ class HomeViewModelTest {
     private fun vm(repo: Fake, saved: SavedStateHandle = SavedStateHandle()) = HomeViewModel(
         ObservarPublicacionesUseCase(repo), PublicarTrabajoUseCase(repo), EliminarPublicacionUseCase(repo),
         ModificarDescripcionPublicacionUseCase(repo), saved)
+
+    @Test fun `offline warning keeps saved photos visible and recovery clears it`() = runTest {
+        val repo = Fake()
+        val photo = Publicacion("foto", "barbero", "Luis", "https://foto", "Corte", 1L,
+            imagenLocalPath = "/privado/foto.jpg")
+        repo.publicaciones.value = AppResult.Success(listOf(photo))
+        val vm = vm(repo)
+        repo.publicaciones.value = AppResult.Error(DomainError.Network)
+        assertEquals(listOf(photo), vm.uiState.value.publicaciones)
+        assertFalse(vm.uiState.value.cargando)
+        assertNotNull(vm.uiState.value.error)
+        repo.publicaciones.value = AppResult.Success(listOf(photo.copy(descripcion = "Actualizada")))
+        assertNull(vm.uiState.value.error)
+        assertEquals("Actualizada", vm.uiState.value.publicaciones.single().descripcion)
+    }
 
     @Test fun `only own descriptions can be edited and saving blocks duplicate requests`() = runTest {
         val repo = Fake().apply { pendiente = CompletableDeferred() }

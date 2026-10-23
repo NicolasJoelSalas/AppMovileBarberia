@@ -77,11 +77,19 @@ fun HomeRoute(viewModel: HomeViewModel, esBarbero: Boolean, onReservar: (String)
     }) { padding ->
         when {
             state.cargando -> LoadingContent(message = "Cargando trabajos…", modifier = Modifier.padding(padding))
-            state.error != null -> ErrorContent(title = "No se pudieron cargar los trabajos",
+            state.error != null && state.publicaciones.isEmpty() -> ErrorContent(title = "No se pudieron cargar los trabajos",
                 message = state.error!!.asMessage(), onRetry = viewModel::reintentar, modifier = Modifier.padding(padding))
             else -> LazyColumn(Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(24.dp)) {
+                state.error?.let { error ->
+                    item {
+                        Column {
+                            Text("Mostrando los trabajos guardados. ${error.asMessage()}")
+                            TextButton(onClick = viewModel::reintentar) { Text("Actualizar") }
+                        }
+                    }
+                }
                 item {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically,
@@ -182,7 +190,8 @@ private fun TrabajoCard(publicacion: Publicacion, puedeEliminar: Boolean, elimin
     ElevatedCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = colors.surfaceContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
-        FotoTrabajo(publicacion.imagenUrl, "Trabajo de ${publicacion.barberoNombre}", Modifier.fillMaxWidth().aspectRatio(1f))
+        FotoTrabajo(publicacion.imagenUrl, "Trabajo de ${publicacion.barberoNombre}", Modifier.fillMaxWidth().aspectRatio(1f),
+            rutaLocal = publicacion.imagenLocalPath)
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -326,8 +335,10 @@ private fun EditorTrabajo(state: HomeUiState, vm: HomeViewModel) {
 }
 
 @Composable
-private fun FotoTrabajo(model: String, descripcion: String, modifier: Modifier, alignment: Alignment = Alignment.Center) {
-    SubcomposeAsyncImage(model = model.ifBlank { null }, contentDescription = descripcion,
+private fun FotoTrabajo(model: String, descripcion: String, modifier: Modifier, alignment: Alignment = Alignment.Center,
+    rutaLocal: String? = null) {
+    val imagen = rutaLocal?.let(::File)?.takeIf { it.isFile } ?: model.ifBlank { null }
+    SubcomposeAsyncImage(model = imagen, contentDescription = descripcion,
         modifier = modifier, contentScale = ContentScale.Crop, alignment = alignment,
         loading = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() } },
         error = {

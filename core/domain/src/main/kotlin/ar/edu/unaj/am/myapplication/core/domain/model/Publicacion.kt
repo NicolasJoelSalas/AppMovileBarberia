@@ -7,7 +7,8 @@ data class Publicacion(
     val imagenUrl: String,
     val descripcion: String,
     val creadoEnMillis: Long?,
-    val esPropia: Boolean = false
+    val esPropia: Boolean = false,
+    val imagenLocalPath: String? = null
 )
 
 data class NuevaPublicacion(
