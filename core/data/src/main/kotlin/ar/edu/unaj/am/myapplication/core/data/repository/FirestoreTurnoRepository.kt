@@ -1,5 +1,8 @@
 package ar.edu.unaj.am.myapplication.core.data.repository
 
+import ar.edu.unaj.am.myapplication.core.database.dao.TurnoDao
+import ar.edu.unaj.am.myapplication.core.database.mapper.toDomain
+import ar.edu.unaj.am.myapplication.core.database.mapper.toEntity
 import ar.edu.unaj.am.myapplication.core.domain.model.AppResult
 import ar.edu.unaj.am.myapplication.core.domain.model.DomainError
 import ar.edu.unaj.am.myapplication.core.domain.model.Turno
@@ -9,6 +12,13 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestoreException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.CancellationException
@@ -19,12 +29,67 @@ import java.util.concurrent.Executor
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
+
 class FirestoreTurnoRepository(
+    private val turnoDao: TurnoDao,
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
     private val auth: FirebaseAuth = FirebaseAuth.getInstance()
 ) : TurnoRepository {
+    private val cacheMutex = Mutex()
+    private val cacheVersions = mutableMapOf<String, Long>()
+
+    /** Invalida escrituras pendientes antes de borrar los datos de la sesión. */
+    suspend fun limpiarSesionCliente(uid: String) = cacheMutex.withLock {
+        cacheVersions[uid] = (cacheVersions[uid] ?: 0L) + 1
+        turnoDao.eliminarPorCliente(uid)
+    }
+
+    override fun observeTurnos(comoCliente: Boolean) = if (!comoCliente) observarRemotos(false) else channelFlow {
+        val uid = auth.currentUser?.uid
+        if (uid == null) {
+            send(AppResult.Error(DomainError.Unknown("Iniciá sesión para consultar tus turnos.")))
+            return@channelFlow
+        }
+        val version = cacheMutex.withLock { cacheVersions[uid] ?: 0L }
+        val errorSincronizacion = MutableStateFlow<DomainError?>(null)
+        val local = launch {
+            try {
+                turnoDao.observarPorCliente(uid).combine(errorSincronizacion) { entities, error -> entities to error }
+                    .collect { (entities, error) ->
+                        if (auth.currentUser?.uid == uid) {
+                            send(AppResult.Success(entities.map { it.toDomain() }))
+                            if (error != null) send(AppResult.Error(error))
+                        }
+                    }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                send(AppResult.Error(DomainError.Unknown("No se pudo leer la copia local de tus turnos. Reintentá.")))
+            }
+        }
+        try {
+            observarRemotos(true).collect { result ->
+                when (result) {
+                    is AppResult.Success -> cacheMutex.withLock {
+                        if ((cacheVersions[uid] ?: 0L) == version && auth.currentUser?.uid == uid) {
+                            turnoDao.reemplazarPorCliente(uid, result.data.map { it.toEntity() })
+                            errorSincronizacion.value = null
+                        }
+                    }
+                    is AppResult.Error -> errorSincronizacion.value = result.error
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            send(AppResult.Error(DomainError.Unknown("No se pudieron actualizar tus turnos guardados. Reintentá con conexión.")))
+        } finally {
+            local.cancel()
+        }
+    }
+
     @OptIn(ExperimentalCoroutinesApi::class)
-    override fun observeTurnos(comoCliente: Boolean) = callbackFlow<AppResult<List<Turno>>> {
+    private fun observarRemotos(comoCliente: Boolean) = callbackFlow<AppResult<List<Turno>>> {
         val uid = auth.currentUser?.uid
         if (uid == null) {
             trySend(AppResult.Error(DomainError.Unknown("Iniciá sesión para consultar tus turnos.")))
@@ -33,7 +98,7 @@ class FirestoreTurnoRepository(
         }
         val registration = firestore.collection("turnos")
             .whereEqualTo(if (comoCliente) "ClienteId" else "BarberoId", uid)
-            .addSnapshotListener { snapshot, error ->
+            .addSnapshotListener(com.google.firebase.firestore.MetadataChanges.INCLUDE) { snapshot, error ->
             if (error != null) {
                 val message = when (error.code) {
                     FirebaseFirestoreException.Code.PERMISSION_DENIED ->
@@ -45,6 +110,13 @@ class FirestoreTurnoRepository(
                     else -> "No se pudieron cargar los turnos."
                 }
                 trySend(AppResult.Error(DomainError.Unknown(message)))
+                return@addSnapshotListener
+            }
+            // La caché parcial de Firebase no debe reemplazar la copia completa de Room.
+            if (comoCliente && (snapshot == null || snapshot.metadata.isFromCache || snapshot.metadata.hasPendingWrites())) {
+                if (snapshot?.metadata?.isFromCache == true) {
+                    trySend(AppResult.Error(DomainError.Network))
+                }
                 return@addSnapshotListener
             }
             try {
@@ -123,7 +195,7 @@ class FirestoreTurnoRepository(
             val servicioId = doc.getString("ServicioId").orEmpty()
             check(servicioId.isNotBlank()) { "El turno no tiene un servicio asignado." }
             val precio = tx.get(firestore.collection("servicios").document(servicioId)).get("Precio")
-            check(importeCentavos(precio) != null) { "El servicio necesita un precio num�rico v�lido." }
+            check(importeCentavos(precio) != null) { "El servicio necesita un precio num�rico v�lido." }
             tx.update(referencia, mapOf("Estado" to "realizado", "PrecioCobrado" to precio,
                 "RealizadoEn" to com.google.firebase.firestore.FieldValue.serverTimestamp()))
             Unit

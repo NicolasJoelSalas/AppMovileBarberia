@@ -30,14 +30,31 @@ import ar.edu.unaj.am.myapplication.core.domain.usecase.LogoutUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.LoginWithGoogleUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.RegisterUseCase
 import ar.edu.unaj.am.myapplication.core.data.repository.FirestorePerfilRepository
+import ar.edu.unaj.am.myapplication.core.database.AppDatabase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.ObtenerMiPerfilUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.ActualizarMiNombreUseCase
 
 
 class AppContainer(context: Context) {
+    private val sesionClienteLocal = ar.edu.unaj.am.myapplication.core.data.session.SesionClienteLocal(context)
     private val perfilRepository = FirestorePerfilRepository()
     val obtenerMiPerfil = ObtenerMiPerfilUseCase(perfilRepository)
     val actualizarMiNombre = ActualizarMiNombreUseCase(perfilRepository)
+
+    private val databaseFile = context.applicationContext
+        .getDatabasePath("barberia_database")
+        .also { file ->
+            file.parentFile?.mkdirs()
+        }
+
+    private val database = AppDatabase.obtener {
+        androidx.room3.Room.databaseBuilder<AppDatabase>(name = databaseFile.absolutePath)
+            .setDriver(androidx.sqlite.driver.bundled.BundledSQLiteDriver())
+            .build()
+    }
+    private val turnoDao = database.turnoDao()
+
+
     private val publicacionRepository = FirestorePublicacionRepository(
         PreparadorImagenTrabajo(context.applicationContext), NetworkFactory.createCloudinaryApi(),
         BuildConfig.CLOUDINARY_CLOUD_NAME, BuildConfig.CLOUDINARY_UPLOAD_PRESET)
@@ -46,7 +63,7 @@ class AppContainer(context: Context) {
     val eliminarPublicacion = EliminarPublicacionUseCase(publicacionRepository)
     val modificarDescripcionPublicacion = ModificarDescripcionPublicacionUseCase(publicacionRepository)
 
-    private val reservaRepository: ReservaRepository = FirestoreReservaRepository()
+    private val reservaRepository: ReservaRepository = FirestoreReservaRepository(sesionLocal = sesionClienteLocal)
     val cargarCatalogoReservas = CargarCatalogoReservasUseCase(reservaRepository)
     val consultarSemana = ConsultarSemanaUseCase(reservaRepository)
     val cancelarTurno = ar.edu.unaj.am.myapplication.core.domain.usecase.CancelarTurnoUseCase(reservaRepository)
@@ -55,7 +72,8 @@ class AppContainer(context: Context) {
     private val publicarSemana = PublicarSemanaUseCase(reservaRepository)
     val obtenerMiAgenda = ObtenerMiAgendaUseCase(reservaRepository)
     val guardarYPublicarAgenda = GuardarYPublicarAgendaUseCase(reservaRepository, publicarSemana)
-    private val turnoRepository: TurnoRepository = FirestoreTurnoRepository()
+    private val turnoRepository =
+        FirestoreTurnoRepository(turnoDao = turnoDao)
     val observeTurnos = ObserveTurnosUseCase(turnoRepository)
     val marcarTurnoRealizado = ar.edu.unaj.am.myapplication.core.domain.usecase.MarcarTurnoRealizadoUseCase(turnoRepository)
 
@@ -66,10 +84,21 @@ class AppContainer(context: Context) {
     val logout = LogoutUseCase(authRepository)
     val loginWithGoogle = LoginWithGoogleUseCase(authRepository)
     val register = RegisterUseCase(authRepository)
-    private val clienteRepository: ClienteRepository = FirestoreClienteRepository()
+    private val clienteRepository: ClienteRepository = FirestoreClienteRepository(sesionLocal = sesionClienteLocal)
     val ensureClienteProfile = EnsureClienteProfileUseCase(clienteRepository)
 
+
     fun isLoggedIn(): Boolean = authRepository.isLoggedIn()
+
+    fun clienteActualId(): String? = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
+
+    suspend fun limpiarSesionCliente(uid: String) {
+        try {
+            turnoRepository.limpiarSesionCliente(uid)
+        } finally {
+            sesionClienteLocal.limpiar(uid)
+        }
+    }
 
 }
 

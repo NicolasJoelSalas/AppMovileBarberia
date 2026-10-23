@@ -1,6 +1,7 @@
 import java.util.Properties
 
 plugins {
+
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
     // Genera el código de serialización de las rutas de navegación type-safe (@Serializable)
@@ -44,6 +45,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.sqlite.bundled)
     // :app es el "composition root": el único módulo que conoce TODAS las capas
     // para poder conectarlas (inyección de dependencias manual en AppContainer).
     implementation(project(":features:auth"))

@@ -1,6 +1,16 @@
 package ar.edu.unaj.am.myapplication.core.data.repository
 
 import android.util.SparseArray
+import ar.edu.unaj.am.myapplication.core.database.dao.TurnoDao
+import ar.edu.unaj.am.myapplication.core.database.model.TurnosEntity
+import com.google.firebase.firestore.MetadataChanges
+import com.google.firebase.firestore.SnapshotMetadata
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
 
 import ar.edu.unaj.am.myapplication.core.domain.model.AppResult
 import com.google.firebase.Timestamp
@@ -25,6 +35,7 @@ import org.junit.Test
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito.*
 
+@OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class FirestoreTurnoRepositoryTest {
     private val firestore = mock(FirebaseFirestore::class.java)
     private val auth = mock(FirebaseAuth::class.java)
@@ -32,7 +43,9 @@ class FirestoreTurnoRepositoryTest {
     private val collection = mock(CollectionReference::class.java)
     private val query = mock(Query::class.java)
     private val registration = mock(ListenerRegistration::class.java)
-    private val repository = FirestoreTurnoRepository(firestore, auth)
+    private val dao = MemoryTurnoDao()
+    private val repository = FirestoreTurnoRepository(dao, firestore, auth)
+    private var listener: EventListener<QuerySnapshot>? = null
     private var clienteNombre: String? = "Nicolás Salas"
     private var servicioNombre: String? = "Corte de cabello"
     private lateinit var clienteReference: DocumentReference
@@ -59,6 +72,10 @@ class FirestoreTurnoRepositoryTest {
     }
 
     private fun respond(snapshot: QuerySnapshot?, error: FirebaseFirestoreException? = null) {
+        snapshot?.let {
+            val metadata = mock(SnapshotMetadata::class.java)
+            `when`(it.metadata).thenReturn(metadata)
+        }
         clienteReference = relatedDocument("clientes", "cliente", "Nombre", clienteNombre)
         servicioReference = relatedDocument("servicios", "corte", "NombreCorte", servicioNombre)
         `when`(auth.currentUser).thenReturn(user)
@@ -66,9 +83,10 @@ class FirestoreTurnoRepositoryTest {
         `when`(firestore.collection("turnos")).thenReturn(collection)
         `when`(collection.whereEqualTo("BarberoId", "barbero-autenticado")).thenReturn(query)
         `when`(collection.whereEqualTo("ClienteId", "barbero-autenticado")).thenReturn(query)
-        `when`(query.addSnapshotListener(ArgumentMatchers.any<EventListener<QuerySnapshot>>()))
+        `when`(query.addSnapshotListener(ArgumentMatchers.eq(MetadataChanges.INCLUDE), ArgumentMatchers.any<EventListener<QuerySnapshot>>()))
             .thenAnswer { invocation ->
-                invocation.getArgument<EventListener<QuerySnapshot>>(0).onEvent(snapshot, error)
+                listener = invocation.getArgument<EventListener<QuerySnapshot>>(1)
+                listener!!.onEvent(snapshot, error)
                 registration
             }
     }
@@ -119,7 +137,9 @@ class FirestoreTurnoRepositoryTest {
         `when`(snapshot.documents).thenReturn(listOf(doc))
         respond(snapshot)
         clienteReference = relatedDocument("clientes", "barbero-autenticado", "Nombre", "Cliente autenticado")
-        val result = repository.observeTurnos(comoCliente = true).first() as AppResult.Success
+        val result = repository.observeTurnos(comoCliente = true).first {
+            it is AppResult.Success && it.data.isNotEmpty()
+        } as AppResult.Success
         assertEquals("Cliente autenticado", result.data.single().clienteNombre)
         assertEquals("Corte de cabello", result.data.single().servicioNombre)
         verify(collection).whereEqualTo("ClienteId", "barbero-autenticado")
@@ -186,5 +206,63 @@ class FirestoreTurnoRepositoryTest {
         assertTrue(repository.observeTurnos().first() is AppResult.Success)
         verify(clienteReference, never()).get()
         verify(servicioReference, never()).get()
+    }
+
+    @Test
+    fun `partial Firebase cache does not erase persisted client appointments`() = runTest {
+        val saved = TurnosEntity("guardado", "barbero-autenticado", "b", "s", 1L, 2L, "confirmado")
+        dao.guardar(saved)
+        val snapshot = mock(QuerySnapshot::class.java)
+        respond(snapshot)
+        `when`(snapshot.metadata.isFromCache).thenReturn(true)
+        val result = repository.observeTurnos(true).first { it is AppResult.Success && it.data.isNotEmpty() }
+        assertEquals("guardado", (result as AppResult.Success).data.single().id)
+        assertEquals(listOf(saved), dao.rows.value)
+    }
+
+    @Test
+    fun `confirmed empty server list removes stale client cache`() = runTest {
+        dao.guardar(TurnosEntity("viejo", "barbero-autenticado", "b", "s", 1L, 2L, "confirmado"))
+        val snapshot = mock(QuerySnapshot::class.java)
+        `when`(snapshot.documents).thenReturn(emptyList())
+        respond(snapshot)
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { repository.observeTurnos(true).collect() }
+        advanceUntilIdle()
+        assertTrue(dao.rows.value.isEmpty())
+        job.cancel()
+    }
+
+    @Test
+    fun `logout invalidates pending synchronization and removes only owner cache`() = runTest {
+        val snapshot = mock(QuerySnapshot::class.java)
+        `when`(snapshot.documents).thenReturn(emptyList())
+        respond(snapshot)
+        `when`(snapshot.metadata.isFromCache).thenReturn(true)
+        val other = TurnosEntity("ajeno", "otro-cliente", "b", "s", 1L, 2L, "confirmado")
+        dao.guardar(other)
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { repository.observeTurnos(true).collect() }
+        repository.limpiarSesionCliente("barbero-autenticado")
+        val doc = document("tardio", 1000, "confirmado")
+        `when`(doc.getString("ClienteId")).thenReturn("barbero-autenticado")
+        relatedDocument("clientes", "barbero-autenticado", "Nombre", "Cliente")
+        `when`(snapshot.documents).thenReturn(listOf(doc))
+        `when`(snapshot.metadata.isFromCache).thenReturn(false)
+        listener!!.onEvent(snapshot, null)
+        advanceUntilIdle()
+        assertEquals(listOf(other), dao.rows.value)
+        job.cancel()
+    }
+}
+
+private class MemoryTurnoDao : TurnoDao {
+    val rows = MutableStateFlow<List<TurnosEntity>>(emptyList())
+    override fun observarPorCliente(clienteId: String) = rows.map { list -> list.filter { it.clienteId == clienteId } }
+    override suspend fun obtenerPorId(turnoId: String, clienteId: String) = rows.value.find { it.id == turnoId && it.clienteId == clienteId }
+    override suspend fun guardar(turno: TurnosEntity) = guardarTodos(listOf(turno))
+    override suspend fun guardarTodos(turnos: List<TurnosEntity>) {
+        rows.value = rows.value.filter { old -> turnos.none { it.id == old.id } } + turnos
+    }
+    override suspend fun eliminarPorCliente(clienteId: String) {
+        rows.value = rows.value.filterNot { it.clienteId == clienteId }
     }
 }

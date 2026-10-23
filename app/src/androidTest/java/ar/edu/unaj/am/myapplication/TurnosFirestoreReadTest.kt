@@ -2,7 +2,7 @@ package ar.edu.unaj.am.myapplication
 
 import android.util.Log
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import ar.edu.unaj.am.myapplication.core.data.repository.FirestoreTurnoRepository
+import androidx.test.platform.app.InstrumentationRegistry
 import ar.edu.unaj.am.myapplication.core.domain.model.AppResult
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.auth.FirebaseAuth
@@ -56,7 +56,9 @@ class TurnosFirestoreReadTest {
             }
         }
         val result = runBlocking {
-            withTimeout(30000) { FirestoreTurnoRepository().observeTurnos().first() }
+            val context = InstrumentationRegistry.getInstrumentation().targetContext
+            val container = (context.applicationContext as ComposeAcademyApp).container
+            withTimeout(30000) { container.observeTurnos().first() }
         }
         assertTrue("El repositorio devolvió un error: $result", result is AppResult.Success)
         val turnos = (result as AppResult.Success).data

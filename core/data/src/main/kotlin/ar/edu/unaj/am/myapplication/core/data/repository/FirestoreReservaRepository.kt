@@ -1,6 +1,7 @@
 package ar.edu.unaj.am.myapplication.core.data.repository
 
 import ar.edu.unaj.am.myapplication.core.domain.model.*
+import ar.edu.unaj.am.myapplication.core.data.session.SesionClienteLocal
 import ar.edu.unaj.am.myapplication.core.domain.repository.ReservaRepository
 import com.google.android.gms.tasks.Task
 import com.google.firebase.Timestamp
@@ -18,7 +19,8 @@ import kotlin.coroutines.resumeWithException
 /** Traduce documentos y ejecuta operaciones atómicas. No calcula franjas de atención. */
 class FirestoreReservaRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
+    private val sesionLocal: SesionClienteLocal? = null
 ) : ReservaRepository {
     private fun uid() = requireNotNull(auth.currentUser?.uid) { "Iniciá sesión." }
     private fun slotId(barbero: String, inicio: Long) = "${barbero}_$inicio"
@@ -45,9 +47,19 @@ class FirestoreReservaRepository(
         })
     }
 
-    override suspend fun cargarCatalogo(): AppResult<CatalogoReservas> = result {
+    override suspend fun cargarCatalogo(): AppResult<CatalogoReservas> {
+        val resultado = cargarCatalogoRemoto()
+        val user = auth.currentUser?.uid
+        return if (resultado is AppResult.Error && resultado.error == DomainError.Network &&
+            user != null && sesionLocal?.estaValidado(user) == true) {
+            AppResult.Success(CatalogoReservas(false, emptyList(), emptyList(), sesionLocal.nombre(user), sinConexion = true))
+        } else resultado
+    }
+
+    private suspend fun cargarCatalogoRemoto(): AppResult<CatalogoReservas> = result {
         val uid = uid()
         if (firestore.collection("barberos").document(uid).get(Source.SERVER).awaitReserva().exists()) {
+            sesionLocal?.limpiar(uid)
             CatalogoReservas(true, emptyList(), emptyList(), "")
         } else {
             val barberos = firestore.collection("barberos").whereEqualTo("Estado", true)
@@ -57,6 +69,7 @@ class FirestoreReservaRepository(
                 .map { Servicio(it.id, it.getString("NombreCorte").orEmpty(), 40) }
             val nombre = firestore.collection("clientes").document(uid).get(Source.SERVER)
                 .awaitReserva().getString("Nombre").orEmpty()
+            sesionLocal?.guardar(uid, nombre)
             CatalogoReservas(false, barberos, servicios, nombre)
         }
     }
@@ -277,7 +290,9 @@ class FirestoreReservaRepository(
             FirebaseFirestoreException.Code.UNAVAILABLE -> "Necesitás conexión para consultar o reservar turnos."
             else -> "No se pudo confirmar la operación. Actualizá y reintentá."
         } else e.message ?: "No se pudo completar la operación."
-        AppResult.Error(DomainError.Unknown(message))
+        AppResult.Error(if (e is FirebaseFirestoreException && e.code in listOf(
+                FirebaseFirestoreException.Code.UNAVAILABLE, FirebaseFirestoreException.Code.DEADLINE_EXCEEDED))
+            DomainError.Network else DomainError.Unknown(message))
     }
 }
 

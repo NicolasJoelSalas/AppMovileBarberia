@@ -21,6 +21,8 @@ import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import ar.edu.unaj.am.myapplication.core.ui.theme.MyApplicationTheme
 import ar.edu.unaj.am.myapplication.features.auth.detail.LoginRoute
 import ar.edu.unaj.am.myapplication.features.auth.detail.LoginViewModel
@@ -49,6 +51,7 @@ class MainActivity : ComponentActivity() {
                 enableEdgeToEdge(statusBarStyle = barStyle, navigationBarStyle = barStyle)
             }
             val sessionOwner: AuthenticatedSessionViewModel = viewModel()
+            var cerrandoSesion by remember { mutableStateOf(false) }
             val loginViewModel: LoginViewModel = viewModel {
                 LoginViewModel(
                     login = container.login,
@@ -76,9 +79,26 @@ class MainActivity : ComponentActivity() {
                         // Cada sesión tiene sus propios ViewModels de navegación y datos.
                         CompositionLocalProvider(LocalViewModelStoreOwner provides sessionOwner) {
                             AppShell(container = container, onLogout = {
-                                ar.edu.unaj.am.myapplication.reminders.TurnoReminderScheduler(applicationContext).cancelAll()
-                                loginViewModel.onLogout()
-                                sessionOwner.clearSession()
+                                if (!cerrandoSesion) {
+                                    cerrandoSesion = true
+                                    val uid = container.clienteActualId()
+                                    lifecycleScope.launch {
+                                        try {
+                                            sessionOwner.clearSession()
+                                            if (uid != null) container.limpiarSesionCliente(uid)
+                                        } catch (e: kotlinx.coroutines.CancellationException) {
+                                            throw e
+                                        } catch (e: Exception) {
+                                            android.widget.Toast.makeText(applicationContext,
+                                                "No se pudo limpiar la copia local. Los datos siguen separados por cuenta.",
+                                                android.widget.Toast.LENGTH_LONG).show()
+                                        } finally {
+                                            ar.edu.unaj.am.myapplication.reminders.TurnoReminderScheduler(applicationContext).cancelAll()
+                                            loginViewModel.onLogout()
+                                            cerrandoSesion = false
+                                        }
+                                    }
+                                }
                             })
                         }
                     } else {

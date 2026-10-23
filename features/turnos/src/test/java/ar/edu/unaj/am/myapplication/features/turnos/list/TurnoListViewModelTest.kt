@@ -22,6 +22,23 @@ import org.junit.Assert.*
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TurnoListViewModelTest {
+    @Test fun `client keeps cached appointments when synchronization fails and clears warning on recovery`() = runTest {
+        val turno = Turno("local", "cliente", "barbero", "corte", Instant.parse("2026-10-08T13:00:00Z").toEpochMilli(), null, "confirmado")
+        val source = MutableStateFlow<AppResult<List<Turno>>>(AppResult.Success(listOf(turno)))
+        val repo = object : TurnoRepository {
+            override fun observeTurnos(comoCliente: Boolean) = source
+            override suspend fun marcarRealizado(turnoId: String) = AppResult.Success(Unit)
+        }
+        val vm = TurnoListViewModel(ObserveTurnosUseCase(repo), comoCliente = true,
+            filtrarSemana = FiltrarTurnosPorSemanaUseCase(Clock.fixed(
+                Instant.parse("2026-10-08T12:00:00Z"), ZoneId.of("America/Argentina/Buenos_Aires"))))
+        source.value = AppResult.Error(ar.edu.unaj.am.myapplication.core.domain.model.DomainError.Network)
+        assertEquals(listOf(turno), (vm.uiState.value as TurnosListUiState.Success).turnos)
+        assertNotNull(vm.avisoSincronizacion.value)
+        source.value = AppResult.Success(listOf(turno.copy(estado = "cancelado")))
+        assertNull(vm.avisoSincronizacion.value)
+        assertEquals("cancelado", (vm.uiState.value as TurnosListUiState.Success).turnos.single().estado)
+    }
     @Before fun setup() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
     @After fun cleanup() { Dispatchers.resetMain() }
 

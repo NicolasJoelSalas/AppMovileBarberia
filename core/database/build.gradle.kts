@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 // Módulo Kotlin puro: no conoce Android. Se compila y testea en la JVM.
 plugins {
     alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.ksp)
 }
 
 java {
@@ -18,5 +19,12 @@ kotlin {
 
 dependencies {
     implementation(project(":core:domain"))
+
+    api(libs.androidx.room3.runtime)
+    implementation(libs.androidx.sqlite.bundled)
     implementation(libs.kotlinx.coroutines.core)
+
+    ksp(libs.androidx.room3.compiler)
+    testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
 }

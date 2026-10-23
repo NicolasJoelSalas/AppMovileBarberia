@@ -19,6 +19,33 @@ import java.time.temporal.TemporalAdjusters
 import java.util.concurrent.Executor
 
 class FirestoreReservaRepositoryTest {
+    @Test fun `offline catalog fallback requires a validated client and never hides permission errors`() = runTest {
+        mockConstruction(android.util.SparseArray::class.java).use {
+            val unavailable = FirebaseFirestoreException.Code.UNAVAILABLE
+            val denied = FirebaseFirestoreException.Code.PERMISSION_DENIED
+            val session = mock(ar.edu.unaj.am.myapplication.core.data.session.SesionClienteLocal::class.java)
+            val user = mock(FirebaseUser::class.java)
+            `when`(auth.currentUser).thenReturn(user)
+            `when`(user.uid).thenReturn("ana")
+            val barbers = mock(CollectionReference::class.java)
+            val profile = mock(DocumentReference::class.java)
+            `when`(firestore.collection("barberos")).thenReturn(barbers)
+            `when`(barbers.document("ana")).thenReturn(profile)
+            val error = mock(FirebaseFirestoreException::class.java)
+            `when`(error.code).thenReturn(unavailable)
+            `when`(profile.get(Source.SERVER)).thenAnswer { throw error }
+            val cached = FirestoreReservaRepository(firestore, auth, session)
+            assertTrue(cached.cargarCatalogo() is AppResult.Error)
+            `when`(session.estaValidado("ana")).thenReturn(true)
+            `when`(session.nombre("ana")).thenReturn("Ana")
+            val catalog = (cached.cargarCatalogo() as AppResult.Success).data
+            assertTrue(catalog.sinConexion)
+            assertFalse(catalog.esBarbero)
+            assertEquals("Ana", catalog.nombreCliente)
+            `when`(error.code).thenReturn(denied)
+            assertTrue(cached.cargarCatalogo() is AppResult.Error)
+        }
+    }
     private val firestore = mock(FirebaseFirestore::class.java)
     private val auth = mock(FirebaseAuth::class.java)
     private val tx = mock(Transaction::class.java)

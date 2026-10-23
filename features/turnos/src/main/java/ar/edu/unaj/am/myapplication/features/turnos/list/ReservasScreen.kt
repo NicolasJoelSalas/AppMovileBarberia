@@ -83,6 +83,12 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            if (state.catalogo?.sinConexion == true) {
+                item {
+                    Text("Necesitás conexión para consultar disponibilidad y confirmar cambios. Tus turnos guardados siguen disponibles en Mis turnos.")
+                    TextButton(onClick = vm::cargar) { Text("Reintentar conexión") }
+                }
+            }
             state.inicioOriginal?.let { inicio ->
                 item {
                     val fecha = Instant.ofEpochMilli(inicio).atZone(zone)

@@ -56,6 +56,7 @@ fun TurnosListRoute(viewModel: TurnoListViewModel, onReservar: (() -> Unit)? = n
     onModificar: ((Turno) -> Unit)? = null,
     onRecordatorio: ((Turno) -> Unit)? = null, recordatoriosActivos: Set<String> = emptySet()) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val avisoSincronizacion by viewModel.avisoSincronizacion.collectAsStateWithLifecycle()
     val semanaOffset by viewModel.semanaOffset.collectAsStateWithLifecycle()
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.actualizarSemana() }
     val completandoId by viewModel.completandoId.collectAsStateWithLifecycle()
@@ -72,6 +73,7 @@ fun TurnosListRoute(viewModel: TurnoListViewModel, onReservar: (() -> Unit)? = n
         }
     }
     TurnosListScreen(uiState = uiState, onRetry = viewModel::onRetry, onReservar = onReservar,
+        avisoSincronizacion = avisoSincronizacion?.asMessage(),
         semanaOffset = semanaOffset, onSemanaChange = viewModel::seleccionarSemana,
         ahoraMillis = ahoraMillis, completandoId = completandoId,
         errorCompletar = errorCompletar?.asMessage(),
@@ -95,7 +97,8 @@ fun TurnosListScreen(
     onMarcarRealizado: ((Turno) -> Unit)? = null,
     onRecordatorio: ((Turno) -> Unit)? = null,
     recordatoriosActivos: Set<String> = emptySet(),
-    onCancelar: ((Turno) -> Unit)? = null, onModificar: ((Turno) -> Unit)? = null
+    onCancelar: ((Turno) -> Unit)? = null, onModificar: ((Turno) -> Unit)? = null,
+    avisoSincronizacion: String? = null
 ) {
     var filtroEstado by rememberSaveable { mutableStateOf("Todos") }
     var cancelar by remember { androidx.compose.runtime.mutableStateOf<Turno?>(null) }
@@ -130,6 +133,10 @@ fun TurnosListScreen(
             }) }
     ) { paddingValues ->
         Column(Modifier.fillMaxSize().padding(paddingValues)) {
+        avisoSincronizacion?.let {
+            Text("Mostrando los turnos guardados. $it", modifier = Modifier.padding(16.dp))
+            androidx.compose.material3.TextButton(onClick = onRetry) { Text("Actualizar") }
+        }
         SemanaSelector(semanaOffset = semanaOffset, onSemanaChange = onSemanaChange,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
         Row(

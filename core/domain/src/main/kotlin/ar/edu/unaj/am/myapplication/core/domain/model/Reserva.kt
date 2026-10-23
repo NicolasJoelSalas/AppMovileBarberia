@@ -6,7 +6,8 @@ data class CatalogoReservas(
     val esBarbero: Boolean,
     val barberos: List<Barbero>,
     val servicios: List<Servicio>,
-    val nombreCliente: String
+    val nombreCliente: String,
+    val sinConexion: Boolean = false
 )
 data class HorarioDisponible(val inicioMillis: Long, val finMillis: Long)
 data class SemanaDisponible(
