@@ -6,6 +6,7 @@
 - Cliente: Mis turnos → Cómo llegar. Abre una pantalla interna con la ubicación del barbero de ese turno, solicita ubicación y calcula un recorrido en auto.
 - Con GPS apagado se ofrece abrir la configuración de ubicación del sistema. Android requiere que el usuario lo active; la app no lo enciende silenciosamente.
 - El permiso es de primer plano, preciso o aproximado. Si se rechaza, se puede marcar el origen manualmente. La adquisición puntual se cancela al salir de la pantalla o elegir un punto manual.
+- La adquisición consulta en paralelo los proveedores disponibles de ubicación combinada (Android 12+), red y GPS (con permiso preciso). No depende exclusivamente de la recepción satelital. Puede reutilizar una posición precisa de hasta 15 segundos y, si no consigue una nueva, una posición de hasta 2 minutos; descarta posiciones antiguas o inválidas. Al volver de los ajustes de permisos, reintenta la consulta.
 - Las coordenadas del cliente se envían a OSRM al solicitar la ruta, pero no se guardan en Firestore.
 - Solo se guardan coordenadas del local, sin dirección escrita ni referencias. Si el barbero cambia de ubicación, Cómo llegar usa la ubicación actual también para los turnos existentes.
 

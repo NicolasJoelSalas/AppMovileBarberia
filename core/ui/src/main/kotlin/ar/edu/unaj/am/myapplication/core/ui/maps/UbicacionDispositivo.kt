@@ -8,6 +8,8 @@ import android.location.Location
 import android.location.LocationManager
 import android.net.Uri
 import android.os.CancellationSignal
+import android.os.Build
+import android.os.SystemClock
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -48,7 +50,7 @@ fun rememberUbicacionDispositivo(onUbicacion: (Coordenadas) -> Unit): ControlUbi
             mensaje = "Permití el acceso a la ubicación o elegí un punto en el mapa."
             return
         }
-        if (!manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
+        if (!LocationManagerCompat.isLocationEnabled(manager)) {
             mostrarActivarGps = true
             return
         }
@@ -57,16 +59,11 @@ fun rememberUbicacionDispositivo(onUbicacion: (Coordenadas) -> Unit): ControlUbi
         trabajo = scope.launch {
             try {
                 val preciso = permitido(Manifest.permission.ACCESS_FINE_LOCATION)
-                val proveedor = if (preciso) LocationManager.GPS_PROVIDER
-                    else if (manager.isProviderEnabled(LocationManager.NETWORK_PROVIDER)) LocationManager.NETWORK_PROVIDER
-                    else null
-                val location = if (proveedor == null) null else withTimeoutOrNull(25_000) {
-                    obtenerPosicion(manager, proveedor, ContextCompat.getMainExecutor(context))
-                }
-                if (location == null) mensaje = "No se pudo obtener tu ubicación. Reintentá al aire libre o elegí un punto en el mapa."
+                val location = obtenerUbicacionDisponible(manager, preciso, ContextCompat.getMainExecutor(context))
+                if (location == null) mensaje = "El dispositivo todavía no pudo determinar tu ubicación. Reintentá o elegí un punto en el mapa."
                 else {
-                    alUbicar(Coordenadas(location.latitude, location.longitude))
-                    if (!preciso || location.accuracy > 100) mensaje = "Ubicación aproximada. Podés ajustar el punto tocando el mapa."
+                    alUbicar(location.coordenadas)
+                    if (!preciso || location.precisionMetros > 100) mensaje = "Ubicación aproximada. Podés ajustar el punto tocando el mapa."
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -78,8 +75,11 @@ fun rememberUbicacionDispositivo(onUbicacion: (Coordenadas) -> Unit): ControlUbi
         }
     }
     val configuracionGps = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        if (manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) localizar()
-        else mensaje = "El GPS sigue apagado. Podés activarlo o elegir un punto en el mapa."
+        if (LocationManagerCompat.isLocationEnabled(manager)) localizar()
+        else mensaje = "La ubicación sigue apagada. Podés activarla o elegir un punto en el mapa."
+    }
+    val configuracionPermisos = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        localizar()
     }
     val permisos = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
         if (result.values.any { it }) localizar()
@@ -91,7 +91,7 @@ fun rememberUbicacionDispositivo(onUbicacion: (Coordenadas) -> Unit): ControlUbi
     if (mostrarActivarGps) AlertDialog(
         onDismissRequest = { mostrarActivarGps = false },
         title = { Text("Activar ubicación") },
-        text = { Text("Activá el GPS del dispositivo para usar tu posición en el mapa.") },
+        text = { Text("Activá la ubicación del dispositivo para usar tu posición en el mapa.") },
         confirmButton = { TextButton(onClick = {
             mostrarActivarGps = false
             configuracionGps.launch(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
@@ -105,9 +105,33 @@ fun rememberUbicacionDispositivo(onUbicacion: (Coordenadas) -> Unit): ControlUbi
         if (permitido(Manifest.permission.ACCESS_FINE_LOCATION) || permitido(Manifest.permission.ACCESS_COARSE_LOCATION)) localizar()
         else permisos.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
     }, cancelar = { trabajo?.cancel(); mensaje = null }, abrirPermisos = {
-        context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
+        configuracionPermisos.launch(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
     })
 }
+
+@SuppressLint("MissingPermission")
+internal suspend fun obtenerUbicacionDisponible(
+    manager: LocationManager,
+    preciso: Boolean,
+    executor: java.util.concurrent.Executor
+): PosicionDispositivo? {
+    val proveedores = buildList {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) add(LocationManager.FUSED_PROVIDER)
+        add(LocationManager.NETWORK_PROVIDER)
+        if (preciso) add(LocationManager.GPS_PROVIDER)
+    }.filter { proveedor ->
+        LocationManagerCompat.hasProvider(manager, proveedor) && manager.isProviderEnabled(proveedor)
+    }
+    return buscarUbicacion(proveedores,
+        ultimaPosicion = { manager.getLastKnownLocation(it)?.aPosicion() },
+        obtenerActual = { obtenerPosicion(manager, it, executor)?.aPosicion() },
+        reloj = SystemClock::elapsedRealtime)
+}
+
+private fun Location.aPosicion() = PosicionDispositivo(
+    Coordenadas(latitude, longitude), if (hasAccuracy()) accuracy else Float.MAX_VALUE,
+    elapsedRealtimeNanos / 1_000_000
+)
 
 @SuppressLint("MissingPermission")
 private suspend fun obtenerPosicion(manager: LocationManager, proveedor: String, executor: java.util.concurrent.Executor): Location? =
