@@ -7,7 +7,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withTimeoutOrNull
 
-internal data class PosicionDispositivo(
+data class PosicionDispositivo(
     val coordenadas: Coordenadas,
     val precisionMetros: Float,
     val instanteMonotonicoMillis: Long

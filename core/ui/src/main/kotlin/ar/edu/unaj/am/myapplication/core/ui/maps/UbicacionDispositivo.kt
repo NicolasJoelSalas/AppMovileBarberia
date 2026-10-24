@@ -35,6 +35,12 @@ class ControlUbicacion internal constructor(
 /** Adquiere una posición puntual; deja de usar el sensor al salir de la pantalla. */
 @Composable
 fun rememberUbicacionDispositivo(onUbicacion: (Coordenadas) -> Unit): ControlUbicacion {
+    val callback by rememberUpdatedState(onUbicacion)
+    return rememberUbicacionDispositivoDetallada { callback(it.coordenadas) }
+}
+
+@Composable
+fun rememberUbicacionDispositivoDetallada(onUbicacion: (PosicionDispositivo) -> Unit): ControlUbicacion {
     val context = LocalContext.current
     val manager = remember { context.getSystemService(LocationManager::class.java) }
     val scope = rememberCoroutineScope()
@@ -62,7 +68,7 @@ fun rememberUbicacionDispositivo(onUbicacion: (Coordenadas) -> Unit): ControlUbi
                 val location = obtenerUbicacionDisponible(manager, preciso, ContextCompat.getMainExecutor(context))
                 if (location == null) mensaje = "El dispositivo todavía no pudo determinar tu ubicación. Reintentá o elegí un punto en el mapa."
                 else {
-                    alUbicar(location.coordenadas)
+                    alUbicar(location)
                     if (!preciso || location.precisionMetros > 100) mensaje = "Ubicación aproximada. Podés ajustar el punto tocando el mapa."
                 }
             } catch (e: CancellationException) {
@@ -128,7 +134,7 @@ internal suspend fun obtenerUbicacionDisponible(
         reloj = SystemClock::elapsedRealtime)
 }
 
-private fun Location.aPosicion() = PosicionDispositivo(
+internal fun Location.aPosicion() = PosicionDispositivo(
     Coordenadas(latitude, longitude), if (hasAccuracy()) accuracy else Float.MAX_VALUE,
     elapsedRealtimeNanos / 1_000_000
 )
