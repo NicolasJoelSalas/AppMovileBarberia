@@ -94,19 +94,19 @@ class ComoLlegarViewModelTest {
         assertEquals(1000.0, vm.uiState.value.distanciaRestanteMetros!!, 0.01)
     }
 
-    @Test fun `confirma desvio y respeta minimo de quince segundos entre consultas`() = runTest(dispatcher) {
+    @Test fun `confirma desvio y respeta minimo de diez segundos entre consultas`() = runTest(dispatcher) {
         val rutas = RutasSeguimiento()
         val vm = modelo(rutas)
         advanceUntilIdle()
         vm.iniciarSeguimiento(Coordenadas(0.0, 0.0), 10f, 0)
         advanceUntilIdle()
-        advanceTimeBy(5_000)
+        advanceTimeBy(3_000)
         vm.actualizarPosicion(Coordenadas(0.001, 0.005), 10f, testScheduler.currentTime)
-        advanceTimeBy(5_000)
+        advanceTimeBy(3_000)
         vm.actualizarPosicion(Coordenadas(0.001, 0.006), 10f, testScheduler.currentTime)
         advanceUntilIdle()
         assertEquals(1, rutas.consultas)
-        advanceTimeBy(5_000)
+        advanceTimeBy(4_000)
         vm.actualizarPosicion(Coordenadas(0.001, 0.007), 10f, testScheduler.currentTime)
         advanceUntilIdle()
         assertEquals(2, rutas.consultas)

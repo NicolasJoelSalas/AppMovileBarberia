@@ -84,8 +84,8 @@ class ComoLlegarViewModel(
         }
         val desde = primerDesvio
         if (desde == null) { primerDesvio = instante; return }
-        val puedeConsultar = ultimaConsulta?.let { reloj() - it >= 15_000 } ?: true
-        if (instante - desde >= 4_000 && puedeConsultar && consulta?.isActive != true) {
+        val puedeConsultar = ultimaConsulta?.let { reloj() - it >= 10_000 } ?: true
+        if (instante - desde >= 3_000 && puedeConsultar && consulta?.isActive != true) {
             primerDesvio = null
             calcularRuta()
         }

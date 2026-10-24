@@ -80,8 +80,8 @@ internal fun observarPosiciones(context: Context) = callbackFlow {
         add(LocationManager.NETWORK_PROVIDER)
         if (preciso) add(LocationManager.GPS_PROVIDER)
     }.filter { LocationManagerCompat.hasProvider(manager, it) && manager.isProviderEnabled(it) }
-    val request = LocationRequestCompat.Builder(5_000)
-        .setMinUpdateIntervalMillis(5_000).setMinUpdateDistanceMeters(10f)
+    val request = LocationRequestCompat.Builder(1_000)
+        .setMinUpdateIntervalMillis(1_000).setMinUpdateDistanceMeters(1f)
         .setQuality(if (preciso) LocationRequestCompat.QUALITY_HIGH_ACCURACY else LocationRequestCompat.QUALITY_BALANCED_POWER_ACCURACY)
         .build()
     val registrados = mutableListOf<LocationListenerCompat>()
