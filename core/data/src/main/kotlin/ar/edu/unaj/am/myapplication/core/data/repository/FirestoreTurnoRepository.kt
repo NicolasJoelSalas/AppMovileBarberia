@@ -19,8 +19,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.flow.mapLatest
-import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import com.google.firebase.firestore.DocumentReference
@@ -39,12 +39,13 @@ class FirestoreTurnoRepository(
     private val cacheVersions = mutableMapOf<String, Long>()
 
     /** Invalida escrituras pendientes antes de borrar los datos de la sesión. */
-    suspend fun limpiarSesionCliente(uid: String) = cacheMutex.withLock {
+    suspend fun limpiarSesion(uid: String) = cacheMutex.withLock {
         cacheVersions[uid] = (cacheVersions[uid] ?: 0L) + 1
         turnoDao.eliminarPorCliente(uid)
+        turnoDao.eliminarPorBarbero(uid)
     }
 
-    override fun observeTurnos(comoCliente: Boolean) = if (!comoCliente) observarRemotos(false) else channelFlow {
+    override fun observeTurnos(comoCliente: Boolean) = channelFlow {
         val uid = auth.currentUser?.uid
         if (uid == null) {
             send(AppResult.Error(DomainError.Unknown("Iniciá sesión para consultar tus turnos.")))
@@ -54,7 +55,8 @@ class FirestoreTurnoRepository(
         val errorSincronizacion = MutableStateFlow<DomainError?>(null)
         val local = launch {
             try {
-                turnoDao.observarPorCliente(uid).combine(errorSincronizacion) { entities, error -> entities to error }
+                val guardados = if (comoCliente) turnoDao.observarPorCliente(uid) else turnoDao.observarPorBarbero(uid)
+                guardados.combine(errorSincronizacion) { entities, error -> entities to error }
                     .collect { (entities, error) ->
                         if (auth.currentUser?.uid == uid) {
                             send(AppResult.Success(entities.map { it.toDomain() }))
@@ -68,27 +70,50 @@ class FirestoreTurnoRepository(
             }
         }
         try {
-            observarRemotos(true).collect { result ->
+            observarRemotos(comoCliente).collect { result ->
                 when (result) {
                     is AppResult.Success -> cacheMutex.withLock {
                         if ((cacheVersions[uid] ?: 0L) == version && auth.currentUser?.uid == uid) {
-                            turnoDao.reemplazarPorCliente(uid, result.data.map { it.toEntity() })
-                            errorSincronizacion.value = null
+                            val guardados = if (comoCliente) turnoDao.observarPorCliente(uid).first()
+                                else turnoDao.observarPorBarbero(uid).first()
+                            val anteriores = guardados.associateBy { it.id }
+                            // Guardar el turno antes de consultar documentos auxiliares por red.
+                            val entities = result.data.map { turno -> turno.copy(
+                                clienteNombre = anteriores[turno.id]?.takeIf { it.clienteId == turno.clienteId }?.clienteNombre.orEmpty(),
+                                servicioNombre = anteriores[turno.id]?.takeIf { it.servicioId == turno.servicioId }?.servicioNombre.orEmpty()
+                            ).toEntity() }
+                            if (comoCliente) turnoDao.reemplazarPorCliente(uid, entities)
+                            else turnoDao.reemplazarPorBarbero(uid, entities)
                         }
                     }
                     is AppResult.Error -> errorSincronizacion.value = result.error
+                }
+                if (result is AppResult.Success) {
+                    val guardados = cacheMutex.withLock {
+                        if ((cacheVersions[uid] ?: 0L) != version || auth.currentUser?.uid != uid) return@collect
+                        if (comoCliente) turnoDao.observarPorCliente(uid).first() else turnoDao.observarPorBarbero(uid).first()
+                    }
+                    val (turnos, falloNombres) = completarNombres(guardados.map { it.toDomain() })
+                    cacheMutex.withLock {
+                        if ((cacheVersions[uid] ?: 0L) == version && auth.currentUser?.uid == uid) {
+                            // No sobrescribir estados o importes nuevos con una lectura auxiliar más antigua.
+                            turnoDao.actualizarNombres(turnos.map { it.toEntity() })
+                            errorSincronizacion.value = if (falloNombres) DomainError.Unknown(
+                                "No se pudieron actualizar algunos nombres. Se conservan los turnos guardados.") else null
+                        }
+                    }
                 }
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            send(AppResult.Error(DomainError.Unknown("No se pudieron actualizar tus turnos guardados. Reintentá con conexión.")))
+            errorSincronizacion.value = DomainError.Unknown("No se pudieron actualizar tus turnos guardados. Reintentá con conexión.")
+            awaitCancellation()
         } finally {
             local.cancel()
         }
     }
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     private fun observarRemotos(comoCliente: Boolean) = callbackFlow<AppResult<List<Turno>>> {
         val uid = auth.currentUser?.uid
         if (uid == null) {
@@ -113,7 +138,7 @@ class FirestoreTurnoRepository(
                 return@addSnapshotListener
             }
             // La caché parcial de Firebase no debe reemplazar la copia completa de Room.
-            if (comoCliente && (snapshot == null || snapshot.metadata.isFromCache || snapshot.metadata.hasPendingWrites())) {
+            if (snapshot == null || snapshot.metadata.isFromCache || snapshot.metadata.hasPendingWrites()) {
                 if (snapshot?.metadata?.isFromCache == true) {
                     trySend(AppResult.Error(DomainError.Network))
                 }
@@ -144,35 +169,22 @@ class FirestoreTurnoRepository(
             }
         }
         awaitClose { registration.remove() }
-    }.mapLatest { result ->
-        when (result) {
-            is AppResult.Error -> result
-            is AppResult.Success -> try {
-                // Una lectura por ID en cada actualización, aunque haya varios turnos del mismo cliente.
-                val clientes = result.data.map { it.clienteId }.filter { it.isNotBlank() }.distinct()
-                    .associateWith { id ->
-                        firestore.collection("clientes").document(id).readDocument()
-                            .getString("Nombre").orEmpty()
-                    }
-                val servicios = result.data.map { it.servicioId }.filter { it.isNotBlank() }.distinct()
-                    .associateWith { id ->
-                        firestore.collection("servicios").document(id).readDocument()
-                    }
-                AppResult.Success(result.data.map { turno ->
-                    turno.copy(
-                        clienteNombre = clientes[turno.clienteId].orEmpty(),
-                        servicioNombre = servicios[turno.servicioId]?.getString("NombreCorte").orEmpty()
-                    )
-                })
-            } catch (exception: CancellationException) {
-                throw exception
-            } catch (exception: Exception) {
-                AppResult.Error(DomainError.Unknown(
-                    "No se pudieron cargar los nombres de clientes o servicios. " +
-                        "Revisá la conexión, los campos Nombre y NombreCorte y las reglas de Firestore."
-                ))
-            }
-        }
+    }
+
+    private suspend fun completarNombres(turnos: List<Turno>): Pair<List<Turno>, Boolean> {
+        var fallo = false
+        suspend fun nombre(coleccion: String, id: String, campo: String): String? = try {
+            firestore.collection(coleccion).document(id).readDocument().getString(campo).orEmpty()
+        } catch (e: CancellationException) { throw e
+        } catch (e: Exception) { fallo = true; null }
+        val clientes = turnos.map { it.clienteId }.filter { it.isNotBlank() }.distinct()
+            .associateWith { nombre("clientes", it, "Nombre") }
+        val servicios = turnos.map { it.servicioId }.filter { it.isNotBlank() }.distinct()
+            .associateWith { nombre("servicios", it, "NombreCorte") }
+        return turnos.map { it.copy(
+            clienteNombre = clientes[it.clienteId] ?: it.clienteNombre,
+            servicioNombre = servicios[it.servicioId] ?: it.servicioNombre
+        ) } to fallo
     }
     override suspend fun marcarRealizado(turnoId: String): AppResult<Unit> = try {
         val uid = auth.currentUser?.uid ?: error("Iniciá sesión nuevamente.")

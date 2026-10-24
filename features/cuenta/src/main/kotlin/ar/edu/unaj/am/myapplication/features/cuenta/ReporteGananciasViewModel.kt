@@ -27,7 +27,7 @@ class ReporteGananciasViewModel(
 
     fun cargar() {
         job?.cancel()
-        state.update { it.copy(cargando = true, error = null, reporte = null) }
+        state.update { it.copy(cargando = it.reporte == null, error = null) }
         job = viewModelScope.launch {
             observar(comoCliente = false).collect { result ->
                 when (result) {
@@ -36,7 +36,7 @@ class ReporteGananciasViewModel(
                         state.update { it.copy(cargando = false, error = null,
                             reporte = calcular(turnos, it.mensual, it.offset)) }
                     }
-                    is AppResult.Error -> state.update { it.copy(cargando = false, error = result.error, reporte = null) }
+                    is AppResult.Error -> state.update { it.copy(cargando = false, error = result.error) }
                 }
             }
         }
@@ -55,7 +55,7 @@ class ReporteGananciasViewModel(
         actualizar()
     }
     fun actualizar() {
-        if (!state.value.cargando && state.value.error == null)
+        if (!state.value.cargando && state.value.reporte != null)
             state.update { it.copy(reporte = calcular(turnos, it.mensual, it.offset)) }
     }
 }

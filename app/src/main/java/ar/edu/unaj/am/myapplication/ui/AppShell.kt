@@ -67,10 +67,8 @@ fun AppShell(
                             turnosParaAvisos = result.data
                         }
                     }
-                    is AppResult.Error -> {
-                        turnosPendientes = 0
-                        turnosParaAvisos = null
-                    }
+                    // Una falla de sincronización no invalida los turnos ya leídos de Room.
+                    is AppResult.Error -> Unit
                 }
             }
         }

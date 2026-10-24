@@ -12,6 +12,38 @@ import org.junit.Test
 import java.nio.file.Files
 
 class AppDatabaseTest {
+    @Test fun `barber appointments persist across reopening and replacement preserves other barbers`() = runTest {
+        val folder = Files.createTempDirectory("turnos-barbero-room").toFile()
+        val file = folder.resolve("test.db")
+        fun open() = Room.databaseBuilder<AppDatabase>(file.absolutePath).setDriver(BundledSQLiteDriver()).build()
+        val propio = TurnosEntity("propio", "cliente", "barbero", "corte", 1000L, 2401000L,
+            "confirmado", "Ana", "Corte", 120000L)
+        val ajeno = propio.copy(id = "ajeno", barberoId = "otro-barbero")
+        try {
+            val first = open()
+            try { first.turnoDao().guardarTodos(listOf(propio, ajeno)) } finally { first.close() }
+            val reopened = open()
+            try {
+                val dao = reopened.turnoDao()
+                assertEquals(listOf(propio), dao.observarPorBarbero("barbero").first())
+                assertEquals("Ana", dao.observarPorBarbero("barbero").first().single().clienteNombre)
+                dao.reemplazarPorBarbero("barbero", listOf(propio.copy(estado = "realizado")))
+                dao.actualizarNombres(listOf(propio.copy(clienteNombre = "Nombre actualizado", estado = "confirmado")))
+                assertEquals("realizado", dao.observarPorBarbero("barbero").first().single().estado)
+                assertEquals("Nombre actualizado", dao.observarPorBarbero("barbero").first().single().clienteNombre)
+                try {
+                    dao.reemplazarPorBarbero("barbero", listOf(ajeno))
+                    fail("No debe aceptar turnos ajenos")
+                } catch (_: IllegalArgumentException) { }
+                dao.reemplazarPorBarbero("barbero", emptyList())
+                assertTrue(dao.observarPorBarbero("barbero").first().isEmpty())
+                assertEquals(listOf(ajeno), dao.observarPorBarbero("otro-barbero").first())
+            } finally { reopened.close() }
+        } finally {
+            folder.listFiles()?.forEach { it.delete() }
+            folder.delete()
+        }
+    }
     @Test fun `persists appointments on reopen and isolates clients`() = runTest {
         val folder = Files.createTempDirectory("turnos-room").toFile()
         val file = folder.resolve("test.db")

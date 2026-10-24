@@ -15,6 +15,15 @@ import org.mockito.ArgumentMatchers.*
 import org.mockito.Mockito.*
 
 class FirestoreClienteRepositoryTest {
+    @Test fun `previously validated barber can reopen without creating a client profile`() = runTest {
+        val session = mock(ar.edu.unaj.am.myapplication.core.data.session.SesionBarberoLocal::class.java)
+        `when`(auth.currentUser).thenReturn(user)
+        `when`(user.uid).thenReturn("barbero")
+        `when`(session.estaValidado("barbero")).thenReturn(true)
+        val cached = FirestoreClienteRepository(firestore, auth, sesionBarberoLocal = session)
+        assertTrue(cached.ensureCurrentProfile() is AppResult.Success)
+        verifyNoInteractions(firestore)
+    }
     @Test fun `previously validated client can reopen without Firestore`() = runTest {
         val session = mock(ar.edu.unaj.am.myapplication.core.data.session.SesionClienteLocal::class.java)
         `when`(auth.currentUser).thenReturn(user)
