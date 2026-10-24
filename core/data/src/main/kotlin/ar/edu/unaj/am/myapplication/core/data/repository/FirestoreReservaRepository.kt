@@ -2,6 +2,7 @@ package ar.edu.unaj.am.myapplication.core.data.repository
 
 import ar.edu.unaj.am.myapplication.core.domain.model.*
 import ar.edu.unaj.am.myapplication.core.data.session.SesionClienteLocal
+import ar.edu.unaj.am.myapplication.core.data.session.SesionBarberoLocal
 import ar.edu.unaj.am.myapplication.core.domain.repository.ReservaRepository
 import com.google.android.gms.tasks.Task
 import com.google.firebase.Timestamp
@@ -20,7 +21,8 @@ import kotlin.coroutines.resumeWithException
 class FirestoreReservaRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
-    private val sesionLocal: SesionClienteLocal? = null
+    private val sesionLocal: SesionClienteLocal? = null,
+    private val sesionBarberoLocal: SesionBarberoLocal? = null
 ) : ReservaRepository {
     private fun uid() = requireNotNull(auth.currentUser?.uid) { "Iniciá sesión." }
     private fun slotId(barbero: String, inicio: Long) = "${barbero}_$inicio"
@@ -50,6 +52,10 @@ class FirestoreReservaRepository(
     override suspend fun cargarCatalogo(): AppResult<CatalogoReservas> {
         val resultado = cargarCatalogoRemoto()
         val user = auth.currentUser?.uid
+        if (resultado is AppResult.Error && resultado.error == DomainError.Network &&
+            user != null && sesionBarberoLocal?.estaValidado(user) == true) {
+            return AppResult.Success(CatalogoReservas(true, emptyList(), emptyList(), "", sinConexion = true))
+        }
         return if (resultado is AppResult.Error && resultado.error == DomainError.Network &&
             user != null && sesionLocal?.estaValidado(user) == true) {
             AppResult.Success(CatalogoReservas(false, emptyList(), emptyList(), sesionLocal.nombre(user), sinConexion = true))
@@ -58,10 +64,15 @@ class FirestoreReservaRepository(
 
     private suspend fun cargarCatalogoRemoto(): AppResult<CatalogoReservas> = result {
         val uid = uid()
-        if (firestore.collection("barberos").document(uid).get(Source.SERVER).awaitReserva().exists()) {
+        val barbero = firestore.collection("barberos").document(uid).get(Source.SERVER).awaitReserva()
+        check(auth.currentUser?.uid == uid) { "La sesión cambió. Iniciá sesión nuevamente." }
+        if (barbero.exists()) {
             sesionLocal?.limpiar(uid)
+            if (barbero.getBoolean("Estado") == true) sesionBarberoLocal?.guardar(uid)
+            else sesionBarberoLocal?.limpiar(uid)
             CatalogoReservas(true, emptyList(), emptyList(), "")
         } else {
+            sesionBarberoLocal?.limpiar(uid)
             val barberos = firestore.collection("barberos").whereEqualTo("Estado", true)
                 .get(Source.SERVER).awaitReserva().documents.map { Barbero(it.id, it.getString("Nombre").orEmpty()) }
             val servicios = firestore.collection("servicios").get(Source.SERVER).awaitReserva().documents

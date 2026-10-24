@@ -95,7 +95,7 @@ class TurnoListViewModel(
     fun onRetry() {
         observation?.cancel()
         mutableAvisoSincronizacion.value = null
-        mutableUiState.value = TurnosListUiState.Loading
+        if (mutableUiState.value !is TurnosListUiState.Success) mutableUiState.value = TurnosListUiState.Loading
         observation = viewModelScope.launch {
             observeTurnos(comoCliente).collect { result ->
                 mutableUiState.value = when (result) {
@@ -105,7 +105,7 @@ class TurnoListViewModel(
                         mutableTurnosParaRecordatorios.value = result.data
                         TurnosListUiState.Success(filtrarSemana(result.data, mutableSemanaOffset.value))
                     }
-                    is AppResult.Error -> if (comoCliente && mutableUiState.value is TurnosListUiState.Success) {
+                    is AppResult.Error -> if (mutableUiState.value is TurnosListUiState.Success) {
                         mutableAvisoSincronizacion.value = result.error
                         mutableUiState.value
                     } else TurnosListUiState.Error(result.error)

@@ -10,6 +10,30 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface TurnoDao {
+    @Query("""
+        UPDATE turnos SET clienteNombre = :clienteNombre, servicioNombre = :servicioNombre
+        WHERE id = :turnoId AND clienteId = :clienteId AND barberoId = :barberoId AND servicioId = :servicioId
+    """)
+    suspend fun actualizarNombresDeTurno(turnoId: String, clienteId: String, barberoId: String,
+        servicioId: String, clienteNombre: String, servicioNombre: String)
+
+    @Transaction
+    suspend fun actualizarNombres(turnos: List<TurnosEntity>) {
+        turnos.forEach { actualizarNombresDeTurno(it.id, it.clienteId, it.barberoId, it.servicioId,
+            it.clienteNombre, it.servicioNombre) }
+    }
+    @Query("SELECT * FROM turnos WHERE barberoId = :barberoId ORDER BY inicioMillis ASC")
+    fun observarPorBarbero(barberoId: String): Flow<List<TurnosEntity>>
+
+    @Query("DELETE FROM turnos WHERE barberoId = :barberoId")
+    suspend fun eliminarPorBarbero(barberoId: String)
+
+    @Transaction
+    suspend fun reemplazarPorBarbero(barberoId: String, turnos: List<TurnosEntity>) {
+        require(turnos.all { it.barberoId == barberoId })
+        eliminarPorBarbero(barberoId)
+        guardarTodos(turnos)
+    }
 
     @Query("""
         SELECT * FROM turnos

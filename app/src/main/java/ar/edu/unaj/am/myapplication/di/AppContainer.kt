@@ -44,6 +44,7 @@ class AppContainer(context: Context) {
         NetworkFactory.createRutasApi(BuildConfig.RUTAS_BASE_URL))
     val calcularRutaBarberia = ar.edu.unaj.am.myapplication.core.domain.usecase.CalcularRutaBarberiaUseCase(rutaRepository)
     private val sesionClienteLocal = ar.edu.unaj.am.myapplication.core.data.session.SesionClienteLocal(context)
+    private val sesionBarberoLocal = ar.edu.unaj.am.myapplication.core.data.session.SesionBarberoLocal(context)
     private val perfilRepository = FirestorePerfilRepository()
     val obtenerMiPerfil = ObtenerMiPerfilUseCase(perfilRepository)
     val actualizarMiNombre = ActualizarMiNombreUseCase(perfilRepository)
@@ -78,7 +79,8 @@ class AppContainer(context: Context) {
     val eliminarPublicacion = EliminarPublicacionUseCase(publicacionRepository)
     val modificarDescripcionPublicacion = ModificarDescripcionPublicacionUseCase(publicacionRepository)
 
-    private val reservaRepository: ReservaRepository = FirestoreReservaRepository(sesionLocal = sesionClienteLocal)
+    private val reservaRepository: ReservaRepository = FirestoreReservaRepository(
+        sesionLocal = sesionClienteLocal, sesionBarberoLocal = sesionBarberoLocal)
     val cargarCatalogoReservas = CargarCatalogoReservasUseCase(reservaRepository)
     val consultarSemana = ConsultarSemanaUseCase(reservaRepository)
     val cancelarTurno = ar.edu.unaj.am.myapplication.core.domain.usecase.CancelarTurnoUseCase(reservaRepository)
@@ -99,7 +101,8 @@ class AppContainer(context: Context) {
     val logout = LogoutUseCase(authRepository)
     val loginWithGoogle = LoginWithGoogleUseCase(authRepository)
     val register = RegisterUseCase(authRepository)
-    private val clienteRepository: ClienteRepository = FirestoreClienteRepository(sesionLocal = sesionClienteLocal)
+    private val clienteRepository: ClienteRepository = FirestoreClienteRepository(
+        sesionLocal = sesionClienteLocal, sesionBarberoLocal = sesionBarberoLocal)
     val ensureClienteProfile = EnsureClienteProfileUseCase(clienteRepository)
 
 
@@ -107,14 +110,15 @@ class AppContainer(context: Context) {
 
     fun clienteActualId(): String? = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
 
-    suspend fun limpiarSesionCliente(uid: String) {
+    suspend fun limpiarSesion(uid: String) {
         try {
-            turnoRepository.limpiarSesionCliente(uid)
+            turnoRepository.limpiarSesion(uid)
         } finally {
             try {
                 publicacionesLocales.limpiar(uid)
             } finally {
                 sesionClienteLocal.limpiar(uid)
+                sesionBarberoLocal.limpiar(uid)
             }
         }
     }

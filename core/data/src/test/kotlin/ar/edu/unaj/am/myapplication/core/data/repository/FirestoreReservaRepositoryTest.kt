@@ -19,6 +19,50 @@ import java.time.temporal.TemporalAdjusters
 import java.util.concurrent.Executor
 
 class FirestoreReservaRepositoryTest {
+    @Test fun `only an enabled remote barber is remembered for offline access`() = runTest {
+        setup()
+        `when`(auth.currentUser!!.uid).thenReturn("barbero")
+        val session = mock(ar.edu.unaj.am.myapplication.core.data.session.SesionBarberoLocal::class.java)
+        val clientSession = mock(ar.edu.unaj.am.myapplication.core.data.session.SesionClienteLocal::class.java)
+        val ref = firestore.collection("barberos").document("barbero")
+        val profile = docs.getValue("barberos/barbero")
+        `when`(profile.exists()).thenReturn(true)
+        doReturn(completed(profile)).`when`(ref).get(Source.SERVER)
+        val cached = FirestoreReservaRepository(firestore, auth, clientSession, session)
+        assertTrue((cached.cargarCatalogo() as AppResult.Success).data.esBarbero)
+        verify(session).guardar("barbero")
+        verify(clientSession).limpiar("barbero")
+        `when`(profile.getBoolean("Estado")).thenReturn(false)
+        cached.cargarCatalogo()
+        verify(session).limpiar("barbero")
+        verify(session, times(1)).guardar("barbero")
+        verify(clientSession, never()).guardar(anyString(), anyString())
+    }
+    @Test fun `offline barber role requires validation and does not hide permission denial`() = runTest {
+        mockConstruction(android.util.SparseArray::class.java).use {
+            val unavailable = FirebaseFirestoreException.Code.UNAVAILABLE
+            val denied = FirebaseFirestoreException.Code.PERMISSION_DENIED
+            val session = mock(ar.edu.unaj.am.myapplication.core.data.session.SesionBarberoLocal::class.java)
+            val user = mock(FirebaseUser::class.java)
+            `when`(auth.currentUser).thenReturn(user)
+            `when`(user.uid).thenReturn("barbero")
+            val barbers = mock(CollectionReference::class.java)
+            val profile = mock(DocumentReference::class.java)
+            `when`(firestore.collection("barberos")).thenReturn(barbers)
+            `when`(barbers.document("barbero")).thenReturn(profile)
+            val error = mock(FirebaseFirestoreException::class.java)
+            `when`(error.code).thenReturn(unavailable)
+            `when`(profile.get(Source.SERVER)).thenAnswer { throw error }
+            val cached = FirestoreReservaRepository(firestore, auth, sesionBarberoLocal = session)
+            assertTrue(cached.cargarCatalogo() is AppResult.Error)
+            `when`(session.estaValidado("barbero")).thenReturn(true)
+            val catalog = (cached.cargarCatalogo() as AppResult.Success).data
+            assertTrue(catalog.esBarbero)
+            assertTrue(catalog.sinConexion)
+            `when`(error.code).thenReturn(denied)
+            assertTrue(cached.cargarCatalogo() is AppResult.Error)
+        }
+    }
     @Test fun `offline catalog fallback requires a validated client and never hides permission errors`() = runTest {
         mockConstruction(android.util.SparseArray::class.java).use {
             val unavailable = FirebaseFirestoreException.Code.UNAVAILABLE

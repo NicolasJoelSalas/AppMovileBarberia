@@ -79,7 +79,7 @@ fun ReporteGananciasContent(state: ReporteGananciasUiState, onPeriodo: (Boolean)
         }
     }
     state.error?.let {
-        Text(it.asMessage(), color = colors.error)
+        Text(if (state.reporte != null) "Mostrando los turnos guardados. ${it.asMessage()}" else it.asMessage(), color = colors.error)
         OutlinedButton(onClick = onReintentar) { Text("Reintentar") }
     }
     state.reporte?.let { reporte ->

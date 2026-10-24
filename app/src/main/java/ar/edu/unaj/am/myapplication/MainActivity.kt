@@ -75,7 +75,9 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    if (loginState.isAuthenticated) {
+                    if (cerrandoSesion) {
+                        ar.edu.unaj.am.myapplication.core.ui.components.LoadingContent(message = "Cerrando sesión…")
+                    } else if (loginState.isAuthenticated) {
                         // Cada sesión tiene sus propios ViewModels de navegación y datos.
                         CompositionLocalProvider(LocalViewModelStoreOwner provides sessionOwner) {
                             AppShell(container = container, onLogout = {
@@ -85,7 +87,7 @@ class MainActivity : ComponentActivity() {
                                     lifecycleScope.launch {
                                         try {
                                             sessionOwner.clearSession()
-                                            if (uid != null) container.limpiarSesionCliente(uid)
+                                            if (uid != null) container.limpiarSesion(uid)
                                         } catch (e: kotlinx.coroutines.CancellationException) {
                                             throw e
                                         } catch (e: Exception) {

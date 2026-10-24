@@ -11,6 +11,8 @@ import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
+import java.io.IOException
 
 import ar.edu.unaj.am.myapplication.core.domain.model.AppResult
 import com.google.firebase.Timestamp
@@ -37,6 +39,104 @@ import org.mockito.Mockito.*
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class FirestoreTurnoRepositoryTest {
+    @Test fun `online data survives failed name refresh wifi loss and reopening offline`() = runTest {
+        val doc = document("visto", 1000, "confirmado")
+        val snapshot = mock(QuerySnapshot::class.java)
+        `when`(snapshot.documents).thenReturn(listOf(doc))
+        respond(snapshot)
+        val events = mutableListOf<AppResult<List<ar.edu.unaj.am.myapplication.core.domain.model.Turno>>>()
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) {
+            repository.observeTurnos(false).collect { events += it }
+        }
+        runCurrent()
+        assertEquals("Nicolás Salas", dao.rows.value.single().clienteNombre)
+        assertEquals("Corte de cabello", dao.rows.value.single().servicioNombre)
+
+        `when`(clienteReference.get()).thenAnswer { throw IOException("Sin conexión") }
+        `when`(servicioReference.get()).thenAnswer { throw IOException("Sin conexión") }
+        `when`(doc.get("Estado")).thenReturn("realizado")
+        `when`(doc.get("PrecioCobrado")).thenReturn(1500)
+        listener!!.onEvent(snapshot, null)
+        runCurrent()
+        assertEquals("realizado", dao.rows.value.single().estado)
+        assertEquals(150000L, dao.rows.value.single().precioCobradoCentavos)
+        assertEquals("Nicolás Salas", dao.rows.value.single().clienteNombre)
+        assertTrue(events.any { it is AppResult.Error })
+
+        clearInvocations(clienteReference, servicioReference)
+        `when`(snapshot.metadata.isFromCache).thenReturn(true)
+        listener!!.onEvent(snapshot, null)
+        runCurrent()
+        verify(clienteReference, never()).get()
+        verify(servicioReference, never()).get()
+        job.cancel()
+
+        val reopened = FirestoreTurnoRepository(dao, firestore, auth)
+        val result = reopened.observeTurnos(false).first { it is AppResult.Success && it.data.isNotEmpty() } as AppResult.Success
+        assertEquals("Nicolás Salas", result.data.single().clienteNombre)
+        assertEquals("realizado", result.data.single().estado)
+        assertEquals(150000L, result.data.single().precioCobradoCentavos)
+    }
+
+    @Test fun `first server snapshot is persisted even when auxiliary names cannot load`() = runTest {
+        val doc = document("nuevo", 1000, "confirmado")
+        val snapshot = mock(QuerySnapshot::class.java)
+        `when`(snapshot.documents).thenReturn(listOf(doc))
+        respond(snapshot)
+        `when`(clienteReference.get()).thenAnswer { throw IOException("Sin conexión") }
+        `when`(servicioReference.get()).thenAnswer { throw IOException("Sin conexión") }
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { repository.observeTurnos(false).collect() }
+        runCurrent()
+        assertEquals("nuevo", dao.rows.value.single().id)
+        assertEquals("confirmado", dao.rows.value.single().estado)
+        assertEquals("", dao.rows.value.single().clienteNombre)
+    }
+    @Test fun `offline barber reads only own saved appointments with names and prices`() = runTest {
+        val saved = TurnosEntity("guardado", "cliente", "barbero-autenticado", "s", 1L, 2L,
+            "realizado", "Ana", "Corte", 150000L)
+        dao.guardarTodos(listOf(saved, saved.copy(id = "ajeno", barberoId = "otro-barbero")))
+        val snapshot = mock(QuerySnapshot::class.java)
+        respond(snapshot)
+        `when`(snapshot.metadata.isFromCache).thenReturn(true)
+        val result = repository.observeTurnos(false).first { it is AppResult.Success && it.data.isNotEmpty() } as AppResult.Success
+        assertEquals(listOf("guardado"), result.data.map { it.id })
+        assertEquals("Ana", result.data.single().clienteNombre)
+        assertEquals(150000L, result.data.single().precioCobradoCentavos)
+        assertEquals(2, dao.rows.value.size)
+    }
+
+    @Test fun `confirmed empty barber query removes only that barbers appointments`() = runTest {
+        val saved = TurnosEntity("guardado", "cliente", "barbero-autenticado", "s", 1L, 2L, "confirmado")
+        val other = saved.copy(id = "ajeno", barberoId = "otro-barbero")
+        dao.guardarTodos(listOf(saved, other))
+        val snapshot = mock(QuerySnapshot::class.java)
+        `when`(snapshot.documents).thenReturn(emptyList())
+        respond(snapshot)
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { repository.observeTurnos(false).collect() }
+        advanceUntilIdle()
+        assertEquals(listOf(other), dao.rows.value)
+        verify(collection).whereEqualTo("BarberoId", "barbero-autenticado")
+        verify(collection, never()).whereEqualTo("ClienteId", "barbero-autenticado")
+        job.cancel()
+    }
+
+    @Test fun `logout removes barber cache and ignores a late server response`() = runTest {
+        val saved = TurnosEntity("guardado", "cliente", "barbero-autenticado", "corte", 1L, 2L, "confirmado")
+        val other = saved.copy(id = "ajeno", barberoId = "otro-barbero")
+        dao.guardarTodos(listOf(saved, other))
+        val snapshot = mock(QuerySnapshot::class.java)
+        respond(snapshot)
+        `when`(snapshot.metadata.isFromCache).thenReturn(true)
+        val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { repository.observeTurnos(false).collect() }
+        repository.limpiarSesion("barbero-autenticado")
+        val late = document("tardio", 1000, "confirmado")
+        `when`(snapshot.documents).thenReturn(listOf(late))
+        `when`(snapshot.metadata.isFromCache).thenReturn(false)
+        listener!!.onEvent(snapshot, null)
+        advanceUntilIdle()
+        assertEquals(listOf(other), dao.rows.value)
+        job.cancel()
+    }
     private val firestore = mock(FirebaseFirestore::class.java)
     private val auth = mock(FirebaseAuth::class.java)
     private val user = mock(FirebaseUser::class.java)
@@ -112,7 +212,8 @@ class FirestoreTurnoRepositoryTest {
         )
         `when`(snapshot.documents).thenReturn(documents)
         respond(snapshot)
-        val result = repository.observeTurnos().first()
+        val result = repository.observeTurnos().first { it is AppResult.Success &&
+            it.data.isNotEmpty() && it.data.all { p -> p.clienteNombre == "Nicolás Salas" && p.servicioNombre == "Corte de cabello" } }
         assertTrue(result is AppResult.Success)
         val turnos = (result as AppResult.Success).data
         assertEquals(listOf("temprano", "tarde"), turnos.map { it.id })
@@ -138,7 +239,8 @@ class FirestoreTurnoRepositoryTest {
         respond(snapshot)
         clienteReference = relatedDocument("clientes", "barbero-autenticado", "Nombre", "Cliente autenticado")
         val result = repository.observeTurnos(comoCliente = true).first {
-            it is AppResult.Success && it.data.isNotEmpty()
+            it is AppResult.Success && it.data.isNotEmpty() && it.data.single().clienteNombre == "Cliente autenticado" &&
+                it.data.single().servicioNombre == "Corte de cabello"
         } as AppResult.Success
         assertEquals("Cliente autenticado", result.data.single().clienteNombre)
         assertEquals("Corte de cabello", result.data.single().servicioNombre)
@@ -167,7 +269,7 @@ class FirestoreTurnoRepositoryTest {
             val error = mock(FirebaseFirestoreException::class.java)
             `when`(error.code).thenReturn(code)
             respond(null, error)
-            assertTrue(repository.observeTurnos().first() is AppResult.Error)
+            assertTrue(repository.observeTurnos().first { it is AppResult.Error } is AppResult.Error)
             verify(registration).remove()
         }
     }
@@ -189,7 +291,7 @@ class FirestoreTurnoRepositoryTest {
         val snapshot = mock(QuerySnapshot::class.java)
         `when`(snapshot.documents).thenReturn(listOf(doc))
         respond(snapshot)
-        val result = repository.observeTurnos().first() as AppResult.Success
+        val result = repository.observeTurnos().first { it is AppResult.Success && it.data.isNotEmpty() } as AppResult.Success
         assertEquals(1, result.data.size)
         assertEquals("", result.data.first().clienteNombre)
         assertEquals("", result.data.first().servicioNombre)
@@ -203,7 +305,7 @@ class FirestoreTurnoRepositoryTest {
         val snapshot = mock(QuerySnapshot::class.java)
         `when`(snapshot.documents).thenReturn(listOf(doc))
         respond(snapshot)
-        assertTrue(repository.observeTurnos().first() is AppResult.Success)
+        assertTrue(repository.observeTurnos().first { it is AppResult.Success && it.data.isNotEmpty() } is AppResult.Success)
         verify(clienteReference, never()).get()
         verify(servicioReference, never()).get()
     }
@@ -241,7 +343,7 @@ class FirestoreTurnoRepositoryTest {
         val other = TurnosEntity("ajeno", "otro-cliente", "b", "s", 1L, 2L, "confirmado")
         dao.guardar(other)
         val job = backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { repository.observeTurnos(true).collect() }
-        repository.limpiarSesionCliente("barbero-autenticado")
+        repository.limpiarSesion("barbero-autenticado")
         val doc = document("tardio", 1000, "confirmado")
         `when`(doc.getString("ClienteId")).thenReturn("barbero-autenticado")
         relatedDocument("clientes", "barbero-autenticado", "Nombre", "Cliente")
@@ -256,7 +358,18 @@ class FirestoreTurnoRepositoryTest {
 
 private class MemoryTurnoDao : TurnoDao {
     val rows = MutableStateFlow<List<TurnosEntity>>(emptyList())
+    override suspend fun actualizarNombresDeTurno(turnoId: String, clienteId: String, barberoId: String,
+        servicioId: String, clienteNombre: String, servicioNombre: String) {
+        rows.value = rows.value.map {
+            if (it.id == turnoId && it.clienteId == clienteId && it.barberoId == barberoId && it.servicioId == servicioId)
+                it.copy(clienteNombre = clienteNombre, servicioNombre = servicioNombre) else it
+        }
+    }
     override fun observarPorCliente(clienteId: String) = rows.map { list -> list.filter { it.clienteId == clienteId } }
+    override fun observarPorBarbero(barberoId: String) = rows.map { list -> list.filter { it.barberoId == barberoId } }
+    override suspend fun eliminarPorBarbero(barberoId: String) {
+        rows.value = rows.value.filterNot { it.barberoId == barberoId }
+    }
     override suspend fun obtenerPorId(turnoId: String, clienteId: String) = rows.value.find { it.id == turnoId && it.clienteId == clienteId }
     override suspend fun guardar(turno: TurnosEntity) = guardarTodos(listOf(turno))
     override suspend fun guardarTodos(turnos: List<TurnosEntity>) {

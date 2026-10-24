@@ -3,7 +3,7 @@ package ar.edu.unaj.am.myapplication.core.database.model
 import androidx.room3.Entity
 import androidx.room3.PrimaryKey
 
-/** Copia persistente de un turno del cliente, con nombres disponibles sin conexión. */
+/** Copia persistente de un turno propio del cliente o barbero, con nombres sin conexión. */
 
 @Entity(tableName = "turnos")
 data class TurnosEntity(
