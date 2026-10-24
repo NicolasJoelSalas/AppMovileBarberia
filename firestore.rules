@@ -150,6 +150,12 @@ service cloud.firestore {
       allow update: if esBarberoHabilitado() && request.auth.uid == uid
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['Nombre', 'ZonaHoraria'])
         && request.resource.data.Nombre is string && request.resource.data.ZonaHoraria is string;
+      allow update: if esBarberoHabilitado() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['Ubicacion', 'UbicacionActualizadaEn'])
+        && request.resource.data.Ubicacion is latlng
+        && request.resource.data.Ubicacion.latitude() >= -90 && request.resource.data.Ubicacion.latitude() <= 90
+        && request.resource.data.Ubicacion.longitude() >= -180 && request.resource.data.Ubicacion.longitude() <= 180
+        && request.resource.data.UbicacionActualizadaEn == request.time;
       allow create, delete: if false;
 
       match /agenda/{agendaId} {

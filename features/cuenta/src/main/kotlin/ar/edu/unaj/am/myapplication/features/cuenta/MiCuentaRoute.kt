@@ -4,9 +4,10 @@ import androidx.compose.runtime.*
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
-fun MiCuentaRoute(viewModel: MiCuentaViewModel, onPerfilGuardado: () -> Unit, onLogout: () -> Unit) {
+fun MiCuentaRoute(viewModel: MiCuentaViewModel, onPerfilGuardado: () -> Unit, onLogout: () -> Unit,
+    onUbicacionBarberia: () -> Unit = {}) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     MiCuentaScreen(state, viewModel::onNombreChange,
         onGuardar = { viewModel.guardarCambios(onPerfilGuardado) },
-        onReintentar = viewModel::cargarPerfil, onLogout = onLogout)
+        onReintentar = viewModel::cargarPerfil, onLogout = onLogout, onUbicacionBarberia = onUbicacionBarberia)
 }

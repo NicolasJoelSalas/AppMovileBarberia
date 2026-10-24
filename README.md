@@ -70,6 +70,7 @@ Seguí un caso de uso de punta a punta, de la pantalla hacia los datos. Por ejem
 
 ## Documentación
 
+- [docs/ubicacion-y-rutas.md](docs/ubicacion-y-rutas.md) — mapa de la barbería, permisos de GPS, recorridos y reglas de Firestore necesarias.
 - [ARCHITECTURE.md](ARCHITECTURE.md) — **qué** hay en cada capa y qué puede depender de qué.
 - [docs/decisiones.md](docs/decisiones.md) — **por qué** se tomó cada decisión, qué cuesta y cuándo conviene revisarla.
 - [docs/publicar-una-clase.md](docs/publicar-una-clase.md) — *para el docente*: qué es un tag, qué hacer con el Playground y cómo publicar cada clase.

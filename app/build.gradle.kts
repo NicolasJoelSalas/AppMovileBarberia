@@ -18,6 +18,11 @@ val cloudinaryConfig = Properties().apply {
 fun cloudinaryValue(key: String): String = cloudinaryConfig.getProperty(key, "")
     .takeIf { it.matches(Regex("[A-Za-z0-9_-]+")) }.orEmpty()
 
+val rutasBaseUrl = cloudinaryConfig.getProperty("rutas.baseUrl", "https://router.project-osrm.org/")
+    .also { require(it.matches(Regex("https://[A-Za-z0-9.-]+(?::[0-9]+)?/[A-Za-z0-9/_-]*")) && it.endsWith('/')) {
+        "rutas.baseUrl debe ser una URL HTTPS que termine en /."
+    } }
+
 android {
     namespace = "ar.edu.unaj.am.myapplication"
     compileSdk = 37
@@ -29,6 +34,7 @@ android {
         buildConfigField("String", "CLOUDINARY_CLOUD_NAME", "\"${cloudinaryValue("cloudinary.cloudName")}\"")
         buildConfigField("String", "CLOUDINARY_UPLOAD_PRESET", "\"${cloudinaryValue("cloudinary.uploadPreset")}\"")
         versionCode = 1
+        buildConfigField("String", "RUTAS_BASE_URL", "\"$rutasBaseUrl\"")
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

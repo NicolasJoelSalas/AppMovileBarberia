@@ -36,6 +36,13 @@ import ar.edu.unaj.am.myapplication.core.domain.usecase.ActualizarMiNombreUseCas
 
 
 class AppContainer(context: Context) {
+    private val ubicacionRepository = ar.edu.unaj.am.myapplication.core.data.repository.FirestoreUbicacionBarberiaRepository()
+    val obtenerMiUbicacion = ar.edu.unaj.am.myapplication.core.domain.usecase.ObtenerMiUbicacionUseCase(ubicacionRepository)
+    val obtenerUbicacionBarberia = ar.edu.unaj.am.myapplication.core.domain.usecase.ObtenerUbicacionBarberiaUseCase(ubicacionRepository)
+    val guardarMiUbicacion = ar.edu.unaj.am.myapplication.core.domain.usecase.GuardarMiUbicacionUseCase(ubicacionRepository)
+    private val rutaRepository = ar.edu.unaj.am.myapplication.core.data.repository.OsrmRutaRepository(
+        NetworkFactory.createRutasApi(BuildConfig.RUTAS_BASE_URL))
+    val calcularRutaBarberia = ar.edu.unaj.am.myapplication.core.domain.usecase.CalcularRutaBarberiaUseCase(rutaRepository)
     private val sesionClienteLocal = ar.edu.unaj.am.myapplication.core.data.session.SesionClienteLocal(context)
     private val perfilRepository = FirestorePerfilRepository()
     val obtenerMiPerfil = ObtenerMiPerfilUseCase(perfilRepository)

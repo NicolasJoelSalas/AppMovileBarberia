@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const { initializeTestEnvironment, assertSucceeds, assertFails } = require('@firebase/rules-unit-testing');
 const { doc, setDoc, getDoc, getDocs, collection, query, where, updateDoc,
-  writeBatch, runTransaction, Timestamp, serverTimestamp, deleteDoc, deleteField, orderBy, limit } = require('firebase/firestore');
+  writeBatch, runTransaction, Timestamp, GeoPoint, serverTimestamp, deleteDoc, deleteField, orderBy, limit } = require('firebase/firestore');
 
 let env, start, end, horarioId;
 const zone = 'America/Argentina/Buenos_Aires';
@@ -38,6 +38,34 @@ beforeEach(async () => {
 async function publish() {
   await assertSucceeds(setDoc(doc(db('barbero'),`horarios/${horarioId}`),slot()));
 }
+
+test('ubicacion: el propietario guarda y el cliente consulta el punto de su barberia', async () => {
+  const ref = doc(db('barbero'), 'barberos/barbero');
+  await assertSucceeds(updateDoc(ref, {Ubicacion:new GeoPoint(-34.8, -58.3), UbicacionActualizadaEn:serverTimestamp()}));
+  const data = (await assertSucceeds(getDoc(doc(db('ana'), 'barberos/barbero')))).data();
+  assert.equal(data.Ubicacion.latitude, -34.8);
+  assert.equal(data.Ubicacion.longitude, -58.3);
+  assert.equal(data.Nombre, 'Barbero');
+  await assertSucceeds(updateDoc(ref, {Ubicacion:new GeoPoint(-34.81, -58.31), UbicacionActualizadaEn:serverTimestamp()}));
+});
+
+test('ubicacion: rechaza escrituras ajenas, clientes, anonimos y barberos deshabilitados', async () => {
+  const cambio = () => ({Ubicacion:new GeoPoint(-34.8, -58.3), UbicacionActualizadaEn:serverTimestamp()});
+  for (const uid of ['otro', 'ana']) {
+    await assertFails(updateDoc(doc(db(uid), 'barberos/barbero'), cambio()));
+  }
+  await assertFails(updateDoc(doc(env.unauthenticatedContext().firestore(), 'barberos/barbero'), cambio()));
+  await env.withSecurityRulesDisabled(async ctx => updateDoc(doc(ctx.firestore(), 'barberos/barbero'), {Estado:false}));
+  await assertFails(updateDoc(doc(db('barbero'), 'barberos/barbero'), cambio()));
+});
+
+test('ubicacion: valida tipo, fecha del servidor y campos permitidos', async () => {
+  const ref = doc(db('barbero'), 'barberos/barbero');
+  await assertFails(updateDoc(ref, {Ubicacion:{latitud:-34.8,longitud:-58.3}, UbicacionActualizadaEn:serverTimestamp()}));
+  await assertFails(updateDoc(ref, {Ubicacion:new GeoPoint(-34.8,-58.3)}));
+  await assertFails(updateDoc(ref, {Ubicacion:new GeoPoint(-34.8,-58.3), UbicacionActualizadaEn:start}));
+  await assertFails(updateDoc(ref, {Ubicacion:new GeoPoint(-34.8,-58.3), UbicacionActualizadaEn:serverTimestamp(), Estado:false}));
+});
 
 test('mi cuenta: permite editar un nombre existente y conserva el resto del perfil', async () => {
   const ref = doc(db('ana'), 'clientes/ana');

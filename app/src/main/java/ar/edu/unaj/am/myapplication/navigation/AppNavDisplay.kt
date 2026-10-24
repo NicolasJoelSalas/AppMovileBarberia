@@ -51,7 +51,26 @@ fun AppNavDisplay(
                 MiCuentaViewModel(container.obtenerMiPerfil, container.actualizarMiNombre)
             }
             MiCuentaRoute(cuentaViewModel, onPerfilGuardado = reservasViewModel::cargar,
-                onLogout = onLogout)
+                onLogout = onLogout,
+                onUbicacionBarberia = { navigationState.navigate(UbicacionBarberiaDestination) })
+        }
+        entry<UbicacionBarberiaDestination> { key ->
+            if (esBarbero) {
+                val vm = viewModel {
+                    ar.edu.unaj.am.myapplication.features.cuenta.ubicacion.UbicacionBarberiaViewModel(
+                        container.obtenerMiUbicacion, container.guardarMiUbicacion)
+                }
+                ar.edu.unaj.am.myapplication.features.cuenta.ubicacion.UbicacionBarberiaRoute(vm,
+                    onBack = { navigationState.goBackFrom(key) })
+            }
+        }
+        entry<ComoLlegarDestination> { key ->
+            val vm = viewModel {
+                ar.edu.unaj.am.myapplication.features.turnos.ubicacion.ComoLlegarViewModel(key.barberoId,
+                    container.obtenerUbicacionBarberia, container.calcularRutaBarberia)
+            }
+            ar.edu.unaj.am.myapplication.features.turnos.ubicacion.ComoLlegarRoute(vm,
+                onBack = { navigationState.goBackFrom(key) })
         }
         entry<HomeDestination> {
             if (esBarbero) {
@@ -81,6 +100,7 @@ fun AppNavDisplay(
                     }
                     TurnosListRoute(
                         misTurnosViewModel,
+                        onComoLlegar = { turno -> navigationState.navigate(ComoLlegarDestination(turno.barberoId)) },
                         onModificar = { turno -> navigationState.navigate(ReservarTurnoDestination(
                             turno.barberoId, turno.id, turno.servicioId, turno.inicioMillis)) },
                         onRecordatorio = onRecordatorio,

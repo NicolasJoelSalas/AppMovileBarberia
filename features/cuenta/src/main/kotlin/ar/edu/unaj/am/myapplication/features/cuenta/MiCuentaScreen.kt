@@ -19,6 +19,7 @@ import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.semantics.Role
@@ -43,7 +44,8 @@ fun MiCuentaScreen(
     onNombreChange: (String) -> Unit,
     onGuardar: () -> Unit,
     onReintentar: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onUbicacionBarberia: () -> Unit = {}
 ) {
     var editando by rememberSaveable { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
@@ -95,6 +97,11 @@ fun MiCuentaScreen(
                         Column(Modifier.fillMaxWidth()) {
                             OpcionCuenta(Icons.Outlined.Edit, "Modificar perfil",
                                 "Actualizá tus datos personales", onClick = { editando = true })
+                            if (perfil.esBarbero) {
+                                HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
+                                OpcionCuenta(Icons.Outlined.LocationOn, "Ubicación de la barbería",
+                                    "Marcá en el mapa dónde atendés", onClick = onUbicacionBarberia)
+                            }
                             HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
                             val appearance = LocalAppearance.current
                             Row(

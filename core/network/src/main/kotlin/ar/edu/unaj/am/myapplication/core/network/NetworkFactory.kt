@@ -9,6 +9,15 @@ import java.util.concurrent.TimeUnit
 
 /** Arma el cliente HTTP. Lo usa AppContainer; nadie más conoce Retrofit ni OkHttp. */
 object NetworkFactory {
+    fun createRutasApi(baseUrl: String = "https://router.project-osrm.org/"): RutasApi = Retrofit.Builder()
+        .baseUrl(baseUrl)
+        .client(OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(20, TimeUnit.SECONDS).callTimeout(25, TimeUnit.SECONDS)
+            .addInterceptor { chain -> chain.proceed(chain.request().newBuilder()
+                .header("User-Agent", "BarberApp-UNAJ/1.0 (Android)").build()) }.build())
+        .addConverterFactory(json.asConverterFactory("application/json".toMediaType()))
+        .build().create(RutasApi::class.java)
+
     fun createCloudinaryApi(): CloudinaryApi = Retrofit.Builder()
         .baseUrl("https://api.cloudinary.com/")
         .client(OkHttpClient.Builder().connectTimeout(30, TimeUnit.SECONDS)
