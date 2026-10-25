@@ -4,19 +4,23 @@ import ar.edu.unaj.am.myapplication.features.turnos.R
 
 import androidx.compose.ui.res.stringResource
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Alignment
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.material.icons.outlined.ExpandLess
-import androidx.compose.material.icons.outlined.ExpandMore
-import ar.edu.unaj.am.myapplication.core.domain.model.HorarioDisponible
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.ContentCut
+import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -30,11 +34,9 @@ import androidx.lifecycle.Lifecycle
 import kotlinx.coroutines.delay
 import ar.edu.unaj.am.myapplication.core.ui.components.asMessage
 import ar.edu.unaj.am.myapplication.core.ui.components.AppTopBar
-import ar.edu.unaj.am.myapplication.features.turnos.components.SemanaSelector
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 private val dayFormat: DateTimeFormatter
     @androidx.compose.runtime.Composable get() = DateTimeFormatter.ofPattern("EEEE d MMMM", androidx.compose.ui.platform.LocalConfiguration.current.locales[0])
@@ -56,22 +58,16 @@ fun ReservasRoute(viewModel: ReservasViewModel,
 @Composable
 fun ReservarTurnoRoute(viewModel: ReservasViewModel, onBack: () -> Unit) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    var eligiendoHorario by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(state.reservaConfirmada) {
         if (state.reservaConfirmada) onBack()
     }
-    androidx.activity.compose.BackHandler(enabled = state.reservando) { }
-    ReservasScreen(state, viewModel, onBack)
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack: () -> Unit) {
-    val picker = androidx.activity.compose.rememberLauncherForActivityResult(
-        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
-    ) { uri -> if (uri != null) vm.referencia(uri.toString()) }
+    androidx.activity.compose.BackHandler(enabled = state.reservando || eligiendoHorario) {
+        if (!state.reservando) eligiendoHorario = false
+    }
     val zone = ZoneId.of(state.semana?.zonaHoraria ?: "America/Argentina/Buenos_Aires")
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-        if (state.catalogo != null && !state.loading) vm.refrescar()
+        if (state.catalogo != null && !state.loading) viewModel.refrescar()
     }
     LaunchedEffect(state.semana?.inicioSemanaMillis, zone) {
         if (state.semana != null) {
@@ -79,13 +75,42 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
                 val now = java.time.ZonedDateTime.now(zone)
                 val midnight = now.toLocalDate().plusDays(1).atStartOfDay(zone)
                 delay(java.time.Duration.between(now, midnight).toMillis().coerceAtLeast(1000))
-                vm.refrescar()
+                viewModel.refrescar()
             }
         }
     }
-    Scaffold(topBar = { AppTopBar(title = if (state.turnoId != null) stringResource(R.string.features_turnos_modificar_turno) else stringResource(R.string.features_turnos_reservar_turno), actions = {
-        TextButton(onClick = onBack, enabled = !state.reservando) { Text(stringResource(R.string.features_turnos_volver)) }
-    }) }) { padding ->
+    if (eligiendoHorario) {
+        HorariosReservaScreen(state, viewModel, onBack = { eligiendoHorario = false })
+    } else {
+        ReservasScreen(state, viewModel, onBack, onElegirHorario = {
+            eligiendoHorario = true
+            viewModel.refrescar()
+        })
+    }
+    ConfirmarReservaDialog(state, viewModel)
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack: () -> Unit,
+    onElegirHorario: () -> Unit) {
+    val picker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
+    ) { uri -> if (uri != null) vm.referencia(uri.toString()) }
+    Scaffold(topBar = { AppTopBar(title = if (state.turnoId != null) stringResource(R.string.features_turnos_modificar_turno) else stringResource(R.string.features_turnos_reservar_turno), navigationIcon = {
+        IconButton(onClick = onBack, enabled = !state.reservando) {
+            Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.features_turnos_volver))
+        }
+    }) }, bottomBar = {
+        Surface(shadowElevation = 4.dp) {
+            Button(onClick = onElegirHorario,
+                enabled = state.catalogo != null && state.catalogo.sinConexion != true &&
+                    state.barberoId.isNotBlank() && state.servicioId.isNotBlank() && !state.reservando,
+                modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp)) {
+                Text(stringResource(R.string.turnos_choose_datetime))
+            }
+        }
+    }) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
             contentPadding = PaddingValues(16.dp),
@@ -96,22 +121,6 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
                     Text(stringResource(R.string.features_turnos_necesitas_conexion_para_consultar_disponibilidad_y_confirmar_cambios_tus_turnos_guardados_siguen_disponibles_en_mis_turnos))
                     TextButton(onClick = vm::cargar) { Text(stringResource(R.string.features_turnos_reintentar_conexion)) }
                 }
-            }
-            state.inicioOriginal?.let { inicio ->
-                item {
-                    val fecha = Instant.ofEpochMilli(inicio).atZone(zone)
-                    Text(stringResource(R.string.turnos_current_time, fecha.format(dayFormat), fecha.format(hourFormat)))
-                    if (state.barberoId == state.barberoOriginal) {
-                        OutlinedButton(onClick = { vm.seleccionar(ar.edu.unaj.am.myapplication.core.domain.model.HorarioDisponible(inicio, inicio + 2400000)) },
-                            enabled = !state.loading && !state.reservando && state.servicioId.isNotBlank()) {
-                            Text(stringResource(R.string.features_turnos_conservar_horario_actual))
-                        }
-                    }
-                }
-            }
-            item {
-                SemanaSelector(semanaOffset = state.semanaOffset, onSemanaChange = vm::semana,
-                    enabled = !state.reservando)
             }
             state.catalogo?.let { catalogo ->
                 item {
@@ -160,52 +169,56 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
                         enabled = !state.reservando && !state.loading) { Text(stringResource(R.string.features_turnos_actualizar)) }
                 }
             }
-            state.semana?.let { semana ->
-                val monday = Instant.ofEpochMilli(semana.inicioSemanaMillis).atZone(zone).toLocalDate()
-                for (offset in 0L..5L) {
-                    val day = monday.plusDays(offset)
-                    val slots = semana.horarios.filter {
-                        Instant.ofEpochMilli(it.inicioMillis).atZone(zone).toLocalDate() == day
-                    }
-                    item(key = "dia-$day") {
-                        key(day, state.barberoId, state.servicioId) {
-                            HorariosDelDia(
-                                fecha = day.format(dayFormat).replaceFirstChar { it.titlecase() },
-                                slots = slots,
-                                zone = zone,
-                                enabled = !state.loading && !state.reservando,
-                                onSelect = vm::seleccionar
-                            )
-                        }
-                    }
-                }
-                item {
-                    OutlinedButton(onClick = vm::refrescar, enabled = !state.loading && !state.reservando) {
-                        Text(stringResource(R.string.features_turnos_actualizar_disponibilidad))
-                    }
-                }
-            }
+
         }
     }
+}
+
+@Composable
+private fun ConfirmarReservaDialog(state: ReservasUiState, vm: ReservasViewModel) {
+    val zone = ZoneId.of(state.semana?.zonaHoraria ?: "America/Argentina/Buenos_Aires")
     state.selected?.let { slot ->
         val start = Instant.ofEpochMilli(slot.inicioMillis).atZone(zone)
         AlertDialog(
-            onDismissRequest = { vm.seleccionar(null) },
+            onDismissRequest = { if (!state.reservando) vm.seleccionar(null) },
+            shape = RoundedCornerShape(28.dp),
+            icon = { Icon(Icons.Outlined.CalendarToday, contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(32.dp)) },
             title = { Text(if (state.turnoId != null) stringResource(R.string.features_turnos_confirmar_modificacion) else stringResource(R.string.features_turnos_confirmar_reserva)) },
             text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(state.catalogo?.barberos?.find { it.id == state.barberoId }?.nombre.orEmpty())
-                    Text(state.catalogo?.servicios?.find { it.id == state.servicioId }?.nombre.orEmpty())
-                    Text(start.format(dayFormat) + " · " + start.format(hourFormat))
-                    Text(stringResource(if (state.referencia == null) R.string.turnos_reference_none else R.string.turnos_reference_attached))
+                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.primaryContainer) {
+                        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(start.format(dayFormat).replaceFirstChar { it.titlecase() },
+                                style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Icon(Icons.Outlined.Schedule, contentDescription = null, modifier = Modifier.size(20.dp))
+                                Text(start.format(hourFormat) + " – " + Instant.ofEpochMilli(slot.finMillis).atZone(zone).format(hourFormat),
+                                    style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                    ResumenReservaDato(Icons.Outlined.Person, stringResource(R.string.features_turnos_barbero),
+                        state.catalogo?.barberos?.find { it.id == state.barberoId }?.nombre.orEmpty())
+                    ResumenReservaDato(Icons.Outlined.ContentCut, stringResource(R.string.features_turnos_servicio),
+                        state.catalogo?.servicios?.find { it.id == state.servicioId }?.nombre.orEmpty())
+                    HorizontalDivider()
+                    ResumenReservaDato(Icons.Outlined.Image, stringResource(R.string.turnos_reference_title),
+                        stringResource(if (state.referencia == null) R.string.turnos_reference_none else R.string.turnos_reference_attached))
                     OutlinedTextField(value = state.nombre, onValueChange = vm::nombre,
+                        modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
+                        leadingIcon = { Icon(Icons.Outlined.Person, contentDescription = null) },
                         label = { Text(stringResource(R.string.features_turnos_tu_nombre)) }, singleLine = true, enabled = !state.reservando)
                     state.error?.let { Text(it.asMessage(), color = MaterialTheme.colorScheme.error) }
                 }
             },
             confirmButton = {
-                TextButton(onClick = vm::confirmar,
+                Button(onClick = vm::confirmar,
                     enabled = !state.reservando && state.nombre.isNotBlank() && state.nombre.length <= 120) {
+                    if (state.reservando) {
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                        Spacer(Modifier.width(8.dp))
+                    }
                     Text(if (state.reservando) stringResource(R.string.features_turnos_reservando) else if (state.turnoId != null) stringResource(R.string.features_turnos_guardar_cambios) else stringResource(R.string.features_turnos_confirmar))
                 }
             },
@@ -217,87 +230,12 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
 }
 
 @Composable
-private fun HorariosDelDia(
-    fecha: String,
-    slots: List<HorarioDisponible>,
-    zone: ZoneId,
-    enabled: Boolean,
-    onSelect: (HorarioDisponible) -> Unit
-) {
-    var expanded by rememberSaveable { mutableStateOf(false) }
-    val available = slots.isNotEmpty()
-    val colors = MaterialTheme.colorScheme
-    Card(
-        onClick = { expanded = !expanded },
-        enabled = enabled && available,
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = colors.surfaceContainer,
-            disabledContainerColor = colors.surfaceContainerLow,
-            disabledContentColor = colors.onSurfaceVariant
-        )
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Icon(Icons.Outlined.Schedule, contentDescription = null,
-                tint = if (available) colors.primary else colors.onSurfaceVariant)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(fecha, style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold)
-                Text(
-                    when (slots.size) {
-                        0 -> stringResource(R.string.features_turnos_sin_horarios_disponibles)
-                        1 -> stringResource(R.string.features_turnos_1_horario_disponible)
-                        else -> stringResource(R.string.turnos_available_times, slots.size)
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (available) colors.primary else colors.onSurfaceVariant
-                )
-            }
-            if (available) {
-                Icon(
-                    if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
-                    contentDescription = if (expanded) stringResource(R.string.features_turnos_ocultar_horarios) else stringResource(R.string.features_turnos_ver_horarios)
-                )
-            }
-        }
-        AnimatedVisibility(visible = expanded && available) {
-            Column(
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                HorizontalDivider(color = colors.outlineVariant)
-                Text(stringResource(R.string.features_turnos_elegi_un_horario), style = MaterialTheme.typography.labelMedium,
-                    color = colors.onSurfaceVariant)
-                slots.chunked(2).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        row.forEach { slot ->
-                            OutlinedButton(
-                                onClick = { onSelect(slot) },
-                                enabled = enabled,
-                                modifier = Modifier.weight(1f).heightIn(min = 72.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 12.dp)
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    Text(Instant.ofEpochMilli(slot.inicioMillis).atZone(zone).format(hourFormat),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold)
-                                    Text(stringResource(R.string.turnos_until, Instant.ofEpochMilli(slot.finMillis).atZone(zone).format(hourFormat)),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = colors.onSurfaceVariant)
-                                }
-                            }
-                        }
-                        if (row.size == 1) Spacer(Modifier.weight(1f))
-                    }
-                }
-            }
+private fun ResumenReservaDato(icon: ImageVector, label: String, value: String) {
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
         }
     }
 }
@@ -309,6 +247,7 @@ private fun Selector(label: String, value: String, options: List<Pair<String, St
     var expanded by remember { mutableStateOf(false) }
     val canSelect = enabled && options.isNotEmpty()
     val optionTextStyle = MaterialTheme.typography.bodyLarge
+    val colors = MaterialTheme.colorScheme
     ExposedDropdownMenuBox(expanded = expanded && canSelect,
         onExpandedChange = { if (canSelect) expanded = it }) {
         OutlinedTextField(
@@ -326,12 +265,27 @@ private fun Selector(label: String, value: String, options: List<Pair<String, St
             shape = RoundedCornerShape(12.dp)
         )
         ExposedDropdownMenu(expanded = expanded && canSelect, onDismissRequest = { expanded = false },
-            modifier = Modifier.heightIn(max = 280.dp)) {
+            modifier = Modifier.heightIn(max = 280.dp),
+            shape = RoundedCornerShape(16.dp),
+            containerColor = colors.surfaceContainerHigh,
+            tonalElevation = 6.dp,
+            shadowElevation = 12.dp,
+            border = BorderStroke(1.dp, colors.outline)) {
             options.forEach { option ->
+                val selected = option.first == value
                 DropdownMenuItem(text = {
-                    Text(option.second, modifier = Modifier.fillMaxWidth(),
-                        style = optionTextStyle, textAlign = TextAlign.Center)
-                }, onClick = {
+                    Text(option.second, style = optionTextStyle,
+                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                        color = if (selected) colors.onSecondaryContainer else colors.onSurface)
+                }, leadingIcon = {
+                    Icon(icon, contentDescription = null,
+                        tint = if (selected) colors.onSecondaryContainer else colors.onSurfaceVariant)
+                }, trailingIcon = {
+                    if (selected) Icon(Icons.Outlined.Check, contentDescription = null,
+                        tint = colors.onSecondaryContainer)
+                }, modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                    .background(if (selected) colors.secondaryContainer else colors.surfaceContainerHigh,
+                        RoundedCornerShape(10.dp)), onClick = {
                     expanded = false
                     select(option.first)
                 })

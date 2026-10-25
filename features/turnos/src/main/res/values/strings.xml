@@ -117,4 +117,13 @@
     <string name="turnos_reference_none">Sin imagen de referencia</string>
     <string name="turnos_reference_attached">Imagen de referencia adjunta</string>
     <string name="turnos_reference_error">No se pudo cargar la imagen de referencia.</string>
+    <string name="turnos_reference_open">Ampliar imagen</string>
+    <string name="turnos_reference_close">Cerrar imagen</string>
+    <string name="turnos_reference_zoom_hint">Separá dos dedos para ampliar y arrastrá para mover la imagen.</string>
+    <string name="turnos_reference_reset">Restablecer zoom</string>
+    <string name="turnos_choose_datetime">Elegir día y horario</string>
+    <string name="turnos_week_empty_title">No hay turnos disponibles esta semana</string>
+    <string name="turnos_week_empty_body">No hay horarios disponibles para este barbero y servicio. Podés consultar la otra semana o volver y cambiar tu selección.</string>
+    <string name="turnos_see_next_week">Ver próxima semana</string>
+    <string name="turnos_see_this_week">Ver esta semana</string>
 </resources>

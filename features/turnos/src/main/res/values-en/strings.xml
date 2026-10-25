@@ -117,4 +117,13 @@
     <string name="turnos_reference_none">No reference image</string>
     <string name="turnos_reference_attached">Reference image attached</string>
     <string name="turnos_reference_error">Could not load the reference image.</string>
+    <string name="turnos_reference_open">Enlarge image</string>
+    <string name="turnos_reference_close">Close image</string>
+    <string name="turnos_reference_zoom_hint">Pinch to zoom and drag to explore the image.</string>
+    <string name="turnos_reference_reset">Reset zoom</string>
+    <string name="turnos_choose_datetime">Choose day and time</string>
+    <string name="turnos_week_empty_title">No appointments available this week</string>
+    <string name="turnos_week_empty_body">There are no appointments available for this barber and service. You can check the other week or change your selection.</string>
+    <string name="turnos_see_next_week">See next week</string>
+    <string name="turnos_see_this_week">See this week</string>
 </resources>

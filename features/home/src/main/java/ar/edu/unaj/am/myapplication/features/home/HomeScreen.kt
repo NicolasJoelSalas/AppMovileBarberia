@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Edit
@@ -273,7 +274,12 @@ private fun EditorTrabajo(state: HomeUiState, vm: HomeViewModel) {
     }
     Scaffold(topBar = {
         TopAppBar(title = { Text(stringResource(R.string.features_home_agregar_trabajo), fontWeight = FontWeight.Bold) },
-            actions = { TextButton(onClick = salir, enabled = !state.publicando) { Text(stringResource(R.string.features_home_volver)) } },
+            navigationIcon = {
+                IconButton(onClick = salir, enabled = !state.publicando) {
+                    Icon(Icons.AutoMirrored.Outlined.ArrowBack,
+                        contentDescription = stringResource(R.string.features_home_volver))
+                }
+            },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primaryContainer,
                 titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer))
     }) { padding ->

@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material3.*
@@ -61,8 +62,11 @@ fun AgendaRoute(viewModel: AgendaViewModel, onBack: () -> Unit) {
     }
     BackHandler(onBack = salir)
     Scaffold(topBar = {
-        AppTopBar(title = stringResource(R.string.features_turnos_gestionar_semana), actions = {
-            TextButton(onClick = salir, enabled = !state.guardando) { Text(stringResource(R.string.features_turnos_volver)) }
+        AppTopBar(title = stringResource(R.string.features_turnos_gestionar_semana), navigationIcon = {
+            IconButton(onClick = salir, enabled = !state.guardando) {
+                Icon(Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = stringResource(R.string.features_turnos_volver))
+            }
         })
     }, bottomBar = {
         if (state.agenda != null) {
