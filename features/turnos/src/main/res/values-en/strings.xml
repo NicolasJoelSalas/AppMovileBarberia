@@ -126,4 +126,6 @@
     <string name="turnos_week_empty_body">There are no appointments available for this barber and service. You can check the other week or change your selection.</string>
     <string name="turnos_see_next_week">See next week</string>
     <string name="turnos_see_this_week">See this week</string>
+    <string name="turnos_service_price">Service price (ARS)</string>
+    <string name="turnos_price_unavailable">Price unavailable</string>
 </resources>

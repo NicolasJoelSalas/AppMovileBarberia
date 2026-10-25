@@ -21,6 +21,7 @@ import androidx.compose.material.icons.outlined.CalendarToday
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Image
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -139,7 +140,8 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
                                 !state.reservando, Icons.Outlined.Person, vm::barbero)
                             Selector(stringResource(R.string.features_turnos_servicio), state.servicioId,
                                 serviciosDisponibles.map { it.id to stringResource(R.string.turnos_service_duration, it.nombre, it.duracion) },
-                                !state.reservando && state.barberoId.isNotBlank(), Icons.Outlined.ContentCut, vm::servicio)
+                                !state.reservando && state.barberoId.isNotBlank(), Icons.Outlined.ContentCut, vm::servicio,
+                                detalles = serviciosDisponibles.associate { it.id to precioServicio(it.precioCentavos) })
                             if (catalogo.barberos.isEmpty()) Text(stringResource(R.string.features_turnos_no_hay_barberos_habilitados))
                             if (state.barberoId.isNotBlank() && serviciosDisponibles.isEmpty()) Text(stringResource(R.string.features_turnos_no_hay_servicios_habilitados_de_40_minutos))
                         }
@@ -205,6 +207,8 @@ private fun ConfirmarReservaDialog(state: ReservasUiState, vm: ReservasViewModel
                         state.catalogo?.barberos?.find { it.id == state.barberoId }?.nombre.orEmpty())
                     ResumenReservaDato(Icons.Outlined.ContentCut, stringResource(R.string.features_turnos_servicio),
                         state.catalogo?.servicios?.find { it.id == state.servicioId }?.nombre.orEmpty())
+                    ResumenReservaDato(Icons.Outlined.Payments, stringResource(R.string.turnos_service_price),
+                        precioServicio(state.catalogo?.servicios?.find { it.id == state.servicioId }?.precioCentavos))
                     HorizontalDivider()
                     ResumenReservaDato(Icons.Outlined.Image, stringResource(R.string.turnos_reference_title),
                         stringResource(if (state.referencia == null) R.string.turnos_reference_none else R.string.turnos_reference_attached))
@@ -246,7 +250,8 @@ private fun ResumenReservaDato(icon: ImageVector, label: String, value: String) 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Selector(label: String, value: String, options: List<Pair<String, String>>, enabled: Boolean,
-    icon: ImageVector, select: (String) -> Unit, hint: String = stringResource(R.string.features_turnos_seleccionar)) {
+    icon: ImageVector, select: (String) -> Unit, hint: String = stringResource(R.string.features_turnos_seleccionar),
+    detalles: Map<String, String> = emptyMap()) {
     var expanded by remember { mutableStateOf(false) }
     val canSelect = enabled && options.isNotEmpty()
     val optionTextStyle = MaterialTheme.typography.bodyLarge
@@ -254,9 +259,15 @@ private fun Selector(label: String, value: String, options: List<Pair<String, St
     ExposedDropdownMenuBox(expanded = expanded && canSelect,
         onExpandedChange = { if (canSelect) expanded = it }) {
         OutlinedTextField(
-            value = options.find { it.first == value }?.second ?: if (value.isEmpty()) hint else "",
+            value = options.find { it.first == value }?.second?.let { nombre ->
+                detalles[value]?.let { precio -> "$nombre\n$precio" } ?: nombre
+            } ?: if (value.isEmpty()) hint else "",
             onValueChange = {}, readOnly = true, enabled = canSelect,
-            textStyle = optionTextStyle.copy(textAlign = TextAlign.Center),
+            textStyle = optionTextStyle.copy(
+                textAlign = if (detalles[value] != null) TextAlign.Start else TextAlign.Center,
+                fontWeight = if (detalles[value] != null) FontWeight.SemiBold else FontWeight.Normal),
+            minLines = if (detalles[value] != null) 2 else 1,
+            maxLines = if (detalles[value] != null) 3 else 1,
             modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable,
                 enabled = canSelect).fillMaxWidth(),
             label = { Text(label) }, placeholder = {
@@ -277,9 +288,16 @@ private fun Selector(label: String, value: String, options: List<Pair<String, St
             options.forEach { option ->
                 val selected = option.first == value
                 DropdownMenuItem(text = {
-                    Text(option.second, style = optionTextStyle,
-                        fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
-                        color = if (selected) colors.onSecondaryContainer else colors.onSurface)
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(option.second, style = optionTextStyle,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (selected) colors.onSecondaryContainer else colors.onSurface)
+                        detalles[option.first]?.let { detalle ->
+                            Text(detalle, style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = if (selected) colors.onSecondaryContainer else colors.onSurfaceVariant)
+                        }
+                    }
                 }, leadingIcon = {
                     Icon(icon, contentDescription = null,
                         tint = if (selected) colors.onSecondaryContainer else colors.onSurfaceVariant)
@@ -295,4 +313,15 @@ private fun Selector(label: String, value: String, options: List<Pair<String, St
             }
         }
     }
+}
+
+@Composable
+private fun precioServicio(centavos: Long?): String {
+    if (centavos == null) return stringResource(R.string.turnos_price_unavailable)
+    val locale = androidx.compose.ui.platform.LocalConfiguration.current.locales[0]
+    return java.text.NumberFormat.getCurrencyInstance(locale).apply {
+        currency = java.util.Currency.getInstance("ARS")
+        minimumFractionDigits = 2
+        maximumFractionDigits = 2
+    }.format(java.math.BigDecimal.valueOf(centavos, 2))
 }

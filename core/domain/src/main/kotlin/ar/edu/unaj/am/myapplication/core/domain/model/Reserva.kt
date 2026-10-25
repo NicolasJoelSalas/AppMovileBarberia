@@ -1,7 +1,8 @@
 package ar.edu.unaj.am.myapplication.core.domain.model
 
 data class Barbero(val id: String, val nombre: String)
-data class Servicio(val id: String, val nombre: String, val duracion: Int, val barberoId: String? = null)
+data class Servicio(val id: String, val nombre: String, val duracion: Int, val barberoId: String? = null,
+    val precioCentavos: Long? = null)
 data class CatalogoReservas(
     val esBarbero: Boolean,
     val barberos: List<Barbero>,

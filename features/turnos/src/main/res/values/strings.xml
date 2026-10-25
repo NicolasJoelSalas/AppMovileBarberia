@@ -126,4 +126,6 @@
     <string name="turnos_week_empty_body">No hay horarios disponibles para este barbero y servicio. Podés consultar la otra semana o volver y cambiar tu selección.</string>
     <string name="turnos_see_next_week">Ver próxima semana</string>
     <string name="turnos_see_this_week">Ver esta semana</string>
+    <string name="turnos_service_price">Precio del servicio (ARS)</string>
+    <string name="turnos_price_unavailable">Precio no disponible</string>
 </resources>

@@ -80,7 +80,8 @@ class FirestoreReservaRepository(
                 .get(Source.SERVER).awaitReserva().documents.map { Barbero(it.id, it.getString("Nombre").orEmpty()) }
             val servicios = firestore.collection("servicios").get(Source.SERVER).awaitReserva().documents
                 .filter { enabled(it) && it.getLong("Duracion") == 40L && !it.getString("BarberoId").isNullOrBlank() }
-                .map { Servicio(it.id, it.getString("NombreCorte").orEmpty(), 40, it.getString("BarberoId")) }
+                .map { Servicio(it.id, it.getString("NombreCorte").orEmpty(), 40, it.getString("BarberoId"),
+                    importeCentavos(it.get("Precio"))) }
             val nombre = firestore.collection("clientes").document(uid).get(Source.SERVER)
                 .awaitReserva().getString("Nombre").orEmpty()
             sesionLocal?.guardar(uid, nombre)
