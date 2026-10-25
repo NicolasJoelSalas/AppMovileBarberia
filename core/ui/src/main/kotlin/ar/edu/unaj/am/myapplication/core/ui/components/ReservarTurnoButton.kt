@@ -1,5 +1,9 @@
 package ar.edu.unaj.am.myapplication.core.ui.components
 
+import ar.edu.unaj.am.myapplication.core.ui.R
+
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.heightIn
@@ -28,6 +32,6 @@ fun ReservarTurnoButton(
         ),
         border = BorderStroke(1.dp, colors.outline)
     ) {
-        Text("Reservar turno", fontWeight = FontWeight.SemiBold)
+        Text(stringResource(R.string.core_ui_reservar_turno), fontWeight = FontWeight.SemiBold)
     }
 }

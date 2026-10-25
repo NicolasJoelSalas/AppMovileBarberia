@@ -1,5 +1,7 @@
 package ar.edu.unaj.am.myapplication.features.auth.detail
 
+import ar.edu.unaj.am.myapplication.core.domain.model.ErrorReason
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ar.edu.unaj.am.myapplication.core.domain.model.AppResult
@@ -100,7 +102,7 @@ class LoginViewModel(
                 _uiState.update {
                     it.copy(
                         isLoading = false,
-                        error = DomainError.Unknown("No se pudo abrir el acceso con Google. Intentá nuevamente.")
+                        error = DomainError.Known(ErrorReason.GOOGLE_OPEN)
                     )
                 }
             }
@@ -110,7 +112,7 @@ class LoginViewModel(
     fun onGoogleConfigurationMissing() {
         if (_uiState.value.isLoading) return
         _uiState.update {
-            it.copy(error = DomainError.Unknown("El acceso con Google todavía no está disponible."))
+            it.copy(error = DomainError.Known(ErrorReason.GOOGLE_UNAVAILABLE))
         }
     }
 

@@ -56,9 +56,9 @@ class FirestoreUbicacionBarberiaRepository(
         AppResult.Error(when {
             e is FirebaseFirestoreException && e.code == FirebaseFirestoreException.Code.UNAVAILABLE -> DomainError.Network
             e is FirebaseFirestoreException && e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED ->
-                DomainError.Unknown("No tenés permiso para acceder a esta ubicación.")
+                DomainError.Known(ErrorReason.LOCATION_PERMISSION)
             e is IllegalArgumentException || e is IllegalStateException -> DomainError.Unknown(e.message)
-            else -> DomainError.Unknown("No se pudo acceder a la ubicación. Reintentá.")
+            else -> DomainError.Known(ErrorReason.LOCATION_LOAD)
         })
     }
 }

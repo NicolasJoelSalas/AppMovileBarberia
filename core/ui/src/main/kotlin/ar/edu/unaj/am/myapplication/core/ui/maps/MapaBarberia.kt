@@ -1,5 +1,9 @@
 package ar.edu.unaj.am.myapplication.core.ui.maps
 
+import ar.edu.unaj.am.myapplication.core.ui.R
+
+import androidx.compose.ui.res.stringResource
+
 import android.content.ComponentCallbacks2
 import android.content.res.Configuration
 import android.graphics.Bitmap
@@ -194,15 +198,15 @@ fun MapaBarberia(
             if (!listo && !error) CircularProgressIndicator(Modifier.align(Alignment.Center))
             if (error) Surface(Modifier.align(Alignment.TopCenter).padding(8.dp), tonalElevation = 4.dp) {
                 Column(Modifier.padding(12.dp)) {
-                    Text("No se pudo cargar el mapa. Revisá tu conexión.")
-                    TextButton(onClick = { mapa?.let { cargarEstilo(it) } }) { Text("Reintentar") }
+                    Text(stringResource(R.string.core_ui_no_se_pudo_cargar_el_mapa_revisa_tu_conexion))
+                    TextButton(onClick = { mapa?.let { cargarEstilo(it) } }) { Text(stringResource(R.string.core_ui_reintentar)) }
                 }
             }
         }
         val uriHandler = LocalUriHandler.current
         Surface(color = MaterialTheme.colorScheme.surface) {
             TextButton(onClick = { uriHandler.openUri("https://www.openstreetmap.org/copyright") }) {
-                Text("© OpenStreetMap contributors", style = MaterialTheme.typography.labelSmall)
+                Text(stringResource(R.string.core_ui_openstreetmap_contributors), style = MaterialTheme.typography.labelSmall)
             }
         }
     }

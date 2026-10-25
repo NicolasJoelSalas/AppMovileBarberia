@@ -2,6 +2,7 @@ package ar.edu.unaj.am.myapplication.core.domain.usecase
 
 import ar.edu.unaj.am.myapplication.core.domain.model.AppResult
 import ar.edu.unaj.am.myapplication.core.domain.model.DomainError
+import ar.edu.unaj.am.myapplication.core.domain.model.ErrorReason
 import ar.edu.unaj.am.myapplication.core.domain.repository.AuthRepository
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
@@ -12,9 +13,12 @@ class RegisterUseCaseTest {
     private val register = RegisterUseCase(repository)
 
     @Test fun `invalid inputs never create a user`() = runTest {
-        assertTrue(register("invalid", "password", "password") is AppResult.Error)
-        assertTrue(register("a@example.com", "short", "short") is AppResult.Error)
-        assertTrue(register("a@example.com", "password", "different") is AppResult.Error)
+        assertEquals(AppResult.Error(DomainError.Known(ErrorReason.INVALID_EMAIL)),
+            register("invalid", "password", "password"))
+        assertEquals(AppResult.Error(DomainError.Known(ErrorReason.PASSWORD_LENGTH)),
+            register("a@example.com", "short", "short"))
+        assertEquals(AppResult.Error(DomainError.Known(ErrorReason.PASSWORD_CONFIRMATION)),
+            register("a@example.com", "password", "different"))
         assertTrue(register("a@example.com", "      ", "      ") is AppResult.Error)
         assertEquals(0, repository.calls)
     }

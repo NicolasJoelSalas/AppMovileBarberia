@@ -1,5 +1,9 @@
 package ar.edu.unaj.am.myapplication.features.turnos.components
 
+import ar.edu.unaj.am.myapplication.features.turnos.R
+
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.selectable
@@ -22,7 +26,7 @@ fun SemanaSelector(semanaOffset: Int, onSemanaChange: (Int) -> Unit,
     Surface(modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(18.dp),
         color = colors.surfaceContainerHigh) {
         Row(Modifier.padding(4.dp).selectableGroup(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            listOf("Esta semana", "Próxima semana").forEachIndexed { index, titulo ->
+            listOf(stringResource(R.string.features_turnos_esta_semana), stringResource(R.string.features_turnos_proxima_semana)).forEachIndexed { index, titulo ->
                 val selected = semanaOffset == index
                 Surface(modifier = Modifier.weight(1f), shape = RoundedCornerShape(14.dp),
                     color = if (selected) colors.primaryContainer else colors.surfaceContainerHigh,

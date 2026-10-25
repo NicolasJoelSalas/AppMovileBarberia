@@ -1,5 +1,9 @@
 package ar.edu.unaj.am.myapplication.features.home
 
+import ar.edu.unaj.am.myapplication.features.home.R
+
+import androidx.compose.ui.res.stringResource
+
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
@@ -55,7 +59,7 @@ fun HomeRoute(viewModel: HomeViewModel, esBarbero: Boolean, onReservar: (String)
     Scaffold(topBar = {
         TopAppBar(title = {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(if (esBarbero) "Publicaciones" else "Inicio", fontWeight = FontWeight.Bold)
+                Text(if (esBarbero) stringResource(R.string.features_home_publicaciones) else stringResource(R.string.features_home_inicio), fontWeight = FontWeight.Bold)
             }
         },
             colors = TopAppBarDefaults.topAppBarColors(
@@ -71,13 +75,13 @@ fun HomeRoute(viewModel: HomeViewModel, esBarbero: Boolean, onReservar: (String)
                     contentColor = MaterialTheme.colorScheme.onPrimaryContainer)) {
                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(10.dp))
-                Text("Agregar trabajo", fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.features_home_agregar_trabajo), fontWeight = FontWeight.SemiBold)
             }
         }
     }) { padding ->
         when {
-            state.cargando -> LoadingContent(message = "Cargando trabajos…", modifier = Modifier.padding(padding))
-            state.error != null && state.publicaciones.isEmpty() -> ErrorContent(title = "No se pudieron cargar los trabajos",
+            state.cargando -> LoadingContent(message = stringResource(R.string.features_home_cargando_trabajos), modifier = Modifier.padding(padding))
+            state.error != null && state.publicaciones.isEmpty() -> ErrorContent(title = stringResource(R.string.features_home_no_se_pudieron_cargar_los_trabajos),
                 message = state.error!!.asMessage(), onRetry = viewModel::reintentar, modifier = Modifier.padding(padding))
             else -> LazyColumn(Modifier.fillMaxSize().padding(padding),
                 contentPadding = PaddingValues(16.dp),
@@ -85,8 +89,8 @@ fun HomeRoute(viewModel: HomeViewModel, esBarbero: Boolean, onReservar: (String)
                 state.error?.let { error ->
                     item {
                         Column {
-                            Text("Mostrando los trabajos guardados. ${error.asMessage()}")
-                            TextButton(onClick = viewModel::reintentar) { Text("Actualizar") }
+                            Text(stringResource(R.string.home_cached, error.asMessage()))
+                            TextButton(onClick = viewModel::reintentar) { Text(stringResource(R.string.features_home_actualizar)) }
                         }
                     }
                 }
@@ -101,18 +105,18 @@ fun HomeRoute(viewModel: HomeViewModel, esBarbero: Boolean, onReservar: (String)
                                     modifier = Modifier.padding(12.dp).size(24.dp))
                             }
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                                Text("NUESTRA BARBERÍA", style = MaterialTheme.typography.labelSmall,
+                                Text(stringResource(R.string.features_home_nuestra_barberia), style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                Text("Cortes y estilos", style = MaterialTheme.typography.headlineSmall,
+                                Text(stringResource(R.string.features_home_cortes_y_estilos), style = MaterialTheme.typography.headlineSmall,
                                     fontWeight = FontWeight.Bold)
                             }
                         }
-                        Text(if (esBarbero) "Mostrá tu trabajo y compartí tus últimos cortes con tus clientes."
-                            else "Descubrí el trabajo de nuestros barberos y elegí tu próximo corte.",
+                        Text(if (esBarbero) stringResource(R.string.features_home_mostra_tu_trabajo_y_comparti_tus_ultimos_cortes_con_tus_clientes)
+                            else stringResource(R.string.features_home_descubri_el_trabajo_de_nuestros_barberos_y_elegi_tu_proximo_corte),
                             style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         state.mensaje?.let {
                             Surface(shape = RoundedCornerShape(12.dp), color = MaterialTheme.colorScheme.primaryContainer) {
-                                Text(it, modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                Text(it.asString(), modifier = Modifier.fillMaxWidth().padding(12.dp),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer)
                             }
@@ -127,10 +131,10 @@ fun HomeRoute(viewModel: HomeViewModel, esBarbero: Boolean, onReservar: (String)
                             verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Icon(Icons.Outlined.Image, contentDescription = null, modifier = Modifier.size(36.dp),
                                 tint = MaterialTheme.colorScheme.primary)
-                            Text("Todavía no hay publicaciones", style = MaterialTheme.typography.titleMedium,
+                            Text(stringResource(R.string.features_home_todavia_no_hay_publicaciones), style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold)
-                            Text(if (esBarbero) "Agregá una foto para empezar a mostrar tu trabajo."
-                                else "Pronto podrás conocer los cortes y estilos de nuestros barberos.",
+                            Text(if (esBarbero) stringResource(R.string.features_home_agrega_una_foto_para_empezar_a_mostrar_tu_trabajo)
+                                else stringResource(R.string.features_home_pronto_podras_conocer_los_cortes_y_estilos_de_nuestros_barberos),
                                 style = MaterialTheme.typography.bodyMedium,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -148,7 +152,7 @@ fun HomeRoute(viewModel: HomeViewModel, esBarbero: Boolean, onReservar: (String)
     }
     if (esBarbero && state.modificando != null) AlertDialog(
         onDismissRequest = viewModel::cerrarDescripcion,
-        title = { Text("Modificar descripción") },
+        title = { Text(stringResource(R.string.features_home_modificar_descripcion)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(
@@ -156,9 +160,9 @@ fun HomeRoute(viewModel: HomeViewModel, esBarbero: Boolean, onReservar: (String)
                     onValueChange = viewModel::cambiarDescripcion,
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !state.guardandoDescripcion,
-                    label = { Text("Descripción (opcional)") },
+                    label = { Text(stringResource(R.string.features_home_descripcion_opcional)) },
                     minLines = 3, maxLines = 6,
-                    supportingText = { Text("${state.descripcionModificada.length}/300") }
+                    supportingText = { Text(stringResource(R.string.home_description_count, state.descripcionModificada.length)) }
                 )
                 state.errorDescripcion?.let { Text(it.asMessage(), color = MaterialTheme.colorScheme.error) }
             }
@@ -167,20 +171,20 @@ fun HomeRoute(viewModel: HomeViewModel, esBarbero: Boolean, onReservar: (String)
             TextButton(onClick = viewModel::guardarDescripcion,
                 enabled = !state.guardandoDescripcion &&
                     state.descripcionModificada.trim() != state.modificando?.descripcion) {
-                Text(if (state.guardandoDescripcion) "Guardando…" else "Guardar cambios")
+                Text(if (state.guardandoDescripcion) stringResource(R.string.features_home_guardando) else stringResource(R.string.features_home_guardar_cambios))
             }
         },
         dismissButton = {
             TextButton(onClick = viewModel::cerrarDescripcion, enabled = !state.guardandoDescripcion) {
-                Text("Cancelar")
+                Text(stringResource(R.string.features_home_cancelar))
             }
         }
     )
     borrar?.let { publicacion -> AlertDialog(
-        onDismissRequest = { borrar = null }, title = { Text("¿Eliminar publicación?") },
-        text = { Text("Este trabajo dejará de aparecer en las publicaciones.") },
-        confirmButton = { TextButton(onClick = { viewModel.eliminar(publicacion); borrar = null }) { Text("Eliminar") } },
-        dismissButton = { TextButton(onClick = { borrar = null }) { Text("Cancelar") } }) }
+        onDismissRequest = { borrar = null }, title = { Text(stringResource(R.string.features_home_eliminar_publicacion)) },
+        text = { Text(stringResource(R.string.features_home_este_trabajo_dejara_de_aparecer_en_las_publicaciones)) },
+        confirmButton = { TextButton(onClick = { viewModel.eliminar(publicacion); borrar = null }) { Text(stringResource(R.string.features_home_eliminar)) } },
+        dismissButton = { TextButton(onClick = { borrar = null }) { Text(stringResource(R.string.features_home_cancelar)) } }) }
 }
 
 @Composable
@@ -190,7 +194,7 @@ private fun TrabajoCard(publicacion: Publicacion, puedeEliminar: Boolean, elimin
     ElevatedCard(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = colors.surfaceContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
-        FotoTrabajo(publicacion.imagenUrl, "Trabajo de ${publicacion.barberoNombre}", Modifier.fillMaxWidth().aspectRatio(1f),
+        FotoTrabajo(publicacion.imagenUrl, stringResource(R.string.home_work_by, publicacion.barberoNombre), Modifier.fillMaxWidth().aspectRatio(1f),
             rutaLocal = publicacion.imagenLocalPath)
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically,
@@ -201,9 +205,9 @@ private fun TrabajoCard(publicacion: Publicacion, puedeEliminar: Boolean, elimin
                         modifier = Modifier.padding(10.dp).size(22.dp))
                 }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text("Barbero", style = MaterialTheme.typography.labelMedium,
+                    Text(stringResource(R.string.features_home_barbero), style = MaterialTheme.typography.labelMedium,
                         color = colors.onSurfaceVariant)
-                    Text(publicacion.barberoNombre.ifBlank { "Sin nombre" },
+                    Text(publicacion.barberoNombre.ifBlank { stringResource(R.string.features_home_sin_nombre) },
                         style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
             }
@@ -215,7 +219,7 @@ private fun TrabajoCard(publicacion: Publicacion, puedeEliminar: Boolean, elimin
                     Icon(Icons.Outlined.CalendarToday, contentDescription = null,
                         tint = colors.onSurfaceVariant, modifier = Modifier.size(16.dp))
                     Text(Instant.ofEpochMilli(it).atZone(ZoneId.of("America/Argentina/Buenos_Aires"))
-                        .format(DateTimeFormatter.ofPattern("d 'de' MMMM yyyy", Locale.forLanguageTag("es-AR"))),
+                        .format(DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.LONG).withLocale(androidx.compose.ui.platform.LocalConfiguration.current.locales[0])),
                         style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
                 }
             }
@@ -227,7 +231,7 @@ private fun TrabajoCard(publicacion: Publicacion, puedeEliminar: Boolean, elimin
                 modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Outlined.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Modificar descripción")
+                Text(stringResource(R.string.features_home_modificar_descripcion))
             }
             if (puedeEliminar) TextButton(onClick = onEliminar, enabled = !eliminando,
                 modifier = Modifier.align(Alignment.End),
@@ -235,7 +239,7 @@ private fun TrabajoCard(publicacion: Publicacion, puedeEliminar: Boolean, elimin
                 if (eliminando) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
                 else Icon(Icons.Outlined.DeleteOutline, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(if (eliminando) "Eliminando…" else "Eliminar publicación")
+                Text(if (eliminando) stringResource(R.string.features_home_eliminando) else stringResource(R.string.features_home_eliminar_publicacion))
             }
         }
     }
@@ -245,6 +249,7 @@ private fun TrabajoCard(publicacion: Publicacion, puedeEliminar: Boolean, elimin
 @Composable
 private fun EditorTrabajo(state: HomeUiState, vm: HomeViewModel) {
     val context = LocalContext.current
+    val resources = androidx.compose.ui.platform.LocalResources.current
     var cameraUri by rememberSaveable { mutableStateOf<String?>(null) }
     var confirmarSalida by rememberSaveable { mutableStateOf(false) }
     val salir = {
@@ -267,8 +272,8 @@ private fun EditorTrabajo(state: HomeUiState, vm: HomeViewModel) {
         }
     }
     Scaffold(topBar = {
-        TopAppBar(title = { Text("Agregar trabajo", fontWeight = FontWeight.Bold) },
-            actions = { TextButton(onClick = salir, enabled = !state.publicando) { Text("Volver") } },
+        TopAppBar(title = { Text(stringResource(R.string.features_home_agregar_trabajo), fontWeight = FontWeight.Bold) },
+            actions = { TextButton(onClick = salir, enabled = !state.publicando) { Text(stringResource(R.string.features_home_volver)) } },
             colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.primaryContainer,
                 titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer))
     }) { padding ->
@@ -286,33 +291,33 @@ private fun EditorTrabajo(state: HomeUiState, vm: HomeViewModel) {
                             val uri = FileProvider.getUriForFile(context, "${context.packageName}.trabajos.files", file)
                             cameraUri = uri.toString()
                             camera.launch(uri)
-                        }.onFailure { vm.errorFoto("No se pudo abrir la cámara. Podés elegir una foto de la galería.") }
-                    }, enabled = !state.publicando, modifier = Modifier.weight(1f)) { Text("Cámara") }
+                        }.onFailure { vm.errorFoto(resources.getString(R.string.features_home_no_se_pudo_abrir_la_camara_podes_elegir_una_foto_de_la_galeria)) }
+                    }, enabled = !state.publicando, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.features_home_camara)) }
                     OutlinedButton(onClick = {
                         runCatching { gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
-                            .onFailure { vm.errorFoto("No se pudo abrir la galería.") }
-                    }, enabled = !state.publicando, modifier = Modifier.weight(1f)) { Text("Galería") }
+                            .onFailure { vm.errorFoto(resources.getString(R.string.features_home_no_se_pudo_abrir_la_galeria)) }
+                    }, enabled = !state.publicando, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.features_home_galeria)) }
                 }
             }
             item {
                 OutlinedCard(Modifier.fillMaxWidth()) {
-                    FotoTrabajo(state.imagen, "Vista previa del trabajo", Modifier.fillMaxWidth().aspectRatio(1f),
+                    FotoTrabajo(state.imagen, stringResource(R.string.features_home_vista_previa_del_trabajo), Modifier.fillMaxWidth().aspectRatio(1f),
                         BiasAlignment(state.recorteX, state.recorteY))
                 }
             }
             if (state.imagen.isNotBlank()) item {
-                Text("Ajustar encuadre", style = MaterialTheme.typography.titleMedium)
-                Text("Todas las fotos se publican en formato cuadrado.", style = MaterialTheme.typography.bodySmall)
-                Text("Horizontal", style = MaterialTheme.typography.labelMedium)
+                Text(stringResource(R.string.features_home_ajustar_encuadre), style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.features_home_todas_las_fotos_se_publican_en_formato_cuadrado), style = MaterialTheme.typography.bodySmall)
+                Text(stringResource(R.string.features_home_horizontal), style = MaterialTheme.typography.labelMedium)
                 Slider(value = state.recorteX, onValueChange = { vm.encuadre(it, state.recorteY) },
                     valueRange = -1f..1f, enabled = !state.publicando)
-                Text("Vertical", style = MaterialTheme.typography.labelMedium)
+                Text(stringResource(R.string.features_home_vertical), style = MaterialTheme.typography.labelMedium)
                 Slider(value = state.recorteY, onValueChange = { vm.encuadre(state.recorteX, it) },
                     valueRange = -1f..1f, enabled = !state.publicando)
             }
             item {
                 OutlinedTextField(value = state.descripcion, onValueChange = vm::descripcion,
-                    label = { Text("Descripción (opcional)") }, supportingText = { Text("${state.descripcion.length}/300") },
+                    label = { Text(stringResource(R.string.features_home_descripcion_opcional)) }, supportingText = { Text(stringResource(R.string.home_description_count, state.descripcion.length)) },
                     enabled = !state.publicando, minLines = 2, maxLines = 4, modifier = Modifier.fillMaxWidth())
             }
             state.errorEdicion?.let { error -> item { Text(error.asMessage(), color = MaterialTheme.colorScheme.error) } }
@@ -323,15 +328,15 @@ private fun EditorTrabajo(state: HomeUiState, vm: HomeViewModel) {
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                         Spacer(Modifier.width(12.dp))
                     }
-                    Text(if (state.publicando) "Publicando…" else "Publicar trabajo")
+                    Text(if (state.publicando) stringResource(R.string.features_home_publicando) else stringResource(R.string.features_home_publicar_trabajo))
                 }
             }
         }
     }
     if (confirmarSalida) AlertDialog(onDismissRequest = { confirmarSalida = false },
-        title = { Text("¿Descartar publicación?") }, text = { Text("La foto y la descripción todavía no se publicaron.") },
-        confirmButton = { TextButton(onClick = { confirmarSalida = false; vm.cerrarEditor() }) { Text("Descartar") } },
-        dismissButton = { TextButton(onClick = { confirmarSalida = false }) { Text("Seguir editando") } })
+        title = { Text(stringResource(R.string.features_home_descartar_publicacion)) }, text = { Text(stringResource(R.string.features_home_la_foto_y_la_descripcion_todavia_no_se_publicaron)) },
+        confirmButton = { TextButton(onClick = { confirmarSalida = false; vm.cerrarEditor() }) { Text(stringResource(R.string.features_home_descartar)) } },
+        dismissButton = { TextButton(onClick = { confirmarSalida = false }) { Text(stringResource(R.string.features_home_seguir_editando)) } })
 }
 
 @Composable
@@ -345,7 +350,7 @@ private fun FotoTrabajo(model: String, descripcion: String, modifier: Modifier, 
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(Icons.Outlined.Image, contentDescription = null, modifier = Modifier.size(48.dp))
-                    Text(if (model.isBlank()) "Elegí una foto" else "No se pudo mostrar la foto")
+                    Text(if (model.isBlank()) stringResource(R.string.features_home_elegi_una_foto) else stringResource(R.string.features_home_no_se_pudo_mostrar_la_foto))
                 }
             }
         })

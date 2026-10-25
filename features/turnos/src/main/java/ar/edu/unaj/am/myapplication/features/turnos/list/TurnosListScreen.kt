@@ -1,5 +1,9 @@
 package ar.edu.unaj.am.myapplication.features.turnos.list
 
+import ar.edu.unaj.am.myapplication.features.turnos.R
+
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -102,13 +106,13 @@ fun TurnosListScreen(
     var cancelar by remember { androidx.compose.runtime.mutableStateOf<Turno?>(null) }
     cancelar?.let { turno ->
         androidx.compose.material3.AlertDialog(onDismissRequest = { cancelar = null },
-            title = { Text("Cancelar turno") }, text = { Text("¿Querés cancelar este turno? Se liberará el horario.") },
-            confirmButton = { androidx.compose.material3.TextButton(onClick = { cancelar = null; onCancelar?.invoke(turno) }) { Text("Cancelar turno") } },
-            dismissButton = { androidx.compose.material3.TextButton(onClick = { cancelar = null }) { Text("Volver") } })
+            title = { Text(stringResource(R.string.features_turnos_cancelar_turno)) }, text = { Text(stringResource(R.string.features_turnos_queres_cancelar_este_turno_se_liberara_el_horario)) },
+            confirmButton = { androidx.compose.material3.TextButton(onClick = { cancelar = null; onCancelar?.invoke(turno) }) { Text(stringResource(R.string.features_turnos_cancelar_turno)) } },
+            dismissButton = { androidx.compose.material3.TextButton(onClick = { cancelar = null }) { Text(stringResource(R.string.features_turnos_volver)) } })
     }
     Scaffold(
         modifier = modifier,
-        topBar = { AppTopBar(title = if (onReservar != null) "Mis turnos" else "Turnos", actions = {
+        topBar = { AppTopBar(title = if (onReservar != null) stringResource(R.string.features_turnos_mis_turnos) else stringResource(R.string.features_turnos_turnos), actions = {
                 onReservar?.let { reservar ->
                     ReservarTurnoButton(
                         onClick = reservar,
@@ -119,8 +123,8 @@ fun TurnosListScreen(
     ) { paddingValues ->
         Column(Modifier.fillMaxSize().padding(paddingValues)) {
         avisoSincronizacion?.let {
-            Text("Mostrando los turnos guardados. $it", modifier = Modifier.padding(16.dp))
-            androidx.compose.material3.TextButton(onClick = onRetry) { Text("Actualizar") }
+            Text(stringResource(R.string.turnos_cached, it), modifier = Modifier.padding(16.dp))
+            androidx.compose.material3.TextButton(onClick = onRetry) { Text(stringResource(R.string.features_turnos_actualizar)) }
         }
         SemanaSelector(semanaOffset = semanaOffset, onSemanaChange = onSemanaChange,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
@@ -133,7 +137,12 @@ fun TurnosListScreen(
                 FilterChip(
                     selected = filtroEstado == estado,
                     onClick = { filtroEstado = estado },
-                    label = { Text(estado) }
+                    label = { Text(stringResource(when (estado) {
+                        "Pendiente" -> R.string.turnos_filter_pending
+                        "Cancelado" -> R.string.turnos_filter_canceled
+                        "Completado" -> R.string.turnos_filter_completed
+                        else -> R.string.turnos_filter_all
+                    })) }
                 )
             }
         }
@@ -142,11 +151,11 @@ fun TurnosListScreen(
         val contentModifier = Modifier.weight(1f).fillMaxSize()
         when (uiState) {
             TurnosListUiState.Loading -> LoadingContent(
-                message = "Cargando turnos…",
+                message = stringResource(R.string.features_turnos_cargando_turnos),
                 modifier = contentModifier
             )
             is TurnosListUiState.Error -> ErrorContent(
-                title = "No se pudieron cargar los turnos",
+                title = stringResource(R.string.features_turnos_no_se_pudieron_cargar_los_turnos),
                 message = uiState.error.asMessage(),
                 onRetry = onRetry,
                 modifier = contentModifier
@@ -165,8 +174,8 @@ fun TurnosListScreen(
                 if (turnosVisibles.isEmpty()) {
                     Box(modifier = contentModifier.padding(24.dp), contentAlignment = Alignment.Center) {
                         Text(if (uiState.turnos.isNotEmpty())
-                            "No hay turnos con estado ${filtroEstado.lowercase()} para la semana seleccionada."
-                            else if (onReservar != null) "No tenés turnos reservados para la semana seleccionada." else "No hay turnos para la semana seleccionada.",
+                            stringResource(R.string.turnos_empty_filter)
+                            else if (onReservar != null) stringResource(R.string.features_turnos_no_tenes_turnos_reservados_para_la_semana_seleccionada) else stringResource(R.string.features_turnos_no_hay_turnos_para_la_semana_seleccionada),
                             style = MaterialTheme.typography.bodyLarge)
                     }
                 } else {

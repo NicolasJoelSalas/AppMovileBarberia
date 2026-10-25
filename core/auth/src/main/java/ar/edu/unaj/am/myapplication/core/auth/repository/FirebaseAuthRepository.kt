@@ -1,5 +1,7 @@
 package ar.edu.unaj.am.myapplication.core.auth.repository
 
+import ar.edu.unaj.am.myapplication.core.domain.model.ErrorReason
+
 import ar.edu.unaj.am.myapplication.core.domain.model.AppResult
 import ar.edu.unaj.am.myapplication.core.domain.model.DomainError
 import ar.edu.unaj.am.myapplication.core.domain.repository.AuthRepository
@@ -32,10 +34,7 @@ class FirebaseAuthRepository(
 
                         else ->
                             AppResult.Error(
-                                DomainError.Unknown(
-                                    "No se pudo iniciar sesión. " +
-                                        "Revisá tus credenciales e intentá nuevamente."
-                                )
+                                DomainError.Known(ErrorReason.LOGIN_FAILED)
                             )
                     }
 
@@ -55,7 +54,7 @@ class FirebaseAuthRepository(
                             task.exception is FirebaseNetworkException ->
                                 AppResult.Error(DomainError.Network)
                             else -> AppResult.Error(
-                                DomainError.Unknown("No se pudo ingresar con Google. Intentá nuevamente.")
+                                DomainError.Known(ErrorReason.GOOGLE_SIGNIN)
                             )
                         }
                     )
@@ -71,17 +70,17 @@ class FirebaseAuthRepository(
                     val result: AppResult<Unit> = when {
                         task.isSuccessful -> AppResult.Success(Unit)
                         task.exception is FirebaseAuthUserCollisionException -> AppResult.Error(
-                            DomainError.Unknown("Ya existe una cuenta con ese correo. Iniciá sesión.")
+                            DomainError.Known(ErrorReason.EMAIL_EXISTS)
                         )
                         task.exception is FirebaseAuthWeakPasswordException -> AppResult.Error(
-                            DomainError.Unknown("La contraseña no cumple los requisitos. Elegí una más segura.")
+                            DomainError.Known(ErrorReason.WEAK_PASSWORD)
                         )
                         task.exception is FirebaseAuthInvalidCredentialsException -> AppResult.Error(
-                            DomainError.Unknown("Ingresá un correo electrónico válido.")
+                            DomainError.Known(ErrorReason.INVALID_EMAIL)
                         )
                         task.exception is FirebaseNetworkException -> AppResult.Error(DomainError.Network)
                         else -> AppResult.Error(
-                            DomainError.Unknown("No se pudo crear la cuenta. Intentá nuevamente.")
+                            DomainError.Known(ErrorReason.REGISTER_FAILED)
                         )
                     }
                     continuation.resume(result)

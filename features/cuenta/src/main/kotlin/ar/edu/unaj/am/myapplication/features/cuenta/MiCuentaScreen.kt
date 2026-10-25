@@ -1,5 +1,7 @@
 package ar.edu.unaj.am.myapplication.features.cuenta
 
+import ar.edu.unaj.am.myapplication.features.cuenta.R
+
 import androidx.compose.foundation.layout.*
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
@@ -21,6 +23,11 @@ import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.DarkMode
+import androidx.compose.material.icons.outlined.Language
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import ar.edu.unaj.am.myapplication.core.ui.theme.AppLanguage
+import ar.edu.unaj.am.myapplication.core.ui.theme.LocalLanguagePreference
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.ui.semantics.Role
 import ar.edu.unaj.am.myapplication.core.ui.theme.LocalAppearance
@@ -48,6 +55,48 @@ fun MiCuentaScreen(
     onUbicacionBarberia: () -> Unit = {}
 ) {
     var editando by rememberSaveable { mutableStateOf(false) }
+    var eligiendoIdioma by rememberSaveable { mutableStateOf(false) }
+    val language = LocalLanguagePreference.current
+    val selectedLanguage = if (language.selected == AppLanguage.SYSTEM) {
+        val locales = androidx.compose.ui.platform.LocalConfiguration.current.locales
+        (0 until locales.size()).map { AppLanguage.fromTag(locales[it].language) }
+            .firstOrNull { it != AppLanguage.SYSTEM } ?: AppLanguage.SPANISH
+    } else language.selected
+    if (eligiendoIdioma) {
+        AlertDialog(
+            onDismissRequest = { eligiendoIdioma = false },
+            title = { Text(stringResource(R.string.cuenta_idioma)) },
+            text = {
+                Column(Modifier.selectableGroup()) {
+                    listOf(AppLanguage.SPANISH, AppLanguage.ENGLISH).forEach { option ->
+                        Row(
+                            Modifier.fillMaxWidth()
+                                .selectable(
+                                    selected = option == selectedLanguage,
+                                    role = Role.RadioButton,
+                                    onClick = {
+                                        eligiendoIdioma = false
+                                        language.onSelect(option)
+                                    }
+                                )
+                                .heightIn(min = 56.dp).padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            RadioButton(selected = option == selectedLanguage, onClick = null)
+                            Text(stringResource(option.labelResource()))
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { eligiendoIdioma = false }) {
+                    Text(stringResource(R.string.cuenta_idioma_cancelar))
+                }
+            }
+        )
+    }
     val focusManager = LocalFocusManager.current
     val colors = MaterialTheme.colorScheme
     val volverAlMenu = {
@@ -59,11 +108,11 @@ fun MiCuentaScreen(
     }
     BackHandler(enabled = editando) { volverAlMenu() }
     Scaffold(topBar = {
-        AppTopBar(title = if (editando) "Modificar perfil"
+        AppTopBar(title = if (editando) stringResource(R.string.features_cuenta_modificar_perfil)
                 else stringResource(R.string.cuenta_titulo),
             navigationIcon = {
                 if (editando) IconButton(onClick = { volverAlMenu() }, enabled = !uiState.guardando) {
-                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Volver a Mi cuenta")
+                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.features_cuenta_volver_a_mi_cuenta))
                 }
             })
     }) { padding ->
@@ -88,19 +137,19 @@ fun MiCuentaScreen(
                             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Text(perfil.nombre, style = MaterialTheme.typography.titleLarge,
                                     fontWeight = FontWeight.Bold)
-                                Text(if (perfil.esBarbero) "Cuenta de barbero" else "Cuenta de cliente",
+                                Text(if (perfil.esBarbero) stringResource(R.string.features_cuenta_cuenta_de_barbero) else stringResource(R.string.features_cuenta_cuenta_de_cliente),
                                     style = MaterialTheme.typography.bodyMedium)
                             }
                         }
                     }
                     if (!editando) {
                         Column(Modifier.fillMaxWidth()) {
-                            OpcionCuenta(Icons.Outlined.Edit, "Modificar perfil",
-                                "Actualizá tus datos personales", onClick = { editando = true })
+                            OpcionCuenta(Icons.Outlined.Edit, stringResource(R.string.features_cuenta_modificar_perfil),
+                                stringResource(R.string.features_cuenta_actualiza_tus_datos_personales), onClick = { editando = true })
                             if (perfil.esBarbero) {
                                 HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
-                                OpcionCuenta(Icons.Outlined.LocationOn, "Ubicación de la barbería",
-                                    "Marcá en el mapa dónde atendés", onClick = onUbicacionBarberia)
+                                OpcionCuenta(Icons.Outlined.LocationOn, stringResource(R.string.features_cuenta_ubicacion_de_la_barberia),
+                                    stringResource(R.string.features_cuenta_marca_en_el_mapa_donde_atendes), onClick = onUbicacionBarberia)
                             }
                             HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
                             val appearance = LocalAppearance.current
@@ -115,17 +164,21 @@ fun MiCuentaScreen(
                                 Icon(Icons.Outlined.DarkMode, contentDescription = null,
                                     modifier = Modifier.size(24.dp))
                                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Text("Modo oscuro", style = MaterialTheme.typography.titleMedium,
+                                    Text(stringResource(R.string.features_cuenta_modo_oscuro), style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Medium)
-                                    Text(if (appearance.darkTheme) "Activado" else "Desactivado · modo claro",
+                                    Text(if (appearance.darkTheme) stringResource(R.string.features_cuenta_activado) else stringResource(R.string.features_cuenta_desactivado_modo_claro),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = colors.onSurfaceVariant)
                                 }
                                 Switch(checked = appearance.darkTheme, onCheckedChange = null)
                             }
                             HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
-                            OpcionCuenta(Icons.AutoMirrored.Outlined.Logout, "Cerrar sesión",
-                                "Salir de tu cuenta", onClick = onLogout, destructive = true)
+                            OpcionCuenta(Icons.Outlined.Language, stringResource(R.string.cuenta_idioma),
+                                stringResource(selectedLanguage.labelResource()),
+                                onClick = { eligiendoIdioma = true })
+                            HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
+                            OpcionCuenta(Icons.AutoMirrored.Outlined.Logout, stringResource(R.string.features_cuenta_cerrar_sesion),
+                                stringResource(R.string.features_cuenta_salir_de_tu_cuenta), onClick = onLogout, destructive = true)
                         }
                     }
                     if (editando) {
@@ -138,9 +191,9 @@ fun MiCuentaScreen(
                                         modifier = Modifier.padding(12.dp).size(26.dp))
                                 }
                                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Text("Datos personales", style = MaterialTheme.typography.titleLarge,
+                                    Text(stringResource(R.string.features_cuenta_datos_personales), style = MaterialTheme.typography.titleLarge,
                                         fontWeight = FontWeight.Bold)
-                                    Text("Actualizá el nombre de tu perfil.", style = MaterialTheme.typography.bodyMedium)
+                                    Text(stringResource(R.string.features_cuenta_actualiza_el_nombre_de_tu_perfil), style = MaterialTheme.typography.bodyMedium)
                                 }
                             }
                         }
@@ -158,11 +211,11 @@ fun MiCuentaScreen(
                                     supportingText = {
                                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                             Text(when {
-                                                longitud == 0 -> "Ingresá tu nombre."
-                                                longitud > 120 -> "El máximo es de 120 caracteres."
-                                                else -> "Así aparecerás en la aplicación."
+                                                longitud == 0 -> stringResource(R.string.features_cuenta_ingresa_tu_nombre)
+                                                longitud > 120 -> stringResource(R.string.features_cuenta_el_maximo_es_de_120_caracteres)
+                                                else -> stringResource(R.string.features_cuenta_asi_apareceras_en_la_aplicacion)
                                             }, modifier = Modifier.weight(1f))
-                                            Text("$longitud/120")
+                                            Text(stringResource(R.string.cuenta_name_count, longitud))
                                         }
                                     },
                                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -177,11 +230,11 @@ fun MiCuentaScreen(
                                                 tint = colors.onSurfaceVariant, modifier = Modifier.size(20.dp))
                                             Text(perfil.correo.ifEmpty { stringResource(R.string.cuenta_sin_correo) },
                                                 modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                                            Icon(Icons.Outlined.Lock, contentDescription = "Correo de solo lectura",
+                                            Icon(Icons.Outlined.Lock, contentDescription = stringResource(R.string.features_cuenta_correo_de_solo_lectura),
                                                 tint = colors.onSurfaceVariant, modifier = Modifier.size(16.dp))
                                         }
                                     }
-                                    Text("El correo está asociado a tu cuenta y no se puede editar.",
+                                    Text(stringResource(R.string.features_cuenta_el_correo_esta_asociado_a_tu_cuenta_y_no_se_puede_editar),
                                         style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
                                 }
                                 HorizontalDivider(color = colors.outlineVariant)
@@ -200,7 +253,7 @@ fun MiCuentaScreen(
                                     OutlinedButton(onClick = { volverAlMenu() }, enabled = !uiState.guardando,
                                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
                                         shape = RoundedCornerShape(14.dp)) {
-                                        Text("Volver a Mi cuenta")
+                                        Text(stringResource(R.string.features_cuenta_volver_a_mi_cuenta))
                                     }
                                 }
                             }
@@ -212,10 +265,16 @@ fun MiCuentaScreen(
             if (!uiState.cargando && uiState.perfil == null) {
                 Button(onClick = onReintentar) { Text(stringResource(R.string.cuenta_reintentar)) }
             }
-            uiState.mensaje?.let { Text(it, color = colors.primary) }
+            uiState.mensaje?.let { Text(it.asString(), color = colors.primary) }
 
         }
     }
+}
+
+private fun AppLanguage.labelResource(): Int = when (this) {
+    AppLanguage.SYSTEM -> R.string.cuenta_idioma_dispositivo
+    AppLanguage.SPANISH -> R.string.cuenta_idioma_espanol
+    AppLanguage.ENGLISH -> R.string.cuenta_idioma_ingles
 }
 
 @Composable

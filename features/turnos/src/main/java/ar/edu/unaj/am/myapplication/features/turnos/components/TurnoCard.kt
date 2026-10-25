@@ -1,5 +1,9 @@
 package ar.edu.unaj.am.myapplication.features.turnos.components
 
+import ar.edu.unaj.am.myapplication.features.turnos.R
+
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -22,8 +26,10 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val horaFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.forLanguageTag("es-AR"))
-private val fechaFormatter = DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", Locale.forLanguageTag("es-AR"))
+private val horaFormatter: DateTimeFormatter
+    @androidx.compose.runtime.Composable get() = DateTimeFormatter.ofPattern("HH:mm", androidx.compose.ui.platform.LocalConfiguration.current.locales[0])
+private val fechaFormatter: DateTimeFormatter
+    @androidx.compose.runtime.Composable get() = DateTimeFormatter.ofPattern("EEEE d MMMM", androidx.compose.ui.platform.LocalConfiguration.current.locales[0])
 
 @Composable
 fun TurnoCard(turno: Turno, modifier: Modifier = Modifier,
@@ -42,33 +48,33 @@ fun TurnoCard(turno: Turno, modifier: Modifier = Modifier,
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("CLIENTE", style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceVariant)
-                Text(turno.clienteNombre.ifBlank { "Cliente sin nombre" },
+                Text(stringResource(R.string.features_turnos_cliente), style = MaterialTheme.typography.labelSmall, color = colors.onSurfaceVariant)
+                Text(turno.clienteNombre.ifBlank { stringResource(R.string.features_turnos_cliente_sin_nombre) },
                     style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             }
             DatoTurno(Icons.Outlined.CalendarToday,
-                inicio?.format(fechaFormatter)?.replaceFirstChar { it.titlecase(Locale.forLanguageTag("es-AR")) }
-                    ?: "Fecha sin configurar")
+                inicio?.format(fechaFormatter)?.replaceFirstChar { it.titlecase(androidx.compose.ui.platform.LocalConfiguration.current.locales[0]) }
+                    ?: stringResource(R.string.features_turnos_fecha_sin_configurar))
             Surface(color = colors.primaryContainer.copy(alpha = 0.45f),
                 contentColor = colors.onPrimaryContainer, shape = RoundedCornerShape(12.dp)) {
                 Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Icon(Icons.Outlined.Schedule, contentDescription = null, modifier = Modifier.size(22.dp))
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text("Horario del turno", style = MaterialTheme.typography.labelMedium)
-                        Text("${inicio?.format(horaFormatter) ?: "--:--"} a ${fin?.format(horaFormatter) ?: "--:--"}",
+                        Text(stringResource(R.string.features_turnos_horario_del_turno), style = MaterialTheme.typography.labelMedium)
+                        Text(stringResource(R.string.turnos_time_range, inicio?.format(horaFormatter) ?: "--:--", fin?.format(horaFormatter) ?: "--:--"),
                             style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
-            DatoTurno(Icons.Outlined.ContentCut, turno.servicioNombre.ifBlank { "Servicio sin asignar" })
+            DatoTurno(Icons.Outlined.ContentCut, turno.servicioNombre.ifBlank { stringResource(R.string.features_turnos_servicio_sin_asignar) })
             onComoLlegar?.takeIf { !realizado && turno.estado.lowercase() != "cancelado" }?.let { abrirRuta ->
                 OutlinedButton(onClick = abrirRuta,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                     Icon(Icons.Outlined.Directions, contentDescription = null,
                         modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text("Cómo llegar")
+                    Text(stringResource(R.string.features_turnos_como_llegar))
                 }
             }
             if (onRecordatorio != null && !realizado &&
@@ -79,25 +85,25 @@ fun TurnoCard(turno: Turno, modifier: Modifier = Modifier,
                     Icon(Icons.Outlined.NotificationsActive, contentDescription = null,
                         modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
-                    Text(if (recordatorioActivo) "Desactivar avisos" else "Activar avisos del turno")
+                    Text(if (recordatorioActivo) stringResource(R.string.features_turnos_desactivar_avisos) else stringResource(R.string.features_turnos_activar_avisos_del_turno))
                 }
                 Text(when {
-                    recordatorioActivo -> "Avisos automáticos un día y una hora antes (hora local). Solo se envían los que aún no pasaron."
-                    turno.inicioMillis == null -> "El turno necesita una fecha y hora de inicio."
-                    !recordatorioHabilitado -> "La hora del recordatorio ya pasó."
-                    else -> "Avisos un día antes y una hora antes. Habilitá los permisos para recibirlos."
+                    recordatorioActivo -> stringResource(R.string.features_turnos_avisos_automaticos_un_dia_y_una_hora_antes_hora_local_solo_se_envian_los_que_aun_no_pasaron)
+                    turno.inicioMillis == null -> stringResource(R.string.features_turnos_el_turno_necesita_una_fecha_y_hora_de_inicio)
+                    !recordatorioHabilitado -> stringResource(R.string.features_turnos_la_hora_del_recordatorio_ya_paso)
+                    else -> stringResource(R.string.features_turnos_avisos_un_dia_antes_y_una_hora_antes_habilita_los_permisos_para_recibirlos)
                 }, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
             }
             if (editable) {
-                onModificar?.let { OutlinedButton(onClick = it, enabled = !operando, modifier = Modifier.fillMaxWidth()) { Text("Modificar turno") } }
-                onCancelar?.let { TextButton(onClick = it, enabled = !operando, modifier = Modifier.fillMaxWidth()) { Text(if (operando) "Guardando…" else "Cancelar turno") } }
+                onModificar?.let { OutlinedButton(onClick = it, enabled = !operando, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.features_turnos_modificar_turno)) } }
+                onCancelar?.let { TextButton(onClick = it, enabled = !operando, modifier = Modifier.fillMaxWidth()) { Text(if (operando) stringResource(R.string.features_turnos_guardando) else stringResource(R.string.features_turnos_cancelar_turno)) } }
             }
-            if (turno.estado.lowercase() == "cancelado") Text("Cancelado", color = colors.error)
+            if (turno.estado.lowercase() == "cancelado") Text(stringResource(R.string.features_turnos_cancelado), color = colors.error)
             if (realizado) {
                 HorizontalDivider(color = colors.outlineVariant)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = colors.primary)
-                    Text("Realizado", color = colors.primary, fontWeight = FontWeight.SemiBold)
+                    Text(stringResource(R.string.features_turnos_realizado), color = colors.primary, fontWeight = FontWeight.SemiBold)
                 }
             } else if (onMarcarRealizado != null && turno.estado.lowercase() in listOf("confirmado", "pendiente")) {
                 Button(onClick = onMarcarRealizado, enabled = habilitado,
@@ -108,11 +114,11 @@ fun TurnoCard(turno: Turno, modifier: Modifier = Modifier,
                         Icon(Icons.Outlined.CheckCircle, contentDescription = null, modifier = Modifier.size(18.dp))
                     }
                     Spacer(Modifier.width(8.dp))
-                    Text(if (completando) "Guardando…" else "Marcar realizado")
+                    Text(if (completando) stringResource(R.string.features_turnos_guardando) else stringResource(R.string.features_turnos_marcar_realizado))
                 }
-                if (turno.inicioMillis == null) Text("El turno necesita una fecha y hora de inicio.",
+                if (turno.inicioMillis == null) Text(stringResource(R.string.features_turnos_el_turno_necesita_una_fecha_y_hora_de_inicio),
                     style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
-                else if (!habilitado && !completando) Text("Disponible desde la hora de inicio del turno.",
+                else if (!habilitado && !completando) Text(stringResource(R.string.features_turnos_disponible_desde_la_hora_de_inicio_del_turno),
                     style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
             }
         }

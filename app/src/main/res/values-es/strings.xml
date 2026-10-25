@@ -1,0 +1,35 @@
+<resources>
+    <string name="tab_mi_cuenta">Mi cuenta</string>
+    <string name="app_name">BarberApp</string>
+    <string name="tab_todos">Tareas</string>
+    <string name="tab_turnos">Turnos</string>
+    <string name="tab_agenda">Agenda</string>
+    <string name="tab_playground">Playground</string>
+    <string name="tab_home">Inicio</string>
+    <string name="tab_publicaciones">Trabajos</string>
+    <string name="app_habilita_las_notificaciones_de_la_app_y_el_canal_recordatorios_de_turnos_en_ajustes">Habilitá las notificaciones de la app y el canal Recordatorios de turnos en Ajustes.</string>
+    <string name="app_para_activar_el_recordatorio_permiti_alarmas_y_recordatorios_en_ajustes">Para activar el recordatorio, permití Alarmas y recordatorios en Ajustes.</string>
+    <string name="app_no_se_pudieron_activar_los_avisos_revisa_que_falte_mas_de_una_hora_para_el_turno_e_intenta_nuevamente">No se pudieron activar los avisos. Revisá que falte más de una hora para el turno e intentá nuevamente.</string>
+    <string name="app_avisos_activados_para_los_horarios_que_aun_no_pasaron">Avisos activados para los horarios que aún no pasaron.</string>
+    <string name="app_no_se_activo_el_recordatorio_necesitamos_permiso_para_mostrar_notificaciones">No se activó el recordatorio. Necesitamos permiso para mostrar notificaciones.</string>
+    <string name="app_avisos_de_tus_turnos">Avisos de tus turnos</string>
+    <string name="app_activar_recordatorio">Activar recordatorio</string>
+    <string name="app_volver">Volver</string>
+    <string name="app_permitir_alarmas_y_recordatorios">Permitir alarmas y recordatorios</string>
+    <string name="app_para_avisarte_a_la_hora_indicada_aunque_la_app_este_cerrada_activa_el_permiso_de_alarmas_y_recordatorios_en_la_siguiente_pantalla">Para avisarte a la hora indicada aunque la app esté cerrada, activá el permiso de Alarmas y recordatorios en la siguiente pantalla.</string>
+    <string name="app_este_telefono_no_permite_abrir_el_permiso_busca_alarmas_y_recordatorios_en_ajustes">Este teléfono no permite abrir el permiso. Buscá Alarmas y recordatorios en Ajustes.</string>
+    <string name="app_abrir_ajustes">Abrir ajustes</string>
+    <string name="app_recordatorio_cancelado">Recordatorio cancelado.</string>
+    <string name="app_cerrando_sesion">Cerrando sesión…</string>
+    <string name="app_error_limpiar_copia">No se pudo limpiar la copia local. Los datos siguen separados por cuenta.</string>
+    <string name="reminder_tomorrow">Tu turno es mañana</string>
+    <string name="reminder_one_hour">Tu turno es en una hora</string>
+    <string name="reminder_time">Tu turno es a las %1$s.</string>
+    <string name="reminder_channel">Recordatorios de turnos</string>
+    <string name="reminder_channel_description">Avisos un día y una hora antes de tus turnos</string>
+    <string name="reminder_explanation">Tus turnos incluyen avisos un día antes y una hora antes. Para este turno, los próximos avisos son: %1$s (hora local). Necesitamos los permisos del teléfono para enviarlos. El sonido depende de los ajustes de notificaciones.</string>
+    <plurals name="app_pending_appointments">
+        <item quantity="one">%1$d turno pendiente</item>
+        <item quantity="other">%1$d turnos pendientes</item>
+    </plurals>
+</resources>

@@ -9,27 +9,23 @@ import java.time.temporal.TemporalAdjusters
 class GenerarSemanaUseCase {
     operator fun invoke(agenda: AgendaSemanal, ahora: Instant, turnos: List<Turno> = emptyList()): SemanaDisponible {
         val zone = ZoneId.of(agenda.zonaHoraria)
-        require(agenda.dias.size == 6) { "Configurá los seis días de atención." }
+        requireDomain(agenda.dias.size == 6, ErrorReason.SCHEDULE_DAYS)
         val currentMonday = ahora.atZone(zone).toLocalDate()
             .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
         val monday = agenda.inicioSemana?.let(LocalDate::parse) ?: currentMonday
-        require(monday == currentMonday || monday == currentMonday.plusWeeks(1)) {
-            "La semana cambió. Volvé a cargar la agenda actual o la próxima."
-        }
+        requireDomain(monday == currentMonday || monday == currentMonday.plusWeeks(1), ErrorReason.SCHEDULE_WEEK_CHANGED)
         val slots = agenda.dias.flatMapIndexed { index, day ->
             if (!day.habilitado) emptyList() else {
                 val date = monday.plusDays(index.toLong())
                 val spans = day.franjas.map {
-                    require(it.inicio.matches(Regex("[0-2][0-9]:[0-5][0-9]")) &&
-                        it.fin.matches(Regex("[0-2][0-9]:[0-5][0-9]"))) { "Usá horas con formato HH:mm." }
+                    requireDomain(it.inicio.matches(Regex("[0-2][0-9]:[0-5][0-9]")) &&
+                        it.fin.matches(Regex("[0-2][0-9]:[0-5][0-9]")), ErrorReason.SCHEDULE_TIME_FORMAT)
                     val start = date.atTime(LocalTime.parse(it.inicio)).atZone(zone).toInstant()
                     val end = date.atTime(LocalTime.parse(it.fin)).atZone(zone).toInstant()
-                    require(end > start) { "El fin de una franja debe ser posterior al inicio." }
+                    requireDomain(end > start, ErrorReason.SCHEDULE_END)
                     start to end
                 }.sortedBy { it.first }
-                require(spans.zipWithNext().none { (a, b) -> a.second > b.first }) {
-                    "Las franjas de atención no pueden superponerse."
-                }
+                requireDomain(spans.zipWithNext().none { (a, b) -> a.second > b.first }, ErrorReason.SCHEDULE_OVERLAP)
                 spans.flatMap { (begin, end) ->
                     buildList {
                         var start = begin
@@ -42,9 +38,9 @@ class GenerarSemanaUseCase {
             }
         }
         val occupied = turnos.filter { it.estado.lowercase() !in listOf("false", "cancelado", "cancelada") }.map {
-            val start = requireNotNull(it.inicioMillis) { "Corregí Inicio de los turnos existentes." }
-            val end = requireNotNull(it.finMillis) { "Corregí Fin de los turnos existentes." }
-            require(end > start) { "Corregí la duración de los turnos existentes." }
+            val start = it.inicioMillis ?: throw DomainValidationException(DomainError.Known(ErrorReason.APPOINTMENT_START_MISSING))
+            val end = it.finMillis ?: throw DomainValidationException(DomainError.Known(ErrorReason.APPOINTMENT_END_MISSING))
+            requireDomain(end > start, ErrorReason.APPOINTMENT_DURATION)
             start to end
         }
         val available = slots.filter { slot ->
@@ -69,10 +65,12 @@ class PublicarSemanaUseCase(
                 is AppResult.Success -> repository.publicarSemana(result.data,
                     generar(result.data, clock.instant(), turnos.data))
             }
+        } catch (e: DomainValidationException) {
+            AppResult.Error(e.error)
         } catch (e: IllegalArgumentException) {
-            AppResult.Error(DomainError.Unknown(e.message ?: "Revisá la agenda semanal."))
+            AppResult.Error(DomainError.Known(ErrorReason.SCHEDULE_ZONE))
         } catch (e: DateTimeException) {
-            AppResult.Error(DomainError.Unknown("Revisá las horas y la zona horaria de la agenda."))
+            AppResult.Error(DomainError.Known(ErrorReason.SCHEDULE_ZONE))
         }
     }
 }

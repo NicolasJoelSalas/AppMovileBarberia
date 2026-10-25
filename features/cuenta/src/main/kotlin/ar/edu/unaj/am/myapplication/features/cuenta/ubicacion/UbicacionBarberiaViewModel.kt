@@ -1,5 +1,9 @@
 package ar.edu.unaj.am.myapplication.features.cuenta.ubicacion
 
+import ar.edu.unaj.am.myapplication.features.cuenta.R
+
+import ar.edu.unaj.am.myapplication.core.ui.components.UiMessage
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ar.edu.unaj.am.myapplication.core.domain.model.*
@@ -14,7 +18,7 @@ data class UbicacionBarberiaUiState(
     val guardada: Coordenadas? = null,
     val guardando: Boolean = false,
     val error: DomainError? = null,
-    val mensaje: String? = null
+    val mensaje: UiMessage? = null
 ) {
     val puedeGuardar get() = cargada && !guardando && seleccion != null && seleccion != guardada
 }
@@ -53,7 +57,7 @@ class UbicacionBarberiaViewModel(
         viewModelScope.launch {
             when (val result = guardar(punto)) {
                 is AppResult.Success -> _uiState.update { it.copy(guardando = false,
-                    guardada = punto, mensaje = "Ubicación de la barbería guardada.") }
+                    guardada = punto, mensaje = UiMessage(R.string.cuenta_location_saved)) }
                 is AppResult.Error -> _uiState.update { it.copy(guardando = false, error = result.error) }
             }
         }

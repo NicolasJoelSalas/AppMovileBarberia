@@ -50,13 +50,13 @@ class FirestorePublicacionRepository(
     private fun observarRemotos(soloServidor: Boolean = false) = callbackFlow<AppResult<List<Publicacion>>> {
         val uid = auth.currentUser?.uid
         if (uid == null) {
-            trySend(AppResult.Error(DomainError.Unknown("Iniciá sesión para ver los trabajos.")))
+            trySend(AppResult.Error(DomainError.Known(ErrorReason.WORK_SIGNIN)))
             close(); return@callbackFlow
         }
         val listener = firestore.collection("publicaciones").orderBy("CreadoEn", Query.Direction.DESCENDING)
             .limit(50).addSnapshotListener(MetadataChanges.INCLUDE) { snapshot, error ->
                 if (error != null) {
-                    trySend(AppResult.Error(DomainError.Unknown("No se pudieron cargar los trabajos. Revisá la conexión y las reglas de Firestore.")))
+                    trySend(AppResult.Error(DomainError.Known(ErrorReason.WORK_LOAD)))
                 } else if (soloServidor && snapshot?.metadata?.isFromCache == true) {
                     trySend(AppResult.Error(DomainError.Network))
                 } else if (soloServidor && (snapshot == null || snapshot.metadata.hasPendingWrites())) {
@@ -69,7 +69,7 @@ class FirestorePublicacionRepository(
                             esPropia = doc.getString("BarberoId") == uid)
                     }))
                 } catch (e: Exception) {
-                    trySend(AppResult.Error(DomainError.Unknown("Hay una publicación con campos de tipo incorrecto.")))
+                    trySend(AppResult.Error(DomainError.Known(ErrorReason.WORK_INVALID)))
                 }
             }
         awaitClose { listener.remove() }
@@ -141,7 +141,7 @@ class FirestorePublicacionRepository(
         AppResult.Success(Unit)
     } catch (e: CancellationException) { throw e
     } catch (e: Exception) {
-        AppResult.Error(DomainError.Unknown("No se pudo guardar la descripción. Revisá tu conexión y tus permisos."))
+        AppResult.Error(DomainError.Known(ErrorReason.DESCRIPTION_SAVE))
     }
 
     override suspend fun eliminar(id: String): AppResult<Unit> = try {
@@ -157,7 +157,7 @@ class FirestorePublicacionRepository(
         }.esperar()
         AppResult.Success(Unit)
     } catch (e: CancellationException) { throw e
-    } catch (e: Exception) { AppResult.Error(DomainError.Unknown("No se pudo eliminar la publicación. Revisá tu conexión y tus permisos.")) }
+    } catch (e: Exception) { AppResult.Error(DomainError.Known(ErrorReason.WORK_DELETE)) }
 }
 
 private suspend fun <T> Task<T>.esperar(): T = suspendCancellableCoroutine { continuation ->

@@ -1,5 +1,9 @@
 package ar.edu.unaj.am.myapplication.features.cuenta
 
+import ar.edu.unaj.am.myapplication.features.cuenta.R
+
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -20,7 +24,7 @@ fun ReporteGananciasRoute(viewModel: ReporteGananciasViewModel) {
         onDispose { viewModel.detener() }
     }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.actualizar() }
-    Scaffold(topBar = { AppTopBar(title = "Ganancias") }) { padding ->
+    Scaffold(topBar = { AppTopBar(title = stringResource(R.string.cuenta_ganancias)) }) { padding ->
         Column(
             Modifier.fillMaxSize().padding(padding)
                 .verticalScroll(rememberScrollState()).padding(16.dp),

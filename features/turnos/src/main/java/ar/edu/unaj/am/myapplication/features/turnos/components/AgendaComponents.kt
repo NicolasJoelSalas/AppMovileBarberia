@@ -1,5 +1,9 @@
 package ar.edu.unaj.am.myapplication.features.turnos.components
 
+import ar.edu.unaj.am.myapplication.features.turnos.R
+
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -39,15 +43,15 @@ internal fun FranjaHorariaFields(
 ) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        HoraField(inicio, onInicioChange, "Inicio", enabled, Modifier.weight(1f))
-        HoraField(fin, onFinChange, "Fin", enabled, Modifier.weight(1f))
+        HoraField(inicio, onInicioChange, stringResource(R.string.turnos_start), enabled, Modifier.weight(1f))
+        HoraField(fin, onFinChange, stringResource(R.string.features_turnos_fin), enabled, Modifier.weight(1f))
     }
     val start = runCatching { LocalTime.parse(inicio) }.getOrNull()
     val end = runCatching { LocalTime.parse(fin) }.getOrNull()
     val error = when {
-        start == null || end == null -> "Elegí la hora de inicio y de fin."
-        end.toSecondOfDay() - start.toSecondOfDay() < 40 * 60 -> "La franja debe durar al menos 40 minutos."
-        superpuesta -> "Este horario se superpone con otra franja."
+        start == null || end == null -> stringResource(R.string.features_turnos_elegi_la_hora_de_inicio_y_de_fin)
+        end.toSecondOfDay() - start.toSecondOfDay() < 40 * 60 -> stringResource(R.string.features_turnos_la_franja_debe_durar_al_menos_40_minutos)
+        superpuesta -> stringResource(R.string.features_turnos_este_horario_se_superpone_con_otra_franja)
         else -> null
     }
     if (error != null) {
@@ -72,7 +76,7 @@ private fun HoraField(
         contentPadding = PaddingValues(12.dp)) {
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(label, style = MaterialTheme.typography.labelMedium)
-            Text(value.ifBlank { "Elegir hora" }, style = MaterialTheme.typography.titleMedium)
+            Text(value.ifBlank { stringResource(R.string.features_turnos_elegir_hora) }, style = MaterialTheme.typography.titleMedium)
         }
     }
     if (abierto && enabled) {
@@ -80,7 +84,7 @@ private fun HoraField(
         val picker = rememberTimePickerState(initialHour = hora.hour,
             initialMinute = hora.minute, is24Hour = true)
         AlertDialog(onDismissRequest = { abierto = false },
-            title = { Text("Elegir hora de ${label.lowercase()}") },
+            title = { Text(stringResource(R.string.turnos_choose_time, label)) },
             text = {
                 Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()),
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -92,8 +96,8 @@ private fun HoraField(
                 TextButton(onClick = {
                     onValueChange(String.format(Locale.ROOT, "%02d:%02d", picker.hour, picker.minute))
                     abierto = false
-                }) { Text("Confirmar") }
+                }) { Text(stringResource(R.string.features_turnos_confirmar)) }
             },
-            dismissButton = { TextButton(onClick = { abierto = false }) { Text("Cancelar") } })
+            dismissButton = { TextButton(onClick = { abierto = false }) { Text(stringResource(R.string.features_turnos_cancelar)) } })
     }
 }

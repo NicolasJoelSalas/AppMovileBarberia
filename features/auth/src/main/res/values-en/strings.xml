@@ -1,0 +1,24 @@
+<resources>
+    <string name="features_auth_barber_app">BARBER APP</string>
+    <string name="features_auth_crea_tu_cuenta">Create your account</string>
+    <string name="features_auth_bienvenido">Welcome</string>
+    <string name="features_auth_registrate_para_reservar_tu_proximo_corte">Sign up to book your next haircut.</string>
+    <string name="features_auth_tu_barberia_en_un_solo_lugar_reserva_tu_turno_o_gestiona_tu_agenda_como_barbero">Your barbershop in one place. Book an appointment or manage your schedule as a barber.</string>
+    <string name="features_auth_datos_de_tu_cuenta">Account details</string>
+    <string name="features_auth_iniciar_sesion">Sign in</string>
+    <string name="features_auth_falta_completar_tu_perfil_tu_cuenta_ya_esta_creada">Your account has been created. Complete your profile to continue.</string>
+    <string name="features_auth_procesando">Processing…</string>
+    <string name="features_auth_reintentar">Try again</string>
+    <string name="features_auth_correo_electronico">Email address</string>
+    <string name="features_auth_contrasena">Password</string>
+    <string name="features_auth_ocultar_contrasena">Hide password</string>
+    <string name="features_auth_mostrar_contrasena">Show password</string>
+    <string name="features_auth_confirmar_contrasena">Confirm password</string>
+    <string name="features_auth_usa_una_contrasena_de_al_menos_6_caracteres">Use a password with at least 6 characters.</string>
+    <string name="features_auth_crear_cuenta">Create account</string>
+    <string name="features_auth_ingresar">Sign in</string>
+    <string name="features_auth_o_continua_con">or continue with</string>
+    <string name="features_auth_continuar_con_google">Continue with Google</string>
+    <string name="features_auth_ya_tengo_cuenta_iniciar_sesion">I already have an account · Sign in</string>
+    <string name="features_auth_no_tengo_cuenta_registrarme">I need an account · Sign up</string>
+</resources>

@@ -6,41 +6,39 @@ import java.time.*
 
 class ObtenerMiAgendaUseCase(private val repository: ReservaRepository) {
     suspend operator fun invoke(semanaOffset: Int = 0): AppResult<AgendaSemanal> =
-        if (semanaOffset !in 0..1) AppResult.Error(DomainError.Unknown("Elegí la semana actual o la próxima."))
+        if (semanaOffset !in 0..1) AppResult.Error(DomainError.Known(ErrorReason.WEEK_SELECTION))
         else repository.obtenerMiAgenda(semanaOffset)
 }
 
 /** Se valida la configuración completa, incluso los días que ya pasaron esta semana. */
 class ValidarAgendaUseCase {
-    operator fun invoke(agenda: AgendaSemanal): String? = try {
+    operator fun invoke(agenda: AgendaSemanal): DomainError? = try {
         ZoneId.of(agenda.zonaHoraria)
-        require(agenda.dias.size == 6) { "Configurá de lunes a sábado." }
-        val nombres = listOf("Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado")
+        requireDomain(agenda.dias.size == 6, ErrorReason.SCHEDULE_DAYS)
         agenda.dias.forEachIndexed { index, day ->
             if (day.habilitado) {
-                require(day.franjas.isNotEmpty()) { "${nombres[index]}: agregá una franja o cerrá el día." }
+                requireDomain(day.franjas.isNotEmpty(), ErrorReason.SCHEDULE_EMPTY_DAY, index + 1)
                 val spans = day.franjas.map { span ->
-                    require(span.inicio.matches(Regex("(?:[01][0-9]|2[0-3]):[0-5][0-9]")) &&
-                        span.fin.matches(Regex("(?:[01][0-9]|2[0-3]):[0-5][0-9]"))) {
-                        "${nombres[index]}: ingresá horas válidas con formato HH:mm."
-                    }
+                    requireDomain(span.inicio.matches(Regex("(?:[01][0-9]|2[0-3]):[0-5][0-9]")) &&
+                        span.fin.matches(Regex("(?:[01][0-9]|2[0-3]):[0-5][0-9]")),
+                        ErrorReason.SCHEDULE_TIME_FORMAT, index + 1)
                     val start = LocalTime.parse(span.inicio)
                     val end = LocalTime.parse(span.fin)
-                    require(Duration.between(start, end).toMinutes() >= 40) {
-                        "${nombres[index]}: cada franja debe permitir al menos un corte de 40 minutos."
-                    }
+                    requireDomain(Duration.between(start, end).toMinutes() >= 40,
+                        ErrorReason.SCHEDULE_DURATION, index + 1)
                     start to end
                 }.sortedBy { it.first }
-                require(spans.zipWithNext().none { (a, b) -> a.second > b.first }) {
-                    "${nombres[index]}: las franjas no pueden superponerse."
-                }
+                requireDomain(spans.zipWithNext().none { (a, b) -> a.second > b.first },
+                    ErrorReason.SCHEDULE_OVERLAP, index + 1)
             }
         }
         null
+    } catch (e: DomainValidationException) {
+        e.error
     } catch (e: IllegalArgumentException) {
-        e.message ?: "Revisá la agenda."
+        DomainError.Known(ErrorReason.SCHEDULE_ZONE)
     } catch (e: DateTimeException) {
-        "Revisá las horas y la zona horaria."
+        DomainError.Known(ErrorReason.SCHEDULE_ZONE)
     }
 }
 
@@ -52,7 +50,7 @@ class GuardarYPublicarAgendaUseCase(
     private val validar: ValidarAgendaUseCase = ValidarAgendaUseCase()
 ) {
     suspend operator fun invoke(agenda: AgendaSemanal): AppResult<ResultadoGuardarAgenda> {
-        validar(agenda)?.let { return AppResult.Error(DomainError.Unknown(it)) }
+        validar(agenda)?.let { return AppResult.Error(it) }
         when (val saved = repository.guardarMiAgenda(agenda)) {
             is AppResult.Error -> return saved
             is AppResult.Success -> Unit

@@ -1,5 +1,7 @@
 package ar.edu.unaj.am.myapplication.core.domain.usecase
 
+import ar.edu.unaj.am.myapplication.core.domain.model.ErrorReason
+
 import ar.edu.unaj.am.myapplication.core.domain.model.AppResult
 import ar.edu.unaj.am.myapplication.core.domain.model.DomainError
 import ar.edu.unaj.am.myapplication.core.domain.model.Turno
@@ -12,9 +14,9 @@ class MarcarTurnoRealizadoUseCase(
 ) {
     suspend operator fun invoke(turno: Turno): AppResult<Unit> {
         if (turno.id.isBlank() || turno.estado.lowercase() !in listOf("confirmado", "pendiente"))
-            return AppResult.Error(DomainError.Unknown("Solo se pueden completar turnos pendientes."))
+            return AppResult.Error(DomainError.Known(ErrorReason.APPOINTMENT_PENDING))
         if (turno.inicioMillis == null || turno.inicioMillis > clock.millis())
-            return AppResult.Error(DomainError.Unknown("Podés completar el turno desde su hora de inicio."))
+            return AppResult.Error(DomainError.Known(ErrorReason.APPOINTMENT_NOT_STARTED))
         return repository.marcarRealizado(turno.id)
     }
 }

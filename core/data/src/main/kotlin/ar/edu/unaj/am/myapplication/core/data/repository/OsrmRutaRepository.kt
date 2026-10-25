@@ -23,20 +23,20 @@ class OsrmRutaRepository(private val api: RutasApi) : RutaRepository {
             is NetworkResult.HttpError -> AppResult.Error(DomainError.Unknown(
                 if (result.code == 429) "El servicio de rutas está ocupado. Esperá un momento y reintentá."
                 else "No se pudo calcular el recorrido. Reintentá."))
-            is NetworkResult.ParseError -> AppResult.Error(DomainError.Unknown("El servicio devolvió una ruta inválida."))
+            is NetworkResult.ParseError -> AppResult.Error(DomainError.Known(ErrorReason.ROUTE_INVALID))
         }
     }
 }
 
 internal fun mapearRuta(dto: RespuestaRutaDto): AppResult<RutaBarberia> {
     val ruta = dto.routes.firstOrNull()
-    if (dto.code != "Ok" || ruta == null) return AppResult.Error(DomainError.Unknown("No se encontró una ruta en auto entre estos puntos."))
+    if (dto.code != "Ok" || ruta == null) return AppResult.Error(DomainError.Known(ErrorReason.ROUTE_MISSING))
     val puntos = ruta.geometry.coordinates.map { par ->
-        if (par.size < 2) return AppResult.Error(DomainError.Unknown("El servicio devolvió una ruta inválida."))
+        if (par.size < 2) return AppResult.Error(DomainError.Known(ErrorReason.ROUTE_INVALID))
         Coordenadas(par[1], par[0])
     }
     if (puntos.size < 2 || puntos.any { !it.esValida } || !ruta.distance.isFinite() ||
         !ruta.duration.isFinite() || ruta.distance < 0 || ruta.duration < 0)
-        return AppResult.Error(DomainError.Unknown("El servicio devolvió una ruta inválida."))
+        return AppResult.Error(DomainError.Known(ErrorReason.ROUTE_INVALID))
     return AppResult.Success(RutaBarberia(puntos, ruta.distance, ruta.duration))
 }

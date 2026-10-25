@@ -1,5 +1,9 @@
 package ar.edu.unaj.am.myapplication.core.ui.maps
 
+import ar.edu.unaj.am.myapplication.core.ui.R
+
+import androidx.compose.ui.res.stringResource
+
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
@@ -43,6 +47,7 @@ internal fun ObservarPosicionesEnPrimerPlano(
     onUbicacion: (PosicionDispositivo) -> Unit,
     onAviso: (String?) -> Unit
 ) {
+    val resources = androidx.compose.ui.platform.LocalResources.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val fuente by rememberUpdatedState(posiciones)
     val callback by rememberUpdatedState(onUbicacion)
@@ -60,7 +65,7 @@ internal fun ObservarPosicionesEnPrimerPlano(
                 } catch (e: CancellationException) {
                     throw e
                 } catch (_: Exception) {
-                    aviso("Seguimiento pausado. Revisá la ubicación y sus permisos.")
+                    aviso(resources.getString(R.string.core_ui_seguimiento_pausado_revisa_la_ubicacion_y_sus_permisos))
                 }
                 delay(5_000)
             }

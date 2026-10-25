@@ -51,9 +51,9 @@ class FirestorePerfilRepository(
             error is FirebaseNetworkException ||
                 (error is FirebaseFirestoreException && error.code == FirebaseFirestoreException.Code.UNAVAILABLE) -> DomainError.Network
             error is FirebaseFirestoreException && error.code == FirebaseFirestoreException.Code.PERMISSION_DENIED ->
-                DomainError.Unknown("No tenés permiso para acceder o modificar este perfil.")
+                DomainError.Known(ErrorReason.PROFILE_PERMISSION)
             error is IllegalStateException || error is IllegalArgumentException -> DomainError.Unknown(error.message)
-            else -> DomainError.Unknown("No se pudo acceder a tu perfil. Reintentá.")
+            else -> DomainError.Known(ErrorReason.PROFILE_LOAD)
         }
         AppResult.Error(domainError)
     }

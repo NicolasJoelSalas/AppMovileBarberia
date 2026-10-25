@@ -1,5 +1,9 @@
 package ar.edu.unaj.am.myapplication.reminders
 
+import ar.edu.unaj.am.myapplication.R
+
+import androidx.compose.ui.res.stringResource
+
 import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
@@ -29,6 +33,7 @@ internal data class TurnoReminderControl(val activeIds: Set<String>, val onClick
 @Composable
 internal fun rememberTurnoReminderControl(turnos: List<Turno>?): TurnoReminderControl {
     val context = LocalContext.current
+    val resources = androidx.compose.ui.platform.LocalResources.current
     val scheduler = remember(context) { TurnoReminderScheduler(context.applicationContext) }
     val latestTurnos by rememberUpdatedState(turnos.orEmpty())
     var activeIds by remember { mutableStateOf(scheduler.activeIds()) }
@@ -40,12 +45,12 @@ internal fun rememberTurnoReminderControl(turnos: List<Turno>?): TurnoReminderCo
         val turno = latestTurnos.find { it.id == pendingId }
         pendingId = null
         when {
-            !scheduler.canNotify() -> message("Habilitá las notificaciones de la app y el canal Recordatorios de turnos en Ajustes.")
-            !scheduler.canScheduleExact() -> message("Para activar el recordatorio, permití Alarmas y recordatorios en Ajustes.")
-            turno == null || !scheduler.schedule(turno) -> message("No se pudieron activar los avisos. Revisá que falte más de una hora para el turno e intentá nuevamente.")
+            !scheduler.canNotify() -> message(resources.getString(R.string.app_habilita_las_notificaciones_de_la_app_y_el_canal_recordatorios_de_turnos_en_ajustes))
+            !scheduler.canScheduleExact() -> message(resources.getString(R.string.app_para_activar_el_recordatorio_permiti_alarmas_y_recordatorios_en_ajustes))
+            turno == null || !scheduler.schedule(turno) -> message(resources.getString(R.string.app_no_se_pudieron_activar_los_avisos_revisa_que_falte_mas_de_una_hora_para_el_turno_e_intenta_nuevamente))
             else -> {
                 scheduler.reconcile(latestTurnos)
-                message("Avisos activados para los horarios que aún no pasaron.")
+                message(resources.getString(R.string.app_avisos_activados_para_los_horarios_que_aun_no_pasaron))
             }
         }
         activeIds = scheduler.activeIds()
@@ -58,7 +63,7 @@ internal fun rememberTurnoReminderControl(turnos: List<Turno>?): TurnoReminderCo
         if (granted) exactOrFinish()
         else {
             pendingId = null
-            message("No se activó el recordatorio. Necesitamos permiso para mostrar notificaciones.")
+            message(resources.getString(R.string.app_no_se_activo_el_recordatorio_necesitamos_permiso_para_mostrar_notificaciones))
         }
     }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
@@ -85,25 +90,25 @@ internal fun rememberTurnoReminderControl(turnos: List<Turno>?): TurnoReminderCo
     }
     val selected = turnos?.find { it.id == selectedId }
     if (selected != null) {
-        val fechas = instantesRecordatorios(selected, System.currentTimeMillis()).joinToString(" y ") {
+        val fechas = instantesRecordatorios(selected, System.currentTimeMillis()).joinToString(" · ") {
             Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault())
-                .format(DateTimeFormatter.ofPattern("dd/MM/yyyy 'a las' HH:mm"))
+                .format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
         }
         AlertDialog(onDismissRequest = { selectedId = null },
-            title = { Text("Avisos de tus turnos") },
-            text = { Text("Tus turnos incluyen avisos un día antes y una hora antes. Para este turno, los próximos avisos son: $fechas (hora local). Necesitamos los permisos del teléfono para enviarlos. El sonido depende de los ajustes de notificaciones.") },
+            title = { Text(stringResource(R.string.app_avisos_de_tus_turnos)) },
+            text = { Text(stringResource(R.string.reminder_explanation, fechas)) },
             confirmButton = { TextButton(onClick = {
                 pendingId = selected.id
                 selectedId = null
                 if (Build.VERSION.SDK_INT >= 33 && context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
                     notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                 else exactOrFinish()
-            }) { Text("Activar recordatorio") } },
-            dismissButton = { TextButton(onClick = { selectedId = null }) { Text("Volver") } })
+            }) { Text(stringResource(R.string.app_activar_recordatorio)) } },
+            dismissButton = { TextButton(onClick = { selectedId = null }) { Text(stringResource(R.string.app_volver)) } })
     }
     if (explainExact) AlertDialog(onDismissRequest = { explainExact = false; pendingId = null },
-        title = { Text("Permitir alarmas y recordatorios") },
-        text = { Text("Para avisarte a la hora indicada aunque la app esté cerrada, activá el permiso de Alarmas y recordatorios en la siguiente pantalla.") },
+        title = { Text(stringResource(R.string.app_permitir_alarmas_y_recordatorios)) },
+        text = { Text(stringResource(R.string.app_para_avisarte_a_la_hora_indicada_aunque_la_app_este_cerrada_activa_el_permiso_de_alarmas_y_recordatorios_en_la_siguiente_pantalla)) },
         confirmButton = { TextButton(onClick = {
             explainExact = false
             try {
@@ -111,15 +116,15 @@ internal fun rememberTurnoReminderControl(turnos: List<Turno>?): TurnoReminderCo
                     Uri.parse("package:${context.packageName}")))
             } catch (_: ActivityNotFoundException) {
                 pendingId = null
-                message("Este teléfono no permite abrir el permiso. Buscá Alarmas y recordatorios en Ajustes.")
+                message(resources.getString(R.string.app_este_telefono_no_permite_abrir_el_permiso_busca_alarmas_y_recordatorios_en_ajustes))
             }
-        }) { Text("Abrir ajustes") } },
-        dismissButton = { TextButton(onClick = { explainExact = false; pendingId = null }) { Text("Volver") } })
+        }) { Text(stringResource(R.string.app_abrir_ajustes)) } },
+        dismissButton = { TextButton(onClick = { explainExact = false; pendingId = null }) { Text(stringResource(R.string.app_volver)) } })
     return TurnoReminderControl(activeIds) { turno ->
         if (turno.id in scheduler.activeIds()) {
             scheduler.cancel(turno.id)
             activeIds = scheduler.activeIds()
-            message("Recordatorio cancelado.")
+            message(resources.getString(R.string.app_recordatorio_cancelado))
         } else selectedId = turno.id
     }
 }

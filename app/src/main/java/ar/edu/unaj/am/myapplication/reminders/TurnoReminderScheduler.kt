@@ -1,5 +1,7 @@
 package ar.edu.unaj.am.myapplication.reminders
 
+import ar.edu.unaj.am.myapplication.R
+
 import android.Manifest
 import android.app.AlarmManager
 import android.app.NotificationChannel
@@ -37,8 +39,9 @@ internal class TurnoReminderScheduler(private val context: Context) {
     }
 
     fun createChannel() {
-        val channel = NotificationChannel(CHANNEL, "Recordatorios de turnos", NotificationManager.IMPORTANCE_HIGH)
-        channel.description = "Avisos un día y una hora antes de tus turnos"
+        val localized = androidx.core.content.ContextCompat.getContextForLanguage(context)
+        val channel = NotificationChannel(CHANNEL, localized.getString(R.string.reminder_channel), NotificationManager.IMPORTANCE_HIGH)
+        channel.description = localized.getString(R.string.reminder_channel_description)
         channel.enableVibration(true)
         channel.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),
             AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION).build())

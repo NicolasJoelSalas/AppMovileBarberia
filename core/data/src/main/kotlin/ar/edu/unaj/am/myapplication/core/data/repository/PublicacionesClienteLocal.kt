@@ -46,7 +46,7 @@ class PublicacionesClienteLocal(
                     }
             } catch (e: CancellationException) { throw e
             } catch (e: Exception) {
-                send(AppResult.Error(DomainError.Unknown("No se pudieron leer los trabajos guardados.")))
+                send(AppResult.Error(DomainError.Known(ErrorReason.WORK_CACHE)))
             }
         }
         try {
@@ -90,8 +90,7 @@ class PublicacionesClienteLocal(
                         mutex.withLock {
                             if (vigente()) {
                                 archivos.depurar(clienteId, dao.obtenerPorCliente(clienteId).mapNotNull { it.imagenLocalPath }.toSet())
-                                aviso.value = if (falloImagen) DomainError.Unknown(
-                                    "Algunas fotos no se pudieron guardar para ver sin conexión. Reintentá con conexión.") else null
+                                aviso.value = if (falloImagen) DomainError.Known(ErrorReason.PHOTOS_CACHE) else null
                             }
                         }
                     }
@@ -100,7 +99,7 @@ class PublicacionesClienteLocal(
             awaitCancellation()
         } catch (e: CancellationException) { throw e
         } catch (e: Exception) {
-            aviso.value = DomainError.Unknown("No se pudieron actualizar los trabajos guardados. Reintentá.")
+            aviso.value = DomainError.Known(ErrorReason.WORK_SYNC)
             awaitCancellation()
         } finally { local.cancel() }
     }

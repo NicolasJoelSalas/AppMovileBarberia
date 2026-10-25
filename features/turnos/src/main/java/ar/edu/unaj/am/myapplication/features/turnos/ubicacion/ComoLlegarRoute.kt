@@ -1,5 +1,9 @@
 package ar.edu.unaj.am.myapplication.features.turnos.ubicacion
 
+import ar.edu.unaj.am.myapplication.features.turnos.R
+
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -53,36 +57,36 @@ fun ComoLlegarScreen(
 ) {
     val locale = LocalConfiguration.current.locales[0]
     var centrarUsuario by rememberSaveable { mutableStateOf(true) }
-    Scaffold(topBar = { AppTopBar("Cómo llegar", navigationIcon = {
-        IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = "Volver") }
+    Scaffold(topBar = { AppTopBar(stringResource(R.string.features_turnos_como_llegar), navigationIcon = {
+        IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, contentDescription = stringResource(R.string.features_turnos_volver)) }
     }) }) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
             if (state.cargando || (state.ruta == null && (state.calculando || ubicacion.buscando))) LinearProgressIndicator(Modifier.fillMaxWidth())
             Column(Modifier.heightIn(max = 240.dp).verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (!state.cargando && state.destino == null && state.error == null)
-                    Text("El barbero todavía no configuró la ubicación de su barbería.")
+                    Text(stringResource(R.string.features_turnos_el_barbero_todavia_no_configuro_la_ubicacion_de_su_barberia))
                 if (state.destino != null) {
-                    Text(if (state.siguiendoUbicacion) "Pin rojo: barbería · Punto azul: tu ubicación"
-                        else "Pin rojo: barbería · Punto azul: tu origen", style = MaterialTheme.typography.bodySmall)
-                    Text("Podés cambiar el punto de partida tocando el mapa.", style = MaterialTheme.typography.bodySmall)
+                    Text(if (state.siguiendoUbicacion) stringResource(R.string.features_turnos_pin_rojo_barberia_punto_azul_tu_ubicacion)
+                        else stringResource(R.string.features_turnos_pin_rojo_barberia_punto_azul_tu_origen), style = MaterialTheme.typography.bodySmall)
+                    Text(stringResource(R.string.features_turnos_podes_cambiar_el_punto_de_partida_tocando_el_mapa), style = MaterialTheme.typography.bodySmall)
                     Row {
                         TextButton(onClick = { centrarUsuario = true; ubicacion.solicitar() }, enabled = !ubicacion.buscando) {
-                            Text(if (ubicacion.buscando) "Obteniendo ubicación…" else "Usar mi ubicación")
+                            Text(if (ubicacion.buscando) stringResource(R.string.features_turnos_obteniendo_ubicacion) else stringResource(R.string.features_turnos_usar_mi_ubicacion))
                         }
-                        if (state.siguiendoUbicacion) TextButton(onClick = { centrarUsuario = true }) { Text("Centrar") }
+                        if (state.siguiendoUbicacion) TextButton(onClick = { centrarUsuario = true }) { Text(stringResource(R.string.features_turnos_centrar)) }
                     }
                 }
                 state.avisoUbicacion?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                 ubicacion.mensaje?.let {
                     Text(it, style = MaterialTheme.typography.bodySmall)
-                    TextButton(onClick = ubicacion.abrirPermisos) { Text("Ajustes de permisos") }
+                    TextButton(onClick = ubicacion.abrirPermisos) { Text(stringResource(R.string.features_turnos_ajustes_de_permisos)) }
                 }
                 state.error?.let {
                     Text(it.asMessage(), color = MaterialTheme.colorScheme.error)
-                    TextButton(onClick = onReintentar) { Text("Reintentar") }
+                    TextButton(onClick = onReintentar) { Text(stringResource(R.string.features_turnos_reintentar)) }
                 }
-                if (state.calculando && state.ruta == null) Text("Calculando recorrido…")
+                if (state.calculando && state.ruta == null) Text(stringResource(R.string.features_turnos_calculando_recorrido))
                 state.ruta?.let { ruta ->
                     val metros = state.distanciaRestanteMetros ?: ruta.distanciaMetros
                     val distancia = if (metros < 1000) "${ceil(metros).toInt()} m"

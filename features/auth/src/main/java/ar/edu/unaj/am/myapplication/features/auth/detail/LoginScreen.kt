@@ -1,5 +1,7 @@
 package ar.edu.unaj.am.myapplication.features.auth.detail
 
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
@@ -90,13 +92,13 @@ fun LoginScreen(
                         Icon(Icons.Outlined.ContentCut, contentDescription = null,
                             modifier = Modifier.padding(10.dp).size(24.dp))
                     }
-                    Text("BARBER APP", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.features_auth_barber_app), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
                 }
                 Spacer(Modifier.height(4.dp))
-                Text(if (isRegistering) "Creá tu cuenta" else "Bienvenido",
+                Text(if (isRegistering) stringResource(R.string.features_auth_crea_tu_cuenta) else stringResource(R.string.features_auth_bienvenido),
                     style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-                Text(if (isRegistering) "Registrate para reservar tu próximo corte."
-                    else "Tu barbería en un solo lugar. Reservá tu turno o gestioná tu agenda como barbero.",
+                Text(if (isRegistering) stringResource(R.string.features_auth_registrate_para_reservar_tu_proximo_corte)
+                    else stringResource(R.string.features_auth_tu_barberia_en_un_solo_lugar_reserva_tu_turno_o_gestiona_tu_agenda_como_barbero),
                     style = MaterialTheme.typography.bodyMedium)
             }
         }
@@ -107,20 +109,20 @@ fun LoginScreen(
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
         ) {
             Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) form@ {
-                Text(if (isRegistering) "Datos de tu cuenta" else "Iniciar sesión",
+                Text(if (isRegistering) stringResource(R.string.features_auth_datos_de_tu_cuenta) else stringResource(R.string.features_auth_iniciar_sesion),
                     style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold,
                     modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(20.dp))
 
                 if (needsProfileRetry) {
-                    Text("Falta completar tu perfil. Tu cuenta ya está creada.")
+                    Text(stringResource(R.string.features_auth_falta_completar_tu_perfil_tu_cuenta_ya_esta_creada))
                     if (errorMessage != null) {
                         Text(errorMessage, color = MaterialTheme.colorScheme.error)
                     }
                     Spacer(Modifier.height(16.dp))
                     Button(onClick = onRetryProfile, enabled = !isLoading,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp), shape = RoundedCornerShape(14.dp)) {
-                        Text(if (isLoading) "Procesando…" else "Reintentar")
+                        Text(if (isLoading) stringResource(R.string.features_auth_procesando) else stringResource(R.string.features_auth_reintentar))
                     }
                     return@form
                 }
@@ -128,7 +130,7 @@ fun LoginScreen(
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it },
-                    label = { Text("Correo electrónico") },
+                    label = { Text(stringResource(R.string.features_auth_correo_electronico)) },
                     leadingIcon = { Icon(Icons.Outlined.Email, contentDescription = null) },
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Email, imeAction = ImeAction.Next
@@ -145,13 +147,13 @@ fun LoginScreen(
                 OutlinedTextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = { Text("Contraseña") },
+                    label = { Text(stringResource(R.string.features_auth_contrasena)) },
                     leadingIcon = { Icon(Icons.Outlined.Lock, contentDescription = null) },
                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     trailingIcon = {
                         IconButton(onClick = { passwordVisible = !passwordVisible }, enabled = !isLoading) {
                             Icon(if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
-                                contentDescription = if (passwordVisible) "Ocultar contraseña" else "Mostrar contraseña")
+                                contentDescription = if (passwordVisible) stringResource(R.string.features_auth_ocultar_contrasena) else stringResource(R.string.features_auth_mostrar_contrasena))
                         }
                     },
                     shape = RoundedCornerShape(14.dp),
@@ -172,7 +174,7 @@ fun LoginScreen(
                     OutlinedTextField(
                         value = confirmation,
                         onValueChange = { confirmation = it },
-                        label = { Text("Confirmar contraseña") },
+                        label = { Text(stringResource(R.string.features_auth_confirmar_contrasena)) },
                         leadingIcon = { Icon(Icons.Outlined.Lock, contentDescription = null) },
                         visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         shape = RoundedCornerShape(14.dp),
@@ -183,7 +185,7 @@ fun LoginScreen(
                         modifier = Modifier.fillMaxWidth()
                     )
                     Text(
-                        text = "Usá una contraseña de al menos 6 caracteres.",
+                        text = stringResource(R.string.features_auth_usa_una_contrasena_de_al_menos_6_caracteres),
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
                     )
@@ -219,9 +221,9 @@ fun LoginScreen(
                     }
                     Text(
                         when {
-                            isLoading -> "Procesando…"
-                            isRegistering -> "Crear cuenta"
-                            else -> "Ingresar"
+                            isLoading -> stringResource(R.string.features_auth_procesando)
+                            isRegistering -> stringResource(R.string.features_auth_crear_cuenta)
+                            else -> stringResource(R.string.features_auth_ingresar)
                         }
                     )
                 }
@@ -230,7 +232,7 @@ fun LoginScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     HorizontalDivider(Modifier.weight(1f))
-                    Text("o continuá con", style = MaterialTheme.typography.bodySmall,
+                    Text(stringResource(R.string.features_auth_o_continua_con), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                     HorizontalDivider(Modifier.weight(1f))
                 }
@@ -248,13 +250,13 @@ fun LoginScreen(
                     Image(painterResource(R.drawable.ic_google), contentDescription = null,
                         modifier = Modifier.size(20.dp), alpha = if (isLoading) 0.38f else 1f)
                     Spacer(Modifier.width(12.dp))
-                    Text("Continuar con Google", fontWeight = FontWeight.Medium)
+                    Text(stringResource(R.string.features_auth_continuar_con_google), fontWeight = FontWeight.Medium)
                 }
 
                 Spacer(Modifier.height(8.dp))
                 TextButton(onClick = onToggleRegistration, enabled = !isLoading,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    Text(if (isRegistering) "Ya tengo cuenta · Iniciar sesión" else "No tengo cuenta · Registrarme",
+                    Text(if (isRegistering) stringResource(R.string.features_auth_ya_tengo_cuenta_iniciar_sesion) else stringResource(R.string.features_auth_no_tengo_cuenta_registrarme),
                         textAlign = TextAlign.Center)
                 }
             }

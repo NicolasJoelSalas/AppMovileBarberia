@@ -1,5 +1,9 @@
 package ar.edu.unaj.am.myapplication.features.turnos.agenda
 
+import ar.edu.unaj.am.myapplication.features.turnos.R
+
+import ar.edu.unaj.am.myapplication.core.ui.components.UiMessage
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ar.edu.unaj.am.myapplication.core.domain.model.*
@@ -16,7 +20,7 @@ data class AgendaUiState(
     val cambios: Boolean = false,
     val semanaOffset: Int = 0,
     val error: DomainError? = null,
-    val mensaje: String? = null
+    val mensaje: UiMessage? = null
 )
 
 class AgendaViewModel(
@@ -88,9 +92,9 @@ class AgendaViewModel(
                     original = agenda
                     state.update { it.copy(guardando = false, cambios = false,
                         error = result.data.errorPublicacion,
-                        mensaje = if (result.data.errorPublicacion != null)
-                            "La agenda se guardó, pero falta actualizar los horarios. Reintentá guardar y publicar."
-                        else "Agenda guardada. ${result.data.horariosPublicados} horarios libres publicados para la semana elegida.") }
+                        mensaje = if (result.data.errorPublicacion != null || result.data.horariosPublicados == null)
+                            UiMessage(R.string.agenda_pending)
+                        else UiMessage(R.string.agenda_published, listOf(requireNotNull(result.data.horariosPublicados)))) }
                 }
             }
         }

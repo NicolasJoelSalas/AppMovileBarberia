@@ -1,7 +1,18 @@
 package ar.edu.unaj.am.myapplication
 
+import ar.edu.unaj.am.myapplication.R
+
+import androidx.compose.ui.res.stringResource
+
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import ar.edu.unaj.am.myapplication.core.ui.theme.AppLanguage
+import ar.edu.unaj.am.myapplication.core.ui.theme.LanguagePreference
+import ar.edu.unaj.am.myapplication.core.ui.theme.LocalLanguagePreference
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.SystemBarStyle
@@ -29,7 +40,7 @@ import ar.edu.unaj.am.myapplication.features.auth.detail.LoginViewModel
 import ar.edu.unaj.am.myapplication.ui.AppShell
 import ar.edu.unaj.am.myapplication.ui.AuthenticatedSessionViewModel
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,6 +49,12 @@ class MainActivity : ComponentActivity() {
         val container = (application as ComposeAcademyApp).container
 
         setContent {
+            var language by remember {
+                mutableStateOf(AppLanguage.fromTag(AppCompatDelegate.getApplicationLocales()[0]?.language))
+            }
+            LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+                language = AppLanguage.fromTag(AppCompatDelegate.getApplicationLocales()[0]?.language)
+            }
             val preferences = remember { getSharedPreferences("appearance", MODE_PRIVATE) }
             val systemDarkTheme = isSystemInDarkTheme()
             var darkThemePreference by remember {
@@ -66,7 +83,12 @@ class MainActivity : ComponentActivity() {
             val loginState by loginViewModel.uiState
                 .collectAsStateWithLifecycle()
 
-            CompositionLocalProvider(LocalAppearance provides Appearance(darkTheme) { dark ->
+            CompositionLocalProvider(
+                LocalLanguagePreference provides LanguagePreference(language) { selected ->
+                    language = selected
+                    AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(selected.tag))
+                },
+                LocalAppearance provides Appearance(darkTheme) { dark ->
                 preferences.edit().putBoolean("dark_theme", dark).apply()
                 darkThemePreference = dark
             }) {
@@ -76,7 +98,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     if (cerrandoSesion) {
-                        ar.edu.unaj.am.myapplication.core.ui.components.LoadingContent(message = "Cerrando sesión…")
+                        ar.edu.unaj.am.myapplication.core.ui.components.LoadingContent(message = stringResource(R.string.app_cerrando_sesion))
                     } else if (loginState.isAuthenticated) {
                         // Cada sesión tiene sus propios ViewModels de navegación y datos.
                         CompositionLocalProvider(LocalViewModelStoreOwner provides sessionOwner) {
@@ -92,7 +114,7 @@ class MainActivity : ComponentActivity() {
                                             throw e
                                         } catch (e: Exception) {
                                             android.widget.Toast.makeText(applicationContext,
-                                                "No se pudo limpiar la copia local. Los datos siguen separados por cuenta.",
+                                                getString(R.string.app_error_limpiar_copia),
                                                 android.widget.Toast.LENGTH_LONG).show()
                                         } finally {
                                             ar.edu.unaj.am.myapplication.reminders.TurnoReminderScheduler(applicationContext).cancelAll()

@@ -1,5 +1,9 @@
 package ar.edu.unaj.am.myapplication.features.turnos.list
 
+import ar.edu.unaj.am.myapplication.features.turnos.R
+
+import androidx.compose.ui.res.stringResource
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.Alignment
@@ -32,7 +36,8 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private val dayFormat = DateTimeFormatter.ofPattern("EEEE d 'de' MMMM", Locale.forLanguageTag("es-AR"))
+private val dayFormat: DateTimeFormatter
+    @androidx.compose.runtime.Composable get() = DateTimeFormatter.ofPattern("EEEE d MMMM", androidx.compose.ui.platform.LocalConfiguration.current.locales[0])
 private val hourFormat = DateTimeFormatter.ofPattern("HH:mm")
 
 @Composable
@@ -44,8 +49,8 @@ fun ReservasRoute(viewModel: ReservasViewModel,
     if (state.catalogo?.esBarbero == true) agendaBarbero()
     else if (state.catalogo != null) turnosCliente()
     else if (error != null) ar.edu.unaj.am.myapplication.core.ui.components.ErrorContent(
-        title = "No se pudieron cargar tus turnos", message = error.asMessage(), onRetry = viewModel::cargar)
-    else ar.edu.unaj.am.myapplication.core.ui.components.LoadingContent(message = "Cargando turnos…")
+        title = stringResource(R.string.features_turnos_no_se_pudieron_cargar_tus_turnos), message = error.asMessage(), onRetry = viewModel::cargar)
+    else ar.edu.unaj.am.myapplication.core.ui.components.LoadingContent(message = stringResource(R.string.features_turnos_cargando_turnos))
 }
 
 @Composable
@@ -75,8 +80,8 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
             }
         }
     }
-    Scaffold(topBar = { AppTopBar(title = if (state.turnoId != null) "Modificar turno" else "Reservar turno", actions = {
-        TextButton(onClick = onBack, enabled = !state.reservando) { Text("Volver") }
+    Scaffold(topBar = { AppTopBar(title = if (state.turnoId != null) stringResource(R.string.features_turnos_modificar_turno) else stringResource(R.string.features_turnos_reservar_turno), actions = {
+        TextButton(onClick = onBack, enabled = !state.reservando) { Text(stringResource(R.string.features_turnos_volver)) }
     }) }) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),
@@ -85,18 +90,18 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
         ) {
             if (state.catalogo?.sinConexion == true) {
                 item {
-                    Text("Necesitás conexión para consultar disponibilidad y confirmar cambios. Tus turnos guardados siguen disponibles en Mis turnos.")
-                    TextButton(onClick = vm::cargar) { Text("Reintentar conexión") }
+                    Text(stringResource(R.string.features_turnos_necesitas_conexion_para_consultar_disponibilidad_y_confirmar_cambios_tus_turnos_guardados_siguen_disponibles_en_mis_turnos))
+                    TextButton(onClick = vm::cargar) { Text(stringResource(R.string.features_turnos_reintentar_conexion)) }
                 }
             }
             state.inicioOriginal?.let { inicio ->
                 item {
                     val fecha = Instant.ofEpochMilli(inicio).atZone(zone)
-                    Text("Horario actual: " + fecha.format(dayFormat) + " · " + fecha.format(hourFormat))
+                    Text(stringResource(R.string.turnos_current_time, fecha.format(dayFormat), fecha.format(hourFormat)))
                     if (state.barberoId == state.barberoOriginal) {
                         OutlinedButton(onClick = { vm.seleccionar(ar.edu.unaj.am.myapplication.core.domain.model.HorarioDisponible(inicio, inicio + 2400000)) },
                             enabled = !state.loading && !state.reservando && state.servicioId.isNotBlank()) {
-                            Text("Conservar horario actual")
+                            Text(stringResource(R.string.features_turnos_conservar_horario_actual))
                         }
                     }
                 }
@@ -110,29 +115,29 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
                     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
                         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                            Text("Elegí tu turno", style = MaterialTheme.typography.titleLarge,
+                            Text(stringResource(R.string.features_turnos_elegi_tu_turno), style = MaterialTheme.typography.titleLarge,
                                 fontWeight = FontWeight.Bold)
-                            Text("Seleccioná barbero, servicio y un horario disponible de lunes a sábado.",
+                            Text(stringResource(R.string.features_turnos_selecciona_barbero_servicio_y_un_horario_disponible_de_lunes_a_sabado),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            Selector("Barbero", state.barberoId, catalogo.barberos.map { it.id to it.nombre },
+                            Selector(stringResource(R.string.features_turnos_barbero), state.barberoId, catalogo.barberos.map { it.id to it.nombre },
                                 !state.reservando, Icons.Outlined.Person, vm::barbero)
-                            Selector("Servicio", state.servicioId,
-                                catalogo.servicios.map { it.id to "${it.nombre} · ${it.duracion} min" },
+                            Selector(stringResource(R.string.features_turnos_servicio), state.servicioId,
+                                catalogo.servicios.map { it.id to stringResource(R.string.turnos_service_duration, it.nombre, it.duracion) },
                                 !state.reservando, Icons.Outlined.ContentCut, vm::servicio)
-                            if (catalogo.barberos.isEmpty()) Text("No hay barberos habilitados.")
-                            if (catalogo.servicios.isEmpty()) Text("No hay servicios habilitados de 40 minutos.")
+                            if (catalogo.barberos.isEmpty()) Text(stringResource(R.string.features_turnos_no_hay_barberos_habilitados))
+                            if (catalogo.servicios.isEmpty()) Text(stringResource(R.string.features_turnos_no_hay_servicios_habilitados_de_40_minutos))
                         }
                     }
                 }
             }
             if (state.loading) item { CircularProgressIndicator() }
-            state.mensaje?.let { message -> item { Text(message, color = MaterialTheme.colorScheme.primary) } }
+            state.mensaje?.let { message -> item { Text(message.asString(), color = MaterialTheme.colorScheme.primary) } }
             state.error?.let { error ->
                 item {
                     Text(error.asMessage(), color = MaterialTheme.colorScheme.error)
                     OutlinedButton(onClick = { if (state.catalogo == null) vm.cargar() else vm.refrescar() },
-                        enabled = !state.reservando && !state.loading) { Text("Actualizar") }
+                        enabled = !state.reservando && !state.loading) { Text(stringResource(R.string.features_turnos_actualizar)) }
                 }
             }
             state.semana?.let { semana ->
@@ -156,7 +161,7 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
                 }
                 item {
                     OutlinedButton(onClick = vm::refrescar, enabled = !state.loading && !state.reservando) {
-                        Text("Actualizar disponibilidad")
+                        Text(stringResource(R.string.features_turnos_actualizar_disponibilidad))
                     }
                 }
             }
@@ -166,25 +171,25 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
         val start = Instant.ofEpochMilli(slot.inicioMillis).atZone(zone)
         AlertDialog(
             onDismissRequest = { vm.seleccionar(null) },
-            title = { Text(if (state.turnoId != null) "Confirmar modificación" else "Confirmar reserva") },
+            title = { Text(if (state.turnoId != null) stringResource(R.string.features_turnos_confirmar_modificacion) else stringResource(R.string.features_turnos_confirmar_reserva)) },
             text = {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(state.catalogo?.barberos?.find { it.id == state.barberoId }?.nombre.orEmpty())
                     Text(state.catalogo?.servicios?.find { it.id == state.servicioId }?.nombre.orEmpty())
                     Text(start.format(dayFormat) + " · " + start.format(hourFormat))
                     OutlinedTextField(value = state.nombre, onValueChange = vm::nombre,
-                        label = { Text("Tu nombre") }, singleLine = true, enabled = !state.reservando)
+                        label = { Text(stringResource(R.string.features_turnos_tu_nombre)) }, singleLine = true, enabled = !state.reservando)
                     state.error?.let { Text(it.asMessage(), color = MaterialTheme.colorScheme.error) }
                 }
             },
             confirmButton = {
                 TextButton(onClick = vm::confirmar,
                     enabled = !state.reservando && state.nombre.isNotBlank() && state.nombre.length <= 120) {
-                    Text(if (state.reservando) "Reservando…" else if (state.turnoId != null) "Guardar cambios" else "Confirmar")
+                    Text(if (state.reservando) stringResource(R.string.features_turnos_reservando) else if (state.turnoId != null) stringResource(R.string.features_turnos_guardar_cambios) else stringResource(R.string.features_turnos_confirmar))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { vm.seleccionar(null) }, enabled = !state.reservando) { Text("Volver") }
+                TextButton(onClick = { vm.seleccionar(null) }, enabled = !state.reservando) { Text(stringResource(R.string.features_turnos_volver)) }
             }
         )
     }
@@ -224,9 +229,9 @@ private fun HorariosDelDia(
                     fontWeight = FontWeight.SemiBold)
                 Text(
                     when (slots.size) {
-                        0 -> "Sin horarios disponibles"
-                        1 -> "1 horario disponible"
-                        else -> "${slots.size} horarios disponibles"
+                        0 -> stringResource(R.string.features_turnos_sin_horarios_disponibles)
+                        1 -> stringResource(R.string.features_turnos_1_horario_disponible)
+                        else -> stringResource(R.string.turnos_available_times, slots.size)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = if (available) colors.primary else colors.onSurfaceVariant
@@ -235,7 +240,7 @@ private fun HorariosDelDia(
             if (available) {
                 Icon(
                     if (expanded) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
-                    contentDescription = if (expanded) "Ocultar horarios" else "Ver horarios"
+                    contentDescription = if (expanded) stringResource(R.string.features_turnos_ocultar_horarios) else stringResource(R.string.features_turnos_ver_horarios)
                 )
             }
         }
@@ -245,7 +250,7 @@ private fun HorariosDelDia(
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 HorizontalDivider(color = colors.outlineVariant)
-                Text("Elegí un horario", style = MaterialTheme.typography.labelMedium,
+                Text(stringResource(R.string.features_turnos_elegi_un_horario), style = MaterialTheme.typography.labelMedium,
                     color = colors.onSurfaceVariant)
                 slots.chunked(2).forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -262,7 +267,7 @@ private fun HorariosDelDia(
                                     Text(Instant.ofEpochMilli(slot.inicioMillis).atZone(zone).format(hourFormat),
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.SemiBold)
-                                    Text("Hasta " + Instant.ofEpochMilli(slot.finMillis).atZone(zone).format(hourFormat),
+                                    Text(stringResource(R.string.turnos_until, Instant.ofEpochMilli(slot.finMillis).atZone(zone).format(hourFormat)),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = colors.onSurfaceVariant)
                                 }
@@ -279,7 +284,7 @@ private fun HorariosDelDia(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun Selector(label: String, value: String, options: List<Pair<String, String>>, enabled: Boolean,
-    icon: ImageVector, select: (String) -> Unit, hint: String = "Seleccionar") {
+    icon: ImageVector, select: (String) -> Unit, hint: String = stringResource(R.string.features_turnos_seleccionar)) {
     var expanded by remember { mutableStateOf(false) }
     val canSelect = enabled && options.isNotEmpty()
     val optionTextStyle = MaterialTheme.typography.bodyLarge

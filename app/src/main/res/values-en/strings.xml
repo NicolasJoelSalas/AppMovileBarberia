@@ -1,0 +1,35 @@
+<resources>
+    <string name="app_habilita_las_notificaciones_de_la_app_y_el_canal_recordatorios_de_turnos_en_ajustes">Enable app notifications and the Appointment reminders channel in Settings.</string>
+    <string name="app_para_activar_el_recordatorio_permiti_alarmas_y_recordatorios_en_ajustes">To activate the reminder, allow Alarms and reminders in Settings.</string>
+    <string name="app_no_se_pudieron_activar_los_avisos_revisa_que_falte_mas_de_una_hora_para_el_turno_e_intenta_nuevamente">Could not activate reminders. Check that the appointment is more than an hour away and try again.</string>
+    <string name="app_avisos_activados_para_los_horarios_que_aun_no_pasaron">Reminders enabled for future times.</string>
+    <string name="app_no_se_activo_el_recordatorio_necesitamos_permiso_para_mostrar_notificaciones">The reminder was not activated. We need permission to show notifications.</string>
+    <string name="app_avisos_de_tus_turnos">Appointment reminders</string>
+    <string name="app_activar_recordatorio">Enable reminder</string>
+    <string name="app_volver">Back</string>
+    <string name="app_permitir_alarmas_y_recordatorios">Allow alarms and reminders</string>
+    <string name="app_para_avisarte_a_la_hora_indicada_aunque_la_app_este_cerrada_activa_el_permiso_de_alarmas_y_recordatorios_en_la_siguiente_pantalla">To notify you at the scheduled time even when the app is closed, enable Alarms and reminders on the next screen.</string>
+    <string name="app_este_telefono_no_permite_abrir_el_permiso_busca_alarmas_y_recordatorios_en_ajustes">This phone cannot open the permission screen. Look for Alarms and reminders in Settings.</string>
+    <string name="app_abrir_ajustes">Open settings</string>
+    <string name="app_recordatorio_cancelado">Reminder canceled.</string>
+    <string name="tab_mi_cuenta">My account</string>
+    <string name="app_name">BarberApp</string>
+    <string name="tab_todos">Tasks</string>
+    <string name="tab_turnos">Appointments</string>
+    <string name="tab_agenda">Schedule</string>
+    <string name="tab_playground">Playground</string>
+    <string name="tab_home">Home</string>
+    <string name="tab_publicaciones">Work</string>
+    <string name="app_cerrando_sesion">Signing out…</string>
+    <string name="app_error_limpiar_copia">Could not clear the local copy. Data remains separated by account.</string>
+    <string name="reminder_tomorrow">Your appointment is tomorrow</string>
+    <string name="reminder_one_hour">Your appointment is in one hour</string>
+    <string name="reminder_time">Your appointment is at %1$s.</string>
+    <string name="reminder_channel">Appointment reminders</string>
+    <string name="reminder_channel_description">Reminders one day and one hour before your appointments</string>
+    <string name="reminder_explanation">Your appointments include reminders one day and one hour before. Upcoming reminders for this appointment: %1$s (local time). We need phone permissions to send them. Sound depends on notification settings.</string>
+    <plurals name="app_pending_appointments">
+        <item quantity="one">%1$d pending appointment</item>
+        <item quantity="other">%1$d pending appointments</item>
+    </plurals>
+</resources>

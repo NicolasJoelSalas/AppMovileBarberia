@@ -132,7 +132,7 @@ fun MessageContent(
 @Preview(showBackground = true)
 @Composable
 private fun LoadingContentPreview() {
-    MyApplicationTheme { LoadingContent(message = "Cargando…") }
+    MyApplicationTheme { LoadingContent(message = stringResource(R.string.core_ui_cargando)) }
 }
 
 @Preview(showBackground = true)
@@ -140,8 +140,8 @@ private fun LoadingContentPreview() {
 private fun ErrorContentPreview() {
     MyApplicationTheme {
         ErrorContent(
-            title = "Ups, algo salió mal",
-            message = "No se pudo conectar con el servidor",
+            title = stringResource(R.string.core_ui_ups_algo_salio_mal),
+            message = stringResource(R.string.core_ui_no_se_pudo_conectar_con_el_servidor),
             onRetry = {}
         )
     }

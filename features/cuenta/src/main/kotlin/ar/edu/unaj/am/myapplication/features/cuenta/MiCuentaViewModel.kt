@@ -1,5 +1,9 @@
 package ar.edu.unaj.am.myapplication.features.cuenta
 
+import ar.edu.unaj.am.myapplication.features.cuenta.R
+
+import ar.edu.unaj.am.myapplication.core.ui.components.UiMessage
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ar.edu.unaj.am.myapplication.core.domain.model.AppResult
@@ -44,7 +48,7 @@ class MiCuentaViewModel(
             when (val result = actualizarMiNombre(nombre)) {
                 is AppResult.Success -> {
                     state.update { it.copy(guardando = false, nombre = nombre,
-                        perfil = it.perfil?.copy(nombre = nombre), mensaje = "Cambios guardados.") }
+                        perfil = it.perfil?.copy(nombre = nombre), mensaje = UiMessage(R.string.cuenta_saved)) }
                     onGuardado()
                 }
                 is AppResult.Error -> state.update { it.copy(guardando = false, error = result.error) }

@@ -1,0 +1,24 @@
+<resources>
+    <string name="features_auth_barber_app">BARBER APP</string>
+    <string name="features_auth_crea_tu_cuenta">Creá tu cuenta</string>
+    <string name="features_auth_bienvenido">Bienvenido</string>
+    <string name="features_auth_registrate_para_reservar_tu_proximo_corte">Registrate para reservar tu próximo corte.</string>
+    <string name="features_auth_tu_barberia_en_un_solo_lugar_reserva_tu_turno_o_gestiona_tu_agenda_como_barbero">Tu barbería en un solo lugar. Reservá tu turno o gestioná tu agenda como barbero.</string>
+    <string name="features_auth_datos_de_tu_cuenta">Datos de tu cuenta</string>
+    <string name="features_auth_iniciar_sesion">Iniciar sesión</string>
+    <string name="features_auth_falta_completar_tu_perfil_tu_cuenta_ya_esta_creada">Falta completar tu perfil. Tu cuenta ya está creada.</string>
+    <string name="features_auth_procesando">Procesando…</string>
+    <string name="features_auth_reintentar">Reintentar</string>
+    <string name="features_auth_correo_electronico">Correo electrónico</string>
+    <string name="features_auth_contrasena">Contraseña</string>
+    <string name="features_auth_ocultar_contrasena">Ocultar contraseña</string>
+    <string name="features_auth_mostrar_contrasena">Mostrar contraseña</string>
+    <string name="features_auth_confirmar_contrasena">Confirmar contraseña</string>
+    <string name="features_auth_usa_una_contrasena_de_al_menos_6_caracteres">Usá una contraseña de al menos 6 caracteres.</string>
+    <string name="features_auth_crear_cuenta">Crear cuenta</string>
+    <string name="features_auth_ingresar">Ingresar</string>
+    <string name="features_auth_o_continua_con">o continuá con</string>
+    <string name="features_auth_continuar_con_google">Continuar con Google</string>
+    <string name="features_auth_ya_tengo_cuenta_iniciar_sesion">Ya tengo cuenta · Iniciar sesión</string>
+    <string name="features_auth_no_tengo_cuenta_registrarme">No tengo cuenta · Registrarme</string>
+</resources>

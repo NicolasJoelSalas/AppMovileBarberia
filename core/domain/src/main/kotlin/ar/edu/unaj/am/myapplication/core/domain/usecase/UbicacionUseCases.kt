@@ -15,13 +15,13 @@ class ObtenerUbicacionBarberiaUseCase(private val repository: UbicacionBarberiaR
 
 class GuardarMiUbicacionUseCase(private val repository: UbicacionBarberiaRepository) {
     suspend operator fun invoke(ubicacion: Coordenadas): AppResult<Unit> =
-        if (!ubicacion.esValida) AppResult.Error(DomainError.Unknown("Seleccioná un punto válido en el mapa."))
+        if (!ubicacion.esValida) AppResult.Error(DomainError.Known(ErrorReason.LOCATION_INVALID))
         else repository.guardarMiUbicacion(ubicacion)
 }
 
 class CalcularRutaBarberiaUseCase(private val repository: RutaRepository) {
     suspend operator fun invoke(origen: Coordenadas, destino: Coordenadas): AppResult<RutaBarberia> =
         if (!origen.esValida || !destino.esValida)
-            AppResult.Error(DomainError.Unknown("No se puede calcular la ruta con estas coordenadas."))
+            AppResult.Error(DomainError.Known(ErrorReason.ROUTE_COORDINATES))
         else repository.calcular(origen, destino)
 }

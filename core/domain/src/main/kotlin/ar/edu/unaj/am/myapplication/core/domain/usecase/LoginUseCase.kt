@@ -1,5 +1,7 @@
 package ar.edu.unaj.am.myapplication.core.domain.usecase
 
+import ar.edu.unaj.am.myapplication.core.domain.model.ErrorReason
+
 import ar.edu.unaj.am.myapplication.core.domain.model.AppResult
 import ar.edu.unaj.am.myapplication.core.domain.model.DomainError
 import ar.edu.unaj.am.myapplication.core.domain.repository.AuthRepository
@@ -15,7 +17,7 @@ class LoginUseCase(
 
         if (cleanEmail.isBlank() || password.isBlank()) {
             return AppResult.Error(
-                DomainError.Unknown("Ingresá el correo y la contraseña")
+                DomainError.Known(ErrorReason.LOGIN_REQUIRED_FIELDS)
             )
         }
 

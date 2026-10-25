@@ -39,10 +39,11 @@ class TurnoReminderReceiver : BroadcastReceiver() {
         val openApp = PendingIntent.getActivity(context, 0,
             Intent(context, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val localized = androidx.core.content.ContextCompat.getContextForLanguage(context)
         val notification = Notification.Builder(context, TurnoReminderScheduler.CHANNEL)
             .setSmallIcon(R.drawable.ic_turno_reminder)
-            .setContentTitle(if (offset == 86_400_000L) "Tu turno es mañana" else "Tu turno es en una hora")
-            .setContentText("Tu turno es a las $hora.")
+            .setContentTitle(if (offset == 86_400_000L) localized.getString(R.string.reminder_tomorrow) else localized.getString(R.string.reminder_one_hour))
+            .setContentText(localized.getString(R.string.reminder_time, hora))
             .setCategory(Notification.CATEGORY_REMINDER)
             .setContentIntent(openApp)
             .setAutoCancel(true)

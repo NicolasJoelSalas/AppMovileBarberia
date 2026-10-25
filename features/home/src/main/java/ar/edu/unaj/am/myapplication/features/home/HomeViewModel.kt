@@ -1,5 +1,9 @@
 package ar.edu.unaj.am.myapplication.features.home
 
+import ar.edu.unaj.am.myapplication.features.home.R
+
+import ar.edu.unaj.am.myapplication.core.ui.components.UiMessage
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
@@ -26,7 +30,7 @@ data class HomeUiState(
     val descripcionModificada: String = "",
     val guardandoDescripcion: Boolean = false,
     val errorDescripcion: DomainError? = null,
-    val mensaje: String? = null
+    val mensaje: UiMessage? = null
 )
 
 class HomeViewModel(
@@ -104,7 +108,7 @@ class HomeViewModel(
                 actual.recorteX, actual.recorteY))
             state.update { when (result) {
                 is AppResult.Success -> it.copy(publicando = false, editando = false, imagen = "",
-                    descripcion = "", mensaje = "Trabajo publicado.")
+                    descripcion = "", mensaje = UiMessage(R.string.home_published))
                 is AppResult.Error -> it.copy(publicando = false, errorEdicion = result.error)
             } }
         }
@@ -133,7 +137,7 @@ class HomeViewModel(
                 is AppResult.Success -> it.copy(guardandoDescripcion = false, modificando = null,
                     publicaciones = it.publicaciones.map { p -> if (p.id == publicacion.id)
                         p.copy(descripcion = actual.descripcionModificada.trim()) else p },
-                    descripcionModificada = "", mensaje = "Descripción actualizada.")
+                    descripcionModificada = "", mensaje = UiMessage(R.string.home_description_saved))
                 is AppResult.Error -> it.copy(guardandoDescripcion = false, errorDescripcion = result.error)
             } }
         }
@@ -145,8 +149,8 @@ class HomeViewModel(
         viewModelScope.launch {
             val result = eliminar(publicacion.id)
             state.update { when (result) {
-                is AppResult.Success -> it.copy(eliminando = false, mensaje = "Publicación eliminada.")
-                is AppResult.Error -> it.copy(eliminando = false, mensaje = "No se pudo eliminar la publicación. Reintentá.")
+                is AppResult.Success -> it.copy(eliminando = false, mensaje = UiMessage(R.string.home_deleted))
+                is AppResult.Error -> it.copy(eliminando = false, mensaje = UiMessage(R.string.home_delete_failed))
             } }
         }
     }

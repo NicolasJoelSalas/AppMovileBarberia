@@ -1,5 +1,7 @@
 package ar.edu.unaj.am.myapplication.ui
 
+import ar.edu.unaj.am.myapplication.R
+
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -120,6 +122,7 @@ private fun AppBottomBar(
     turnosPendientes: Int,
     onTabClick: (TopLevelDestination) -> Unit
 ) {
+    val pendingDescription = androidx.compose.ui.res.pluralStringResource(R.plurals.app_pending_appointments, turnosPendientes, turnosPendientes)
     NavigationBar {
         TopLevelDestination.entries.filter {
             esBarbero || (it != TopLevelDestination.AGENDA && it != TopLevelDestination.PUBLICACIONES)
@@ -135,7 +138,7 @@ private fun AppBottomBar(
                                 Text(
                                     turnosPendientes.toString(),
                                     modifier = Modifier.semantics {
-                                        contentDescription = "$turnosPendientes turnos pendientes"
+                                        contentDescription = pendingDescription
                                     }
                                 )
                             }

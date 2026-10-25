@@ -20,5 +20,6 @@ sealed interface DomainError {
     data object Network : DomainError
     data object NotFound : DomainError
     data object EmptyTitle : DomainError
+    data class Known(val reason: ErrorReason, val dayOfWeek: Int? = null) : DomainError
     data class Unknown(val message: String?) : DomainError
 }

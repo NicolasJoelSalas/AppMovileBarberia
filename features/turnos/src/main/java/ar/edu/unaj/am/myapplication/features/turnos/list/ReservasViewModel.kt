@@ -1,5 +1,9 @@
 package ar.edu.unaj.am.myapplication.features.turnos.list
 
+import ar.edu.unaj.am.myapplication.features.turnos.R
+
+import ar.edu.unaj.am.myapplication.core.ui.components.UiMessage
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ar.edu.unaj.am.myapplication.core.domain.model.*
@@ -26,7 +30,7 @@ data class ReservasUiState(
     val reservando: Boolean = false,
     val reservaConfirmada: Boolean = false,
     val error: DomainError? = null,
-    val mensaje: String? = null
+    val mensaje: UiMessage? = null
 )
 
 class ReservasViewModel(
@@ -111,11 +115,11 @@ class ReservasViewModel(
                 current.barberoId, current.servicioId, selected.inicioMillis, current.nombre
             )
             val result = if (current.turnoId != null) modificar?.invoke(current.turnoId, solicitud)
-                ?: AppResult.Error(DomainError.Unknown("No se pudo modificar el turno.")) else reservar(solicitud)
+                ?: AppResult.Error(DomainError.Known(ErrorReason.BOOKING_UPDATE)) else reservar(solicitud)
             when (result) {
                 is AppResult.Success -> {
                     state.update { it.copy(reservando = false, selected = null, reservaConfirmada = true,
-                        mensaje = if (current.turnoId != null) "¡Turno modificado correctamente!" else "¡Turno reservado correctamente!") }
+                        mensaje = if (current.turnoId != null) UiMessage(R.string.turnos_changed) else UiMessage(R.string.turnos_booked)) }
                     requestId = null
                     refrescar()
                 }

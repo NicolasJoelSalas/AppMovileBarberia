@@ -1,5 +1,7 @@
 package ar.edu.unaj.am.myapplication.core.data.repository
 
+import ar.edu.unaj.am.myapplication.core.domain.model.ErrorReason
+
 import ar.edu.unaj.am.myapplication.core.database.dao.TurnoDao
 import ar.edu.unaj.am.myapplication.core.database.mapper.toDomain
 import ar.edu.unaj.am.myapplication.core.database.mapper.toEntity
@@ -48,7 +50,7 @@ class FirestoreTurnoRepository(
     override fun observeTurnos(comoCliente: Boolean) = channelFlow {
         val uid = auth.currentUser?.uid
         if (uid == null) {
-            send(AppResult.Error(DomainError.Unknown("Iniciá sesión para consultar tus turnos.")))
+            send(AppResult.Error(DomainError.Known(ErrorReason.APPOINTMENTS_SIGNIN)))
             return@channelFlow
         }
         val version = cacheMutex.withLock { cacheVersions[uid] ?: 0L }
@@ -66,7 +68,7 @@ class FirestoreTurnoRepository(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                send(AppResult.Error(DomainError.Unknown("No se pudo leer la copia local de tus turnos. Reintentá.")))
+                send(AppResult.Error(DomainError.Known(ErrorReason.APPOINTMENTS_CACHE)))
             }
         }
         try {
@@ -98,8 +100,7 @@ class FirestoreTurnoRepository(
                         if ((cacheVersions[uid] ?: 0L) == version && auth.currentUser?.uid == uid) {
                             // No sobrescribir estados o importes nuevos con una lectura auxiliar más antigua.
                             turnoDao.actualizarNombres(turnos.map { it.toEntity() })
-                            errorSincronizacion.value = if (falloNombres) DomainError.Unknown(
-                                "No se pudieron actualizar algunos nombres. Se conservan los turnos guardados.") else null
+                            errorSincronizacion.value = if (falloNombres) DomainError.Known(ErrorReason.NAMES_SYNC) else null
                         }
                     }
                 }
@@ -107,7 +108,7 @@ class FirestoreTurnoRepository(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            errorSincronizacion.value = DomainError.Unknown("No se pudieron actualizar tus turnos guardados. Reintentá con conexión.")
+            errorSincronizacion.value = DomainError.Known(ErrorReason.APPOINTMENTS_SYNC)
             awaitCancellation()
         } finally {
             local.cancel()
@@ -117,7 +118,7 @@ class FirestoreTurnoRepository(
     private fun observarRemotos(comoCliente: Boolean) = callbackFlow<AppResult<List<Turno>>> {
         val uid = auth.currentUser?.uid
         if (uid == null) {
-            trySend(AppResult.Error(DomainError.Unknown("Iniciá sesión para consultar tus turnos.")))
+            trySend(AppResult.Error(DomainError.Known(ErrorReason.APPOINTMENTS_SIGNIN)))
             close()
             return@callbackFlow
         }
@@ -163,9 +164,7 @@ class FirestoreTurnoRepository(
                 }.sortedBy { it.inicioMillis ?: Long.MAX_VALUE }
                 trySend(AppResult.Success(turnos))
             } catch (exception: RuntimeException) {
-                trySend(AppResult.Error(DomainError.Unknown(
-                    "Hay un turno con campos de tipo incorrecto. Inicio y Fin deben ser timestamp; los identificadores deben ser texto."
-                )))
+                trySend(AppResult.Error(DomainError.Known(ErrorReason.APPOINTMENT_INVALID_FIELDS)))
             }
         }
         awaitClose { registration.remove() }

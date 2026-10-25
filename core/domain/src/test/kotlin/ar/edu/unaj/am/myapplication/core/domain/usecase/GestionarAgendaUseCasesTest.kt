@@ -16,6 +16,12 @@ class GestionarAgendaUseCasesTest {
         assertNull(validate(valid))
         assertNull(validate(valid.copy(dias = List(6) { DiaAtencion(false, emptyList()) })))
     }
+    @Test fun `validation retains weekday independently of translated wording`() {
+        val agenda = valid.copy(dias = valid.dias.toMutableList().also {
+            it[2] = DiaAtencion(true, emptyList())
+        })
+        assertEquals(DomainError.Known(ErrorReason.SCHEDULE_EMPTY_DAY, dayOfWeek = 3), validate(agenda))
+    }
     @Test fun `open day without spans and invalid clock times are rejected`() {
         for (spans in listOf(emptyList(), listOf(FranjaAtencion("25:00", "26:00")),
             listOf(FranjaAtencion("9:00", "10:00")))) {

@@ -1,5 +1,9 @@
 package ar.edu.unaj.am.myapplication.core.ui.maps
 
+import ar.edu.unaj.am.myapplication.core.ui.R
+
+import androidx.compose.ui.res.stringResource
+
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
@@ -42,6 +46,7 @@ fun rememberUbicacionDispositivo(onUbicacion: (Coordenadas) -> Unit): ControlUbi
 @Composable
 fun rememberUbicacionDispositivoDetallada(onUbicacion: (PosicionDispositivo) -> Unit): ControlUbicacion {
     val context = LocalContext.current
+    val resources = androidx.compose.ui.platform.LocalResources.current
     val manager = remember { context.getSystemService(LocationManager::class.java) }
     val scope = rememberCoroutineScope()
     val alUbicar by rememberUpdatedState(onUbicacion)
@@ -53,7 +58,7 @@ fun rememberUbicacionDispositivoDetallada(onUbicacion: (PosicionDispositivo) -> 
     fun localizar() {
         if (buscando) return
         if (!permitido(Manifest.permission.ACCESS_FINE_LOCATION) && !permitido(Manifest.permission.ACCESS_COARSE_LOCATION)) {
-            mensaje = "Permití el acceso a la ubicación o elegí un punto en el mapa."
+            mensaje = resources.getString(R.string.core_ui_permiti_el_acceso_a_la_ubicacion_o_elegi_un_punto_en_el_mapa)
             return
         }
         if (!LocationManagerCompat.isLocationEnabled(manager)) {
@@ -66,15 +71,15 @@ fun rememberUbicacionDispositivoDetallada(onUbicacion: (PosicionDispositivo) -> 
             try {
                 val preciso = permitido(Manifest.permission.ACCESS_FINE_LOCATION)
                 val location = obtenerUbicacionDisponible(manager, preciso, ContextCompat.getMainExecutor(context))
-                if (location == null) mensaje = "El dispositivo todavía no pudo determinar tu ubicación. Reintentá o elegí un punto en el mapa."
+                if (location == null) mensaje = resources.getString(R.string.core_ui_el_dispositivo_todavia_no_pudo_determinar_tu_ubicacion_reintenta_o_elegi_un_punto_en_el_mapa)
                 else {
                     alUbicar(location)
-                    if (!preciso || location.precisionMetros > 100) mensaje = "Ubicación aproximada. Podés ajustar el punto tocando el mapa."
+                    if (!preciso || location.precisionMetros > 100) mensaje = resources.getString(R.string.core_ui_ubicacion_aproximada_podes_ajustar_el_punto_tocando_el_mapa)
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (_: Exception) {
-                mensaje = "No se pudo obtener tu ubicación. Revisá el GPS y los permisos."
+                mensaje = resources.getString(R.string.core_ui_no_se_pudo_obtener_tu_ubicacion_revisa_el_gps_y_los_permisos)
             } finally {
                 buscando = false
             }
@@ -82,30 +87,30 @@ fun rememberUbicacionDispositivoDetallada(onUbicacion: (PosicionDispositivo) -> 
     }
     val configuracionGps = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         if (LocationManagerCompat.isLocationEnabled(manager)) localizar()
-        else mensaje = "La ubicación sigue apagada. Podés activarla o elegir un punto en el mapa."
+        else mensaje = resources.getString(R.string.core_ui_la_ubicacion_sigue_apagada_podes_activarla_o_elegir_un_punto_en_el_mapa)
     }
     val configuracionPermisos = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
         localizar()
     }
     val permisos = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
         if (result.values.any { it }) localizar()
-        else mensaje = "Sin permiso de ubicación. Elegí un punto en el mapa o habilitá el permiso en Ajustes."
+        else mensaje = resources.getString(R.string.core_ui_sin_permiso_de_ubicacion_elegi_un_punto_en_el_mapa_o_habilita_el_permiso_en_ajustes)
     }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
         trabajo?.cancel()
     }
     if (mostrarActivarGps) AlertDialog(
         onDismissRequest = { mostrarActivarGps = false },
-        title = { Text("Activar ubicación") },
-        text = { Text("Activá la ubicación del dispositivo para usar tu posición en el mapa.") },
+        title = { Text(stringResource(R.string.core_ui_activar_ubicacion)) },
+        text = { Text(stringResource(R.string.core_ui_activa_la_ubicacion_del_dispositivo_para_usar_tu_posicion_en_el_mapa)) },
         confirmButton = { TextButton(onClick = {
             mostrarActivarGps = false
             configuracionGps.launch(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
-        }) { Text("Activar GPS") } },
+        }) { Text(stringResource(R.string.core_ui_activar_gps)) } },
         dismissButton = { TextButton(onClick = {
             mostrarActivarGps = false
-            mensaje = "Podés elegir la ubicación tocando el mapa."
-        }) { Text("Elegir en el mapa") } }
+            mensaje = resources.getString(R.string.core_ui_podes_elegir_la_ubicacion_tocando_el_mapa)
+        }) { Text(stringResource(R.string.core_ui_elegir_en_el_mapa)) } }
     )
     return ControlUbicacion(buscando, mensaje, solicitar = {
         if (permitido(Manifest.permission.ACCESS_FINE_LOCATION) || permitido(Manifest.permission.ACCESS_COARSE_LOCATION)) localizar()

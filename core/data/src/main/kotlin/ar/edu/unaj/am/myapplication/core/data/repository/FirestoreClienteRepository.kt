@@ -1,5 +1,7 @@
 package ar.edu.unaj.am.myapplication.core.data.repository
 
+import ar.edu.unaj.am.myapplication.core.domain.model.ErrorReason
+
 import ar.edu.unaj.am.myapplication.core.domain.model.AppResult
 import ar.edu.unaj.am.myapplication.core.data.session.SesionClienteLocal
 import ar.edu.unaj.am.myapplication.core.data.session.SesionBarberoLocal
@@ -20,12 +22,12 @@ class FirestoreClienteRepository(
 ) : ClienteRepository {
     override suspend fun ensureCurrentProfile(): AppResult<Unit> {
         val user = auth.currentUser
-            ?: return AppResult.Error(DomainError.Unknown("Iniciá sesión para completar tu perfil."))
+            ?: return AppResult.Error(DomainError.Known(ErrorReason.PROFILE_SIGNIN))
         // Permite consultar Room al reiniciar sin red una sesión ya validada.
         if (sesionLocal?.estaValidado(user.uid) == true || sesionBarberoLocal?.estaValidado(user.uid) == true)
             return AppResult.Success(Unit)
         val email = user.email
-            ?: return AppResult.Error(DomainError.Unknown("Tu cuenta no tiene un correo disponible."))
+            ?: return AppResult.Error(DomainError.Known(ErrorReason.MISSING_EMAIL))
         val barbero = firestore.collection("barberos").document(user.uid)
         val cliente = firestore.collection("clientes").document(user.uid)
         return suspendCancellableCoroutine { continuation ->
