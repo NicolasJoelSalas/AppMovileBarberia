@@ -20,6 +20,9 @@ data object MiCuentaDestination : NavKey
 data object UbicacionBarberiaDestination : NavKey
 
 @Serializable
+data object ServiciosDestination : NavKey
+
+@Serializable
 data class ComoLlegarDestination(val barberoId: String) : NavKey
 
 @Serializable

@@ -79,8 +79,8 @@ class FirestoreReservaRepository(
             val barberos = firestore.collection("barberos").whereEqualTo("Estado", true)
                 .get(Source.SERVER).awaitReserva().documents.map { Barbero(it.id, it.getString("Nombre").orEmpty()) }
             val servicios = firestore.collection("servicios").get(Source.SERVER).awaitReserva().documents
-                .filter { enabled(it) && it.getLong("Duracion") == 40L }
-                .map { Servicio(it.id, it.getString("NombreCorte").orEmpty(), 40) }
+                .filter { enabled(it) && it.getLong("Duracion") == 40L && !it.getString("BarberoId").isNullOrBlank() }
+                .map { Servicio(it.id, it.getString("NombreCorte").orEmpty(), 40, it.getString("BarberoId")) }
             val nombre = firestore.collection("clientes").document(uid).get(Source.SERVER)
                 .awaitReserva().getString("Nombre").orEmpty()
             sesionLocal?.guardar(uid, nombre)
@@ -181,7 +181,8 @@ class FirestoreReservaRepository(
         uid()
         val barber = firestore.collection("barberos").document(barberoId).get(Source.SERVER).awaitReserva()
         val service = firestore.collection("servicios").document(servicioId).get(Source.SERVER).awaitReserva()
-        check(barber.getBoolean("Estado") == true && enabled(service) && service.getLong("Duracion") == 40L) {
+        check(barber.getBoolean("Estado") == true && enabled(service) && service.getLong("Duracion") == 40L &&
+            service.getString("BarberoId") == barberoId) {
             "Elegí un barbero habilitado y un servicio de 40 minutos."
         }
         val zoneName = barber.getString("ZonaHoraria") ?: error("Falta ZonaHoraria del barbero.")
@@ -277,7 +278,8 @@ class FirestoreReservaRepository(
                 val serviceDoc = tx.get(service)
                 val agendaDoc = tx.get(barber.collection("agenda").document(agendaId(slot)))
                 check(profile.exists()) { "Completá tu registro como cliente." }
-                check(barberDoc.getBoolean("Estado") == true && enabled(serviceDoc) && serviceDoc.getLong("Duracion") == 40L) {
+                check(barberDoc.getBoolean("Estado") == true && enabled(serviceDoc) && serviceDoc.getLong("Duracion") == 40L &&
+                    serviceDoc.getString("BarberoId") == solicitud.barberoId) {
                     "El barbero o el servicio ya no están disponibles."
                 }
                 check(slot.exists() && (slot.getString("Estado") == "libre" || (editarId != null && slot.getString("TurnoId") == turno.id)) && slot.get("Agenda") == agendaDoc.data &&

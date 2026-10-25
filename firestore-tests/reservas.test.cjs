@@ -30,7 +30,7 @@ beforeEach(async () => {
       setDoc(doc(store,'barberos/barbero'),{Nombre:'Barbero',Estado:true,ZonaHoraria:zone}),
       setDoc(doc(store,'barberos/otro'),{Nombre:'Otro',Estado:true,ZonaHoraria:zone}),
       setDoc(doc(store,'barberos/barbero/agenda/semanal'),agenda),
-      setDoc(doc(store,'servicios/corte'),{NombreCorte:'Corte',Duracion:40,Activo:true,Precio:12500}),
+      setDoc(doc(store,'servicios/corte'),{BarberoId:'barbero',NombreCorte:'Corte',Duracion:40,Activo:true,Precio:12500}),
       ...['ana','juan'].map(uid => setDoc(doc(store,`clientes/${uid}`),{Nombre:'',Correo:`${uid}@example.com`,CreadoEn:start}))
     ]);
   });
@@ -177,6 +177,73 @@ test('publicaciones: rechaza formatos campos fechas y enlaces incorrectos', asyn
   for (let i=0;i<invalidas.length;i++)
     await assertFails(setDoc(doc(db('barbero'),`publicaciones/invalida-${i}`),invalidas[i]));
 });
+test('servicios: barbero crea, modifica, desactiva y reactiva sus servicios', async () => {
+  const ref = doc(db('barbero'), 'servicios/propio');
+  const servicio = {BarberoId:'barbero', NombreCorte:'Corte personalizado', Precio:12500.50,
+    Duracion:60, Estado:true, CreadoEn:serverTimestamp()};
+  await assertSucceeds(setDoc(ref, servicio));
+  await assertSucceeds(updateDoc(ref, {NombreCorte:'Corte y barba', Precio:0.29, Duracion:90}));
+  await assertSucceeds(updateDoc(ref, {Estado:false}));
+  assert.equal((await getDoc(ref)).data().Estado, false);
+  await assertSucceeds(updateDoc(ref, {Estado:true}));
+  assert.equal((await getDoc(ref)).data().NombreCorte, 'Corte y barba');
+  await assertFails(deleteDoc(ref));
+});
+
+test('servicios: rechaza escrituras ajenas, clientes y barberos deshabilitados', async () => {
+  const servicio = {BarberoId:'barbero',NombreCorte:'Corte',Precio:100,Duracion:40,Estado:true,CreadoEn:serverTimestamp()};
+  await assertSucceeds(setDoc(doc(db('barbero'), 'servicios/propio'), servicio));
+  for (const uid of ['ana','otro']) {
+    await assertFails(setDoc(doc(db(uid), 'servicios/nuevo'), servicio));
+    await assertFails(updateDoc(doc(db(uid), 'servicios/propio'), {Precio:1}));
+  }
+  await assertFails(setDoc(doc(env.unauthenticatedContext().firestore(), 'servicios/anonimo'), servicio));
+  await assertFails(updateDoc(doc(db('barbero'), 'servicios/propio'), {BarberoId:'otro'}));
+  await env.withSecurityRulesDisabled(async ctx => updateDoc(doc(ctx.firestore(), 'barberos/barbero'), {Estado:false}));
+  await assertFails(updateDoc(doc(db('barbero'), 'servicios/propio'), {Precio:1}));
+});
+
+test('servicios: valida nombre precio duracion y campos permitidos', async () => {
+  const ref = doc(db('barbero'), 'servicios/propio');
+  await assertSucceeds(setDoc(ref, {BarberoId:'barbero',NombreCorte:'Corte',Precio:100,Duracion:40,Estado:true,CreadoEn:serverTimestamp()}));
+  for (const cambio of [{NombreCorte:''},{NombreCorte:'   '},{NombreCorte:'x'.repeat(121)},
+    {Precio:-1},{Precio:1000000001},{Precio:1.234},{Precio:'100'},
+    {Duracion:4},{Duracion:241},{Duracion:40.5},{Duracion:'40'},{Estado:'true'},{Extra:1},{CreadoEn:start}]) {
+    await assertFails(updateDoc(ref, cambio));
+  }
+  await env.withSecurityRulesDisabled(async ctx => setDoc(doc(ctx.firestore(), 'servicios/compartido'), {NombreCorte:'Compartido',Precio:100,Duracion:40,Estado:true}));
+  await assertFails(updateDoc(doc(db('barbero'), 'servicios/compartido'), {Precio:1}));
+});
+
+test('servicios: baja conserva turnos y permite completar con precio decimal', async () => {
+  await assertSucceeds(setDoc(doc(db('barbero'), 'servicios/propio'), {
+    BarberoId:'barbero',NombreCorte:'Corte',Precio:0.29,Duracion:40,Estado:true,CreadoEn:serverTimestamp()
+  }));
+  await env.withSecurityRulesDisabled(async ctx => setDoc(doc(ctx.firestore(), 'turnos/anterior'), {
+    ...booking('ana'), ServicioId:'propio', Inicio:Timestamp.fromMillis(Date.now()-60000),
+    Fin:Timestamp.fromMillis(Date.now()+2340000)
+  }));
+  await assertSucceeds(updateDoc(doc(db('barbero'), 'servicios/propio'), {Estado:false}));
+  const ref = doc(db('barbero'), 'turnos/anterior');
+  await assertSucceeds(updateDoc(ref, {Estado:'realizado',PrecioCobrado:0.29,RealizadoEn:serverTimestamp()}));
+  await assertSucceeds(updateDoc(doc(db('barbero'), 'servicios/propio'), {NombreCorte:'Nuevo nombre',Precio:200}));
+  assert.equal((await getDoc(ref)).data().PrecioCobrado, 0.29);
+});
+
+test('servicios: reserva solo los servicios activos del barbero elegido', async () => {
+  await publish();
+  await env.withSecurityRulesDisabled(async ctx => updateDoc(doc(ctx.firestore(), 'servicios/corte'), {BarberoId:deleteField()}));
+  await assertFails(reserve('ana','sin-propietario'));
+  await env.withSecurityRulesDisabled(async ctx => updateDoc(doc(ctx.firestore(), 'servicios/corte'), {BarberoId:'otro'}));
+  await assertFails(reserve('ana','ajeno'));
+  await env.withSecurityRulesDisabled(async ctx => updateDoc(doc(ctx.firestore(), 'servicios/corte'), {BarberoId:'barbero',Estado:false}));
+  await assertFails(reserve('ana','inactivo'));
+  await env.withSecurityRulesDisabled(async ctx => updateDoc(doc(ctx.firestore(), 'servicios/corte'), {Estado:true,Duracion:60}));
+  await assertFails(reserve('ana','otra-duracion'));
+  await env.withSecurityRulesDisabled(async ctx => updateDoc(doc(ctx.firestore(), 'servicios/corte'), {Duracion:40}));
+  await assertSucceeds(reserve('ana','propio'));
+});
+
 async function reserve(uid, id, extra = {}) {
   const store=db(uid), horario=doc(store,`horarios/${horarioId}`), turno=doc(store,`turnos/${id}`);
   return runTransaction(store, async tx => {

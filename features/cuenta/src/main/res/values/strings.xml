@@ -81,4 +81,27 @@
     <string name="cuenta_idioma_espanol">Español</string>
     <string name="cuenta_idioma_ingles">English</string>
     <string name="cuenta_idioma_cancelar">Cancelar</string>
+    <string name="servicios_title">Mis servicios</string>
+    <string name="servicios_menu_description">Agregá, editá o desactivá tus servicios.</string>
+    <string name="servicios_description">Administrá el nombre, el precio y la duración de tus servicios. Los servicios desactivados se conservan para mantener el historial.</string>
+    <string name="servicios_duration_notice">Por ahora, las reservas usan servicios de 40 minutos. Podés guardar otras duraciones, pero estarán disponibles para reservar cuando se adapte la agenda.</string>
+    <string name="servicios_add">Agregar servicio</string>
+    <string name="servicios_edit">Editar</string>
+    <string name="servicios_edit_title">Editar servicio</string>
+    <string name="servicios_empty">Todavía no creaste servicios propios. Agregá tu primer servicio para comenzar.</string>
+    <string name="servicios_details">%1$s · %2$d min</string>
+    <string name="servicios_active">Activo</string>
+    <string name="servicios_inactive">Desactivado</string>
+    <string name="servicios_deactivate">Dar de baja</string>
+    <string name="servicios_activate">Reactivar</string>
+    <string name="servicios_deactivate_title">¿Dar de baja este servicio?</string>
+    <string name="servicios_deactivate_body">%1$s dejará de estar disponible para nuevas reservas. Los turnos anteriores se conservarán. Podés reactivarlo cuando quieras.</string>
+    <string name="servicios_cancel">Cancelar</string>
+    <string name="servicios_save">Guardar servicio</string>
+    <string name="servicios_saving">Guardando…</string>
+    <string name="servicios_name">Nombre del servicio</string>
+    <string name="servicios_price">Precio (ARS)</string>
+    <string name="servicios_duration">Duración (minutos)</string>
+    <string name="servicios_duration_range">Entre 5 y 240 minutos.</string>
+    <string name="servicios_retry">Reintentar</string>
 </resources>

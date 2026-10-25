@@ -82,4 +82,8 @@
     <string name="error_appointment_end_missing">Correct the end times of existing appointments.</string>
     <string name="error_appointment_duration">Correct the duration of existing appointments.</string>
     <string name="error_on_day">%1$s: %2$s</string>
+    <string name="error_service_fields">Check the name (up to 120 characters), price and duration (5 to 240 minutes).</string>
+    <string name="error_service_format">Enter a valid price with up to two decimal places and a duration in minutes.</string>
+    <string name="error_service_selection">Select a service.</string>
+    <string name="error_service_operation">Could not complete the operation. Check your connection and your permissions to manage services.</string>
 </resources>

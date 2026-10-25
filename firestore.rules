@@ -14,9 +14,10 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/clientes/$(request.auth.uid));
     }
 
-    function servicioHabilitado(id) {
+    function servicioHabilitado(id, barberoId) {
       let servicio = get(/databases/$(database)/documents/servicios/$(id)).data;
       return servicio.Duracion == 40
+        && servicio.BarberoId == barberoId
         && (('Estado' in servicio && servicio.Estado == true)
           || (!('Estado' in servicio) && servicio.Activo == true));
     }
@@ -48,7 +49,7 @@ service cloud.firestore {
         && t.keys().hasOnly(['ClienteId', 'BarberoId', 'ServicioId', 'HorarioId', 'Inicio', 'Fin', 'Estado', 'CreadoEn', 'ReferenciaCorteUrl'])
         && referenciaValida(t)
         && t.ClienteId == request.auth.uid && t.Estado == 'confirmado' && t.CreadoEn == request.time
-        && barbero.Estado == true && servicioHabilitado(t.ServicioId)
+        && barbero.Estado == true && servicioHabilitado(t.ServicioId, t.BarberoId)
         && antes.Estado == 'libre' && despues.Estado == 'ocupado' && despues.TurnoId == id
         && t.BarberoId == antes.BarberoId && t.Inicio == antes.Inicio && t.Fin == antes.Fin
         && t.Inicio > request.time && t.Fin - t.Inicio == duration.value(40, 'm')
@@ -79,7 +80,7 @@ service cloud.firestore {
       return editable(antes)
         && t.diff(antes).affectedKeys().hasOnly(['BarberoId', 'ServicioId', 'HorarioId', 'Inicio', 'Fin', 'Estado', 'ReferenciaCorteUrl'])
         && referenciaValida(t)
-        && t.Estado == 'confirmado' && b.Estado == true && servicioHabilitado(t.ServicioId)
+        && t.Estado == 'confirmado' && b.Estado == true && servicioHabilitado(t.ServicioId, t.BarberoId)
         && t.BarberoId == h.BarberoId && t.Inicio == h.Inicio && t.Fin == h.Fin
         && t.Inicio > request.time && t.Fin - t.Inicio == duration.value(40, 'm')
         && h.Agenda == get(/databases/$(database)/documents/barberos/$(t.BarberoId)/agenda/$(h.AgendaId)).data
@@ -113,7 +114,7 @@ service cloud.firestore {
         && request.resource.data.RealizadoEn == request.time
         && request.resource.data.PrecioCobrado is number
         && request.resource.data.PrecioCobrado >= 0 && request.resource.data.PrecioCobrado <= 1000000000
-        && request.resource.data.PrecioCobrado * 100 == math.round(request.resource.data.PrecioCobrado * 100)
+        && math.abs(request.resource.data.PrecioCobrado * 100 - math.round(request.resource.data.PrecioCobrado * 100)) < 0.00001
         && request.resource.data.PrecioCobrado == get(/databases/$(database)/documents/servicios/$(resource.data.ServicioId)).data.Precio;
       allow update: if (editable(resource.data)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['Estado', 'CanceladoEn'])
@@ -195,7 +196,23 @@ service cloud.firestore {
 
     match /servicios/{servicioId} {
       allow read: if request.auth != null;
-      allow write: if false;
+      function camposValidos(s) {
+        return s.NombreCorte is string && s.NombreCorte.size() > 0 && s.NombreCorte.size() <= 120
+          && s.NombreCorte.matches('.*[^ ].*')
+          && s.Precio is number && s.Precio >= 0 && s.Precio <= 1000000000
+          && math.abs(s.Precio * 100 - math.round(s.Precio * 100)) < 0.00001
+          && s.Duracion is int && s.Duracion >= 5 && s.Duracion <= 240
+          && s.Estado is bool;
+      }
+      allow create: if esBarberoHabilitado()
+        && request.resource.data.keys().hasAll(['BarberoId', 'NombreCorte', 'Precio', 'Duracion', 'Estado', 'CreadoEn'])
+        && request.resource.data.keys().hasOnly(['BarberoId', 'NombreCorte', 'Precio', 'Duracion', 'Estado', 'CreadoEn'])
+        && request.resource.data.BarberoId == request.auth.uid
+        && request.resource.data.CreadoEn == request.time && camposValidos(request.resource.data);
+      allow update: if esBarberoHabilitado() && resource.data.BarberoId == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['NombreCorte', 'Precio', 'Duracion', 'Estado'])
+        && camposValidos(request.resource.data);
+      allow delete: if false;
     }
 
     match /publicaciones/{publicacionId} {

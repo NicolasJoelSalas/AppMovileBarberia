@@ -148,6 +148,7 @@ class FirestoreReservaRepositoryTest {
         `when`(docs.getValue("barberos/barbero").getString("ZonaHoraria")).thenReturn("America/Argentina/Buenos_Aires")
         `when`(docs.getValue("servicios/corte").get("Activo")).thenReturn(true)
         `when`(docs.getValue("servicios/corte").getLong("Duracion")).thenReturn(40L)
+        `when`(docs.getValue("servicios/corte").getString("BarberoId")).thenReturn("barbero")
         `when`(docs.getValue("barberos/barbero/agenda/semanal").data).thenReturn(emptyMap())
         `when`(firestore.runTransaction(any<Transaction.Function<Any?>>())).thenAnswer { call ->
             val value = call.getArgument<Transaction.Function<Any?>>(0).apply(tx)

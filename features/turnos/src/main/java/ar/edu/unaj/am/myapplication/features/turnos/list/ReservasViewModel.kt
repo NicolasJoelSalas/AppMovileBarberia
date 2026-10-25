@@ -83,7 +83,10 @@ class ReservasViewModel(
     }
     fun barbero(id: String) {
         if (state.value.reservando) return
-        state.update { it.copy(barberoId = id, selected = null, semana = null, mensaje = null) }
+        state.update { it.copy(barberoId = id,
+            servicioId = it.servicioId.takeIf { servicio -> it.catalogo?.servicios?.any { opcion ->
+                opcion.id == servicio && opcion.barberoId == id
+            } == true }.orEmpty(), selected = null, semana = null, mensaje = null) }
         requestId = null
         refrescar()
     }

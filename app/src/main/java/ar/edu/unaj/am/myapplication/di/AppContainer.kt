@@ -36,6 +36,10 @@ import ar.edu.unaj.am.myapplication.core.domain.usecase.ActualizarMiNombreUseCas
 
 
 class AppContainer(context: Context) {
+    private val servicioRepository = ar.edu.unaj.am.myapplication.core.data.repository.FirestoreServicioRepository()
+    val obtenerMisServicios = ar.edu.unaj.am.myapplication.core.domain.usecase.ObtenerMisServiciosUseCase(servicioRepository)
+    val guardarServicio = ar.edu.unaj.am.myapplication.core.domain.usecase.GuardarServicioUseCase(servicioRepository)
+    val cambiarEstadoServicio = ar.edu.unaj.am.myapplication.core.domain.usecase.CambiarEstadoServicioUseCase(servicioRepository)
     private val ubicacionRepository = ar.edu.unaj.am.myapplication.core.data.repository.FirestoreUbicacionBarberiaRepository()
     val obtenerMiUbicacion = ar.edu.unaj.am.myapplication.core.domain.usecase.ObtenerMiUbicacionUseCase(ubicacionRepository)
     val obtenerUbicacionBarberia = ar.edu.unaj.am.myapplication.core.domain.usecase.ObtenerUbicacionBarberiaUseCase(ubicacionRepository)

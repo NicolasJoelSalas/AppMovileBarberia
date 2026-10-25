@@ -20,6 +20,7 @@ import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.ContentCut
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.LocationOn
 import androidx.compose.material.icons.outlined.DarkMode
@@ -52,7 +53,8 @@ fun MiCuentaScreen(
     onGuardar: () -> Unit,
     onReintentar: () -> Unit,
     onLogout: () -> Unit,
-    onUbicacionBarberia: () -> Unit = {}
+    onUbicacionBarberia: () -> Unit = {},
+    onServicios: () -> Unit = {}
 ) {
     var editando by rememberSaveable { mutableStateOf(false) }
     var eligiendoIdioma by rememberSaveable { mutableStateOf(false) }
@@ -150,6 +152,9 @@ fun MiCuentaScreen(
                                 HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
                                 OpcionCuenta(Icons.Outlined.LocationOn, stringResource(R.string.features_cuenta_ubicacion_de_la_barberia),
                                     stringResource(R.string.features_cuenta_marca_en_el_mapa_donde_atendes), onClick = onUbicacionBarberia)
+                                HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
+                                OpcionCuenta(Icons.Outlined.ContentCut, stringResource(R.string.servicios_title),
+                                    stringResource(R.string.servicios_menu_description), onClick = onServicios)
                             }
                             HorizontalDivider(Modifier.padding(vertical = 12.dp), color = colors.outlineVariant)
                             val appearance = LocalAppearance.current

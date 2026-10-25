@@ -82,4 +82,8 @@
     <string name="error_appointment_end_missing">Corregí Fin de los turnos existentes.</string>
     <string name="error_appointment_duration">Corregí la duración de los turnos existentes.</string>
     <string name="error_on_day">%1$s: %2$s</string>
+    <string name="error_service_fields">Revisá el nombre (hasta 120 caracteres), el precio y la duración (5 a 240 minutos).</string>
+    <string name="error_service_format">Ingresá un precio válido con hasta dos decimales y una duración en minutos.</string>
+    <string name="error_service_selection">Seleccioná un servicio.</string>
+    <string name="error_service_operation">No se pudo completar la operación. Revisá tu conexión y los permisos para gestionar tus servicios.</string>
 </resources>

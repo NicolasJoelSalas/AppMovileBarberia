@@ -52,7 +52,18 @@ fun AppNavDisplay(
             }
             MiCuentaRoute(cuentaViewModel, onPerfilGuardado = reservasViewModel::cargar,
                 onLogout = onLogout,
-                onUbicacionBarberia = { navigationState.navigate(UbicacionBarberiaDestination) })
+                onUbicacionBarberia = { navigationState.navigate(UbicacionBarberiaDestination) },
+                onServicios = { navigationState.navigate(ServiciosDestination) })
+        }
+        entry<ServiciosDestination> { key ->
+            if (esBarbero) {
+                val vm = viewModel {
+                    ar.edu.unaj.am.myapplication.features.cuenta.servicios.ServiciosViewModel(
+                        container.obtenerMisServicios, container.guardarServicio, container.cambiarEstadoServicio)
+                }
+                ar.edu.unaj.am.myapplication.features.cuenta.servicios.ServiciosRoute(vm,
+                    onBack = { navigationState.goBackFrom(key) })
+            }
         }
         entry<UbicacionBarberiaDestination> { key ->
             if (esBarbero) {

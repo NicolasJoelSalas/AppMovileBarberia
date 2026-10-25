@@ -81,4 +81,27 @@
     <string name="cuenta_idioma_espanol">Español</string>
     <string name="cuenta_idioma_ingles">English</string>
     <string name="cuenta_idioma_cancelar">Cancel</string>
+    <string name="servicios_title">My services</string>
+    <string name="servicios_menu_description">Add, edit or deactivate your services.</string>
+    <string name="servicios_description">Manage the name, price and duration of your services. Deactivated services are kept to preserve appointment history.</string>
+    <string name="servicios_duration_notice">Appointments currently use 40-minute services. You can save other durations, but they will become bookable when scheduling supports them.</string>
+    <string name="servicios_add">Add service</string>
+    <string name="servicios_edit">Edit</string>
+    <string name="servicios_edit_title">Edit service</string>
+    <string name="servicios_empty">You have not created any services yet. Add your first service to get started.</string>
+    <string name="servicios_details">%1$s · %2$d min</string>
+    <string name="servicios_active">Active</string>
+    <string name="servicios_inactive">Inactive</string>
+    <string name="servicios_deactivate">Deactivate</string>
+    <string name="servicios_activate">Reactivate</string>
+    <string name="servicios_deactivate_title">Deactivate this service?</string>
+    <string name="servicios_deactivate_body">%1$s will no longer be available for new appointments. Existing appointments will be kept. You can reactivate it at any time.</string>
+    <string name="servicios_cancel">Cancel</string>
+    <string name="servicios_save">Save service</string>
+    <string name="servicios_saving">Saving…</string>
+    <string name="servicios_name">Service name</string>
+    <string name="servicios_price">Price (ARS)</string>
+    <string name="servicios_duration">Duration (minutes)</string>
+    <string name="servicios_duration_range">Between 5 and 240 minutes.</string>
+    <string name="servicios_retry">Retry</string>
 </resources>

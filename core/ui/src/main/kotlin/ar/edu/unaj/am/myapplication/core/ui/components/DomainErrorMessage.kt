@@ -72,6 +72,10 @@ internal fun ErrorReason.resourceId(): Int = when (this) {
     ErrorReason.POST_INVALID -> R.string.error_post_invalid
     ErrorReason.BOOKING_SELECTION -> R.string.error_booking_selection
     ErrorReason.BOOKING_FIELDS -> R.string.error_booking_fields
+    ErrorReason.SERVICE_FIELDS -> R.string.error_service_fields
+    ErrorReason.SERVICE_FORMAT -> R.string.error_service_format
+    ErrorReason.SERVICE_SELECTION -> R.string.error_service_selection
+    ErrorReason.SERVICE_OPERATION -> R.string.error_service_operation
     ErrorReason.LOCATION_INVALID -> R.string.error_location_invalid
     ErrorReason.ROUTE_COORDINATES -> R.string.error_route_coordinates
     ErrorReason.GOOGLE_OPEN -> R.string.error_google_open

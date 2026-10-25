@@ -109,6 +109,16 @@ class ReservasViewModelTest {
         assertTrue(vm.uiState.value.cambiarReferencia)
     }
 
+    @Test fun `changing barber clears a service owned by the previous barber`() = runTest {
+        val vm = vm()
+        vm.barbero("barbero"); vm.servicio("corte")
+        vm.barbero("otro")
+        assertEquals("", vm.uiState.value.servicioId)
+        vm.servicio("otro-corte")
+        vm.barbero("otro")
+        assertEquals("otro-corte", vm.uiState.value.servicioId)
+    }
+
     private class Fake: ReservaRepository {
         var modifiedId: String? = null
         override suspend fun modificar(turnoId: String, solicitud: SolicitudReserva): AppResult<String> {
@@ -125,7 +135,7 @@ class ReservasViewModelTest {
         var result: AppResult<String> = AppResult.Success("turno")
         var pending: CompletableDeferred<AppResult<String>>?=null
         override suspend fun cargarCatalogo()=AppResult.Success(CatalogoReservas(false,
-            listOf(Barbero("barbero","Barbero")),listOf(Servicio("corte","Corte",40)),"Ana"))
+            listOf(Barbero("barbero","Barbero")),listOf(Servicio("corte","Corte",40,"barbero"), Servicio("otro-corte","Otro",40,"otro")),"Ana"))
         override suspend fun consultarSemana(barberoId:String,servicioId:String,semanaOffset:Int): AppResult<SemanaDisponible> {
             offset = semanaOffset
             queries++

@@ -123,6 +123,9 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
                 }
             }
             state.catalogo?.let { catalogo ->
+                val serviciosDisponibles = catalogo.servicios.filter {
+                    state.barberoId.isNotBlank() && it.barberoId == state.barberoId
+                }
                 item {
                     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)) {
@@ -135,10 +138,10 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
                             Selector(stringResource(R.string.features_turnos_barbero), state.barberoId, catalogo.barberos.map { it.id to it.nombre },
                                 !state.reservando, Icons.Outlined.Person, vm::barbero)
                             Selector(stringResource(R.string.features_turnos_servicio), state.servicioId,
-                                catalogo.servicios.map { it.id to stringResource(R.string.turnos_service_duration, it.nombre, it.duracion) },
-                                !state.reservando, Icons.Outlined.ContentCut, vm::servicio)
+                                serviciosDisponibles.map { it.id to stringResource(R.string.turnos_service_duration, it.nombre, it.duracion) },
+                                !state.reservando && state.barberoId.isNotBlank(), Icons.Outlined.ContentCut, vm::servicio)
                             if (catalogo.barberos.isEmpty()) Text(stringResource(R.string.features_turnos_no_hay_barberos_habilitados))
-                            if (catalogo.servicios.isEmpty()) Text(stringResource(R.string.features_turnos_no_hay_servicios_habilitados_de_40_minutos))
+                            if (state.barberoId.isNotBlank() && serviciosDisponibles.isEmpty()) Text(stringResource(R.string.features_turnos_no_hay_servicios_habilitados_de_40_minutos))
                         }
                     }
                 }
