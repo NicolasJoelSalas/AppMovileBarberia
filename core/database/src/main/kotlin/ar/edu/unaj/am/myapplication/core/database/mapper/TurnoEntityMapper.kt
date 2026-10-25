@@ -13,7 +13,8 @@ fun Turno.toEntity() = TurnosEntity(
     estado = estado,
     clienteNombre = clienteNombre,
     servicioNombre = servicioNombre,
-    precioCobradoCentavos = precioCobradoCentavos
+    precioCobradoCentavos = precioCobradoCentavos,
+    referenciaCorteUrl = referenciaCorteUrl
 )
 
 fun TurnosEntity.toDomain() = Turno(
@@ -26,5 +27,6 @@ fun TurnosEntity.toDomain() = Turno(
     estado = estado,
     clienteNombre = clienteNombre,
     servicioNombre = servicioNombre,
-    precioCobradoCentavos = precioCobradoCentavos
+    precioCobradoCentavos = precioCobradoCentavos,
+    referenciaCorteUrl = referenciaCorteUrl
 )

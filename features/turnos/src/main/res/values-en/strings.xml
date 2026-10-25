@@ -108,4 +108,13 @@
     <string name="agenda_published">Schedule saved. Available times published for the selected week: %1$d.</string>
     <string name="turnos_changed">Appointment updated successfully!</string>
     <string name="turnos_booked">Appointment booked successfully!</string>
+    <string name="turnos_reference_title">Haircut reference</string>
+    <string name="turnos_reference_optional">Haircut reference (optional)</string>
+    <string name="turnos_reference_hint">Attach a photo to show your barber the haircut you want.</string>
+    <string name="turnos_reference_add">Add image</string>
+    <string name="turnos_reference_change">Change image</string>
+    <string name="turnos_reference_remove">Remove reference</string>
+    <string name="turnos_reference_none">No reference image</string>
+    <string name="turnos_reference_attached">Reference image attached</string>
+    <string name="turnos_reference_error">Could not load the reference image.</string>
 </resources>

@@ -81,6 +81,34 @@ class ReservasViewModelTest {
         assertTrue(repo.requests.isEmpty())
         assertTrue(vm.uiState.value.reservaConfirmada)
     }
+    @Test fun `reference is optional and selected image survives a failed confirmation`() = runTest {
+        val vm = vm()
+        vm.barbero("barbero"); vm.servicio("corte")
+        vm.seleccionar(HorarioDisponible(1000, 2401000))
+        repo.result = AppResult.Error(DomainError.Network)
+        vm.confirmar()
+        assertNull(repo.requests.last().referenciaLocal)
+        vm.referencia("content://foto")
+        vm.confirmar()
+        assertEquals("content://foto", repo.requests.last().referenciaLocal)
+        assertTrue(repo.requests.last().cambiarReferencia)
+        assertEquals("content://foto", vm.uiState.value.referencia)
+        vm.referencia(null)
+        vm.confirmar()
+        assertNull(repo.requests.last().referenciaLocal)
+        assertTrue(repo.requests.last().cambiarReferencia)
+    }
+
+    @Test fun `editing preserves reference until explicitly removed`() = runTest {
+        val vm = vm()
+        vm.editar("existente", "barbero", "corte", System.currentTimeMillis() + 86400000, "https://foto")
+        assertEquals("https://foto", vm.uiState.value.referencia)
+        assertFalse(vm.uiState.value.cambiarReferencia)
+        vm.referencia(null)
+        assertNull(vm.uiState.value.referencia)
+        assertTrue(vm.uiState.value.cambiarReferencia)
+    }
+
     private class Fake: ReservaRepository {
         var modifiedId: String? = null
         override suspend fun modificar(turnoId: String, solicitud: SolicitudReserva): AppResult<String> {

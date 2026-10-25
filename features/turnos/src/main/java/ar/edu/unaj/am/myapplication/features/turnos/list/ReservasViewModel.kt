@@ -27,6 +27,8 @@ data class ReservasUiState(
     val semanaOffset: Int = 0,
     val selected: HorarioDisponible? = null,
     val nombre: String = "",
+    val referencia: String? = null,
+    val cambiarReferencia: Boolean = false,
     val reservando: Boolean = false,
     val reservaConfirmada: Boolean = false,
     val error: DomainError? = null,
@@ -58,17 +60,21 @@ class ReservasViewModel(
             }
         }
     }
-    fun editar(turnoId: String, barberoId: String, servicioId: String, inicio: Long) {
+    fun editar(turnoId: String, barberoId: String, servicioId: String, inicio: Long, referencia: String? = null) {
         if (state.value.turnoId == turnoId) return
         val zone = java.time.ZoneId.of("America/Argentina/Buenos_Aires")
         val hoy = java.time.LocalDate.now(zone)
         val lunes = hoy.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
         val fecha = java.time.Instant.ofEpochMilli(inicio).atZone(zone).toLocalDate()
-        state.update { it.copy(turnoId = turnoId, inicioOriginal = inicio, barberoOriginal = barberoId, barberoId = barberoId, servicioId = servicioId,
+        state.update { it.copy(turnoId = turnoId, referencia = referencia, inicioOriginal = inicio, barberoOriginal = barberoId, barberoId = barberoId, servicioId = servicioId,
             semanaOffset = if (fecha >= lunes.plusWeeks(1)) 1 else 0) }
         refrescar()
     }
     fun nombre(value: String) { if (!state.value.reservando) state.update { it.copy(nombre = value) } }
+    fun referencia(value: String?) {
+        if (state.value.reservando) return
+        state.update { it.copy(referencia = value, cambiarReferencia = true) }
+    }
     fun semana(offset: Int) {
         if (offset !in 0..1 || state.value.reservando || offset == state.value.semanaOffset) return
         state.update { it.copy(semanaOffset = offset, selected = null, semana = null, mensaje = null) }
@@ -112,7 +118,9 @@ class ReservasViewModel(
         viewModelScope.launch {
             val solicitud = SolicitudReserva(
                 requestId ?: UUID.randomUUID().toString().also { requestId = it },
-                current.barberoId, current.servicioId, selected.inicioMillis, current.nombre
+                current.barberoId, current.servicioId, selected.inicioMillis, current.nombre,
+                referenciaLocal = current.referencia.takeIf { current.cambiarReferencia },
+                cambiarReferencia = current.cambiarReferencia
             )
             val result = if (current.turnoId != null) modificar?.invoke(current.turnoId, solicitud)
                 ?: AppResult.Error(DomainError.Known(ErrorReason.BOOKING_UPDATE)) else reservar(solicitud)

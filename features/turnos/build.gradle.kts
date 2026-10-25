@@ -25,6 +25,8 @@ android {
 }
 
 dependencies {
+    implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
     implementation(project(":core:domain"))
     implementation(project(":core:ui"))
     implementation(libs.androidx.activity.compose)

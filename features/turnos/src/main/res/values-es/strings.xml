@@ -108,4 +108,13 @@
     <string name="agenda_published">Agenda guardada. %1$d horarios libres publicados para la semana elegida.</string>
     <string name="turnos_changed">¡Turno modificado correctamente!</string>
     <string name="turnos_booked">¡Turno reservado correctamente!</string>
+    <string name="turnos_reference_title">Referencia de corte</string>
+    <string name="turnos_reference_optional">Referencia de corte (opcional)</string>
+    <string name="turnos_reference_hint">Adjuntá una imagen para mostrarle al barbero el corte que querés.</string>
+    <string name="turnos_reference_add">Agregar imagen</string>
+    <string name="turnos_reference_change">Cambiar imagen</string>
+    <string name="turnos_reference_remove">Quitar referencia</string>
+    <string name="turnos_reference_none">Sin imagen de referencia</string>
+    <string name="turnos_reference_attached">Imagen de referencia adjunta</string>
+    <string name="turnos_reference_error">No se pudo cargar la imagen de referencia.</string>
 </resources>

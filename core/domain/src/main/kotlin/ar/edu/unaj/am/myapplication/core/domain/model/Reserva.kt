@@ -20,5 +20,7 @@ data class SolicitudReserva(
     val barberoId: String,
     val servicioId: String,
     val inicioMillis: Long,
-    val nombreCliente: String
+    val nombreCliente: String,
+    val referenciaLocal: String? = null,
+    val cambiarReferencia: Boolean = false
 )

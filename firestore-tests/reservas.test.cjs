@@ -177,7 +177,7 @@ test('publicaciones: rechaza formatos campos fechas y enlaces incorrectos', asyn
   for (let i=0;i<invalidas.length;i++)
     await assertFails(setDoc(doc(db('barbero'),`publicaciones/invalida-${i}`),invalidas[i]));
 });
-async function reserve(uid, id) {
+async function reserve(uid, id, extra = {}) {
   const store=db(uid), horario=doc(store,`horarios/${horarioId}`), turno=doc(store,`turnos/${id}`);
   return runTransaction(store, async tx => {
     const existing=await tx.get(turno);
@@ -186,11 +186,31 @@ async function reserve(uid, id) {
     const client=await tx.get(doc(store,`clientes/${uid}`));
     if (available.data().Estado !== 'libre') throw new Error('ocupado');
     tx.update(horario,{Estado:'ocupado',TurnoId:id});
-    tx.set(turno,booking(uid));
+    tx.set(turno,{...booking(uid), ...extra});
     if (!client.data().Nombre) tx.update(doc(store,`clientes/${uid}`),{Nombre:uid});
     return id;
   });
 }
+
+test('referencia: acepta nulo y permite adjuntar, reemplazar y quitar una imagen propia', async () => {
+  await publish();
+  await assertSucceeds(reserve('ana', 'referencia', {ReferenciaCorteUrl:null}));
+  const ref = doc(db('ana'), 'turnos/referencia');
+  const url = 'https://res.cloudinary.com/barberia/image/upload/referencia.jpg';
+  await assertSucceeds(updateDoc(ref, {ReferenciaCorteUrl:url}));
+  assert.equal((await getDoc(doc(db('barbero'), 'turnos/referencia'))).data().ReferenciaCorteUrl, url);
+  await assertFails(updateDoc(doc(db('juan'), 'turnos/referencia'), {ReferenciaCorteUrl:null}));
+  await assertFails(updateDoc(doc(db('barbero'), 'turnos/referencia'), {ReferenciaCorteUrl:null}));
+  await assertSucceeds(updateDoc(ref, {ReferenciaCorteUrl:url + '2'}));
+  await assertSucceeds(updateDoc(ref, {ReferenciaCorteUrl:null}));
+});
+
+test('referencia: rechaza tipos y direcciones invalidas al reservar', async () => {
+  await publish();
+  for (const value of [123, '', 'content://foto', 'https://example.com/foto.jpg', 'https://res.cloudinary.com/x/image/upload/' + 'a'.repeat(2048)]) {
+    await assertFails(reserve('ana', 'invalida', {ReferenciaCorteUrl:value}));
+  }
+});
 
 test('solo el barbero dueño publica; el cliente no fabrica horarios', async () => {
   await assertFails(setDoc(doc(db('ana'),`horarios/${horarioId}`),slot()));

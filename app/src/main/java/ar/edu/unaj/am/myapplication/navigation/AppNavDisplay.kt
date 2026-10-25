@@ -102,7 +102,7 @@ fun AppNavDisplay(
                         misTurnosViewModel,
                         onComoLlegar = { turno -> navigationState.navigate(ComoLlegarDestination(turno.barberoId)) },
                         onModificar = { turno -> navigationState.navigate(ReservarTurnoDestination(
-                            turno.barberoId, turno.id, turno.servicioId, turno.inicioMillis)) },
+                            turno.barberoId, turno.id, turno.servicioId, turno.inicioMillis, turno.referenciaCorteUrl)) },
                         onRecordatorio = onRecordatorio,
                         recordatoriosActivos = recordatoriosActivos,
                         onReservar = { navigationState.navigate(ReservarTurnoDestination()) })
@@ -124,7 +124,7 @@ fun AppNavDisplay(
             }
             LaunchedEffect(key) {
                 if (key.turnoId != null && key.barberoId != null && key.servicioId != null && key.inicioMillis != null)
-                    reservaViewModel.editar(key.turnoId, key.barberoId, key.servicioId, key.inicioMillis)
+                    reservaViewModel.editar(key.turnoId, key.barberoId, key.servicioId, key.inicioMillis, key.referenciaCorteUrl)
                 else key.barberoId?.let(reservaViewModel::barbero)
             }
             ReservarTurnoRoute(reservaViewModel, onBack = { navigationState.goBackFrom(key) })

@@ -155,6 +155,7 @@ class FirestoreTurnoRepository(
                         inicioMillis = doc.getTimestamp("Inicio")?.toDate()?.time,
                         finMillis = doc.getTimestamp("Fin")?.toDate()?.time,
                         precioCobradoCentavos = importeCentavos(doc.get("PrecioCobrado")),
+                        referenciaCorteUrl = doc.getString("ReferenciaCorteUrl"),
                         estado = when (val estado = doc.get("Estado")) {
                             is String -> estado.ifBlank { "Sin estado" }
                             is Boolean -> if (estado) "Confirmado" else "Cancelado"

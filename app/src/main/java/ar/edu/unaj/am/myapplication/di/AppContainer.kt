@@ -58,7 +58,8 @@ class AppContainer(context: Context) {
     private val database = AppDatabase.obtener {
         androidx.room3.Room.databaseBuilder<AppDatabase>(name = databaseFile.absolutePath)
             .setDriver(androidx.sqlite.driver.bundled.BundledSQLiteDriver())
-            .addMigrations(ar.edu.unaj.am.myapplication.core.database.migration.MIGRATION_1_2)
+            .addMigrations(ar.edu.unaj.am.myapplication.core.database.migration.MIGRATION_1_2,
+                ar.edu.unaj.am.myapplication.core.database.migration.MIGRATION_2_3)
             .build()
     }
     private val turnoDao = database.turnoDao()
@@ -80,7 +81,10 @@ class AppContainer(context: Context) {
     val modificarDescripcionPublicacion = ModificarDescripcionPublicacionUseCase(publicacionRepository)
 
     private val reservaRepository: ReservaRepository = FirestoreReservaRepository(
-        sesionLocal = sesionClienteLocal, sesionBarberoLocal = sesionBarberoLocal)
+        sesionLocal = sesionClienteLocal, sesionBarberoLocal = sesionBarberoLocal,
+        subirReferencia = ar.edu.unaj.am.myapplication.core.data.images.SubidorReferenciaCorte(
+            PreparadorImagenTrabajo(context.applicationContext), NetworkFactory.createCloudinaryApi(),
+            BuildConfig.CLOUDINARY_CLOUD_NAME, BuildConfig.CLOUDINARY_UPLOAD_PRESET)::subir)
     val cargarCatalogoReservas = CargarCatalogoReservasUseCase(reservaRepository)
     val consultarSemana = ConsultarSemanaUseCase(reservaRepository)
     val cancelarTurno = ar.edu.unaj.am.myapplication.core.domain.usecase.CancelarTurnoUseCase(reservaRepository)

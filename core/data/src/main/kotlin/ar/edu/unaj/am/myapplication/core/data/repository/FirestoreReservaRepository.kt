@@ -22,8 +22,11 @@ class FirestoreReservaRepository(
     private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val sesionLocal: SesionClienteLocal? = null,
-    private val sesionBarberoLocal: SesionBarberoLocal? = null
+    private val sesionBarberoLocal: SesionBarberoLocal? = null,
+    private val subirReferencia: (suspend (String) -> String)? = null
 ) : ReservaRepository {
+    // Mantiene la misma subida cuando una confirmación falla y se reintenta.
+    private val referenciasPendientes = java.util.concurrent.ConcurrentHashMap<String, String>()
     private fun uid() = requireNotNull(auth.currentUser?.uid) { "Iniciá sesión." }
     private fun slotId(barbero: String, inicio: Long) = "${barbero}_$inicio"
     private fun monday(zone: String, offset: Int): LocalDate {
@@ -101,7 +104,7 @@ class FirestoreReservaRepository(
         firestore.collection("turnos").whereEqualTo("BarberoId", uid).get(Source.SERVER).awaitReserva().documents.map {
             Turno(it.id, it.getString("ClienteId").orEmpty(), uid, it.getString("ServicioId").orEmpty(),
                 it.getTimestamp("Inicio")?.toDate()?.time, it.getTimestamp("Fin")?.toDate()?.time,
-                it.get("Estado").toString())
+                it.get("Estado").toString(), referenciaCorteUrl = it.getString("ReferenciaCorteUrl"))
         }
     }
 
@@ -243,6 +246,13 @@ class FirestoreReservaRepository(
         val cliente = firestore.collection("clientes").document(uid)
         val barber = firestore.collection("barberos").document(solicitud.barberoId)
         val service = firestore.collection("servicios").document(solicitud.servicioId)
+        val referenciaUrl = solicitud.referenciaLocal?.let { local ->
+            val key = "$uid/${solicitud.solicitudId}/$local"
+            referenciasPendientes[key] ?: requireNotNull(subirReferencia) {
+                "No se pudo adjuntar la referencia. Podés reservar sin foto."
+            }.invoke(local).also { referenciasPendientes[key] = it }
+        }
+        check(auth.currentUser?.uid == uid) { "La sesión cambió. Iniciá sesión nuevamente." }
         firestore.runTransaction { tx ->
             val previous = tx.get(turno)
             if (previous.exists() && editarId == null) {
@@ -284,6 +294,8 @@ class FirestoreReservaRepository(
                 if (anteriorRef?.id != horario.id) tx.update(horario, mapOf("Estado" to "ocupado", "TurnoId" to turno.id))
                 tx.set(turno, mapOf("ClienteId" to uid, "BarberoId" to solicitud.barberoId,
                     "ServicioId" to solicitud.servicioId, "HorarioId" to horario.id,
+                    "ReferenciaCorteUrl" to (if (editarId != null && !solicitud.cambiarReferencia)
+                        previous.getString("ReferenciaCorteUrl") else referenciaUrl),
                     "Inicio" to slot.getTimestamp("Inicio"), "Fin" to slot.getTimestamp("Fin"),
                     "Estado" to "confirmado", "CreadoEn" to (if (editarId != null) previous.get("CreadoEn") else FieldValue.serverTimestamp())))
                 if (profile.getString("Nombre") == "") tx.update(cliente, "Nombre", solicitud.nombreCliente.trim())

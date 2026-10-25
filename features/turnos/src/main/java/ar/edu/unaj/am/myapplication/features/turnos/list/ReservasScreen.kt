@@ -66,6 +66,9 @@ fun ReservarTurnoRoute(viewModel: ReservasViewModel, onBack: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack: () -> Unit) {
+    val picker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia()
+    ) { uri -> if (uri != null) vm.referencia(uri.toString()) }
     val zone = ZoneId.of(state.semana?.zonaHoraria ?: "America/Argentina/Buenos_Aires")
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         if (state.catalogo != null && !state.loading) vm.refrescar()
@@ -132,6 +135,23 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
                 }
             }
             if (state.loading) item { CircularProgressIndicator() }
+            item {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(stringResource(R.string.turnos_reference_optional), style = MaterialTheme.typography.titleMedium)
+                        Text(stringResource(R.string.turnos_reference_hint))
+                        state.referencia?.let { ReferenciaCorteImagen(it) }
+                        OutlinedButton(onClick = { picker.launch(androidx.activity.result.PickVisualMediaRequest(
+                            androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                            enabled = !state.reservando) {
+                            Text(stringResource(if (state.referencia == null) R.string.turnos_reference_add else R.string.turnos_reference_change))
+                        }
+                        if (state.referencia != null) TextButton(onClick = { vm.referencia(null) }, enabled = !state.reservando) {
+                            Text(stringResource(R.string.turnos_reference_remove))
+                        }
+                    }
+                }
+            }
             state.mensaje?.let { message -> item { Text(message.asString(), color = MaterialTheme.colorScheme.primary) } }
             state.error?.let { error ->
                 item {
@@ -177,6 +197,7 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
                     Text(state.catalogo?.barberos?.find { it.id == state.barberoId }?.nombre.orEmpty())
                     Text(state.catalogo?.servicios?.find { it.id == state.servicioId }?.nombre.orEmpty())
                     Text(start.format(dayFormat) + " · " + start.format(hourFormat))
+                    Text(stringResource(if (state.referencia == null) R.string.turnos_reference_none else R.string.turnos_reference_attached))
                     OutlinedTextField(value = state.nombre, onValueChange = vm::nombre,
                         label = { Text(stringResource(R.string.features_turnos_tu_nombre)) }, singleLine = true, enabled = !state.reservando)
                     state.error?.let { Text(it.asMessage(), color = MaterialTheme.colorScheme.error) }

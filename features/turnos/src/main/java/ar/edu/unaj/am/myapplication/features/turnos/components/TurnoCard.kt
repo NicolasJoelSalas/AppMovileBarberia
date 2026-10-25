@@ -68,6 +68,10 @@ fun TurnoCard(turno: Turno, modifier: Modifier = Modifier,
                 }
             }
             DatoTurno(Icons.Outlined.ContentCut, turno.servicioNombre.ifBlank { stringResource(R.string.features_turnos_servicio_sin_asignar) })
+            turno.referenciaCorteUrl?.let {
+                Text(stringResource(R.string.turnos_reference_title), style = MaterialTheme.typography.titleSmall)
+                ar.edu.unaj.am.myapplication.features.turnos.list.ReferenciaCorteImagen(it)
+            }
             onComoLlegar?.takeIf { !realizado && turno.estado.lowercase() != "cancelado" }?.let { abrirRuta ->
                 OutlinedButton(onClick = abrirRuta,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {

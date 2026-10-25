@@ -11,7 +11,7 @@ import kotlin.math.min
 
 /** Limita memoria, corrige orientación y exporta todas las fotos como JPEG cuadrado. */
 class PreparadorImagenTrabajo(private val context: Context) {
-    fun preparar(local: String, x: Float, y: Float): ByteArray {
+    fun preparar(local: String, x: Float, y: Float, recortar: Boolean = true): ByteArray {
         val uri = Uri.parse(local)
         require(uri.scheme == "content") { "Elegí una imagen desde la cámara o la galería." }
         val resolver = context.contentResolver
@@ -40,6 +40,18 @@ class PreparadorImagenTrabajo(private val context: Context) {
             }
             val oriented = Bitmap.createBitmap(original, 0, 0, original.width, original.height, matrix, true)
             try {
+                if (!recortar) {
+                    val escala = min(1f, 1080f / maxOf(oriented.width, oriented.height))
+                    val output = Bitmap.createScaledBitmap(oriented,
+                        (oriented.width * escala).toInt().coerceAtLeast(1),
+                        (oriented.height * escala).toInt().coerceAtLeast(1), true)
+                    try {
+                        return ByteArrayOutputStream().use {
+                            check(output.compress(Bitmap.CompressFormat.JPEG, 85, it))
+                            it.toByteArray()
+                        }
+                    } finally { if (output !== oriented) output.recycle() }
+                }
                 val side = min(oriented.width, oriented.height)
                 val left = (((x + 1f) / 2f) * (oriented.width - side)).toInt().coerceIn(0, oriented.width - side)
                 val top = (((y + 1f) / 2f) * (oriented.height - side)).toInt().coerceIn(0, oriented.height - side)

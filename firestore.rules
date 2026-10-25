@@ -33,13 +33,20 @@ service cloud.firestore {
         && h.ZonaHoraria == get(/databases/$(database)/documents/barberos/$(h.BarberoId)).data.ZonaHoraria;
     }
 
+    function referenciaValida(t) {
+      return !('ReferenciaCorteUrl' in t) || t.ReferenciaCorteUrl == null
+        || (t.ReferenciaCorteUrl is string && t.ReferenciaCorteUrl.size() <= 2048
+          && t.ReferenciaCorteUrl.matches('https://res[.]cloudinary[.]com/[^/]+/image/upload/.+'));
+    }
+
     function turnoValido(id, t) {
       let horarioPath = /databases/$(database)/documents/horarios/$(t.HorarioId);
       let antes = get(horarioPath).data;
       let despues = getAfter(horarioPath).data;
       let barbero = get(/databases/$(database)/documents/barberos/$(t.BarberoId)).data;
       return t.keys().hasAll(['ClienteId', 'BarberoId', 'ServicioId', 'HorarioId', 'Inicio', 'Fin', 'Estado', 'CreadoEn'])
-        && t.keys().hasOnly(['ClienteId', 'BarberoId', 'ServicioId', 'HorarioId', 'Inicio', 'Fin', 'Estado', 'CreadoEn'])
+        && t.keys().hasOnly(['ClienteId', 'BarberoId', 'ServicioId', 'HorarioId', 'Inicio', 'Fin', 'Estado', 'CreadoEn', 'ReferenciaCorteUrl'])
+        && referenciaValida(t)
         && t.ClienteId == request.auth.uid && t.Estado == 'confirmado' && t.CreadoEn == request.time
         && barbero.Estado == true && servicioHabilitado(t.ServicioId)
         && antes.Estado == 'libre' && despues.Estado == 'ocupado' && despues.TurnoId == id
@@ -70,7 +77,8 @@ service cloud.firestore {
       let despues = getAfter(/databases/$(database)/documents/horarios/$(t.HorarioId)).data;
       let b = get(/databases/$(database)/documents/barberos/$(t.BarberoId)).data;
       return editable(antes)
-        && t.diff(antes).affectedKeys().hasOnly(['BarberoId', 'ServicioId', 'HorarioId', 'Inicio', 'Fin', 'Estado'])
+        && t.diff(antes).affectedKeys().hasOnly(['BarberoId', 'ServicioId', 'HorarioId', 'Inicio', 'Fin', 'Estado', 'ReferenciaCorteUrl'])
+        && referenciaValida(t)
         && t.Estado == 'confirmado' && b.Estado == true && servicioHabilitado(t.ServicioId)
         && t.BarberoId == h.BarberoId && t.Inicio == h.Inicio && t.Fin == h.Fin
         && t.Inicio > request.time && t.Fin - t.Inicio == duration.value(40, 'm')
