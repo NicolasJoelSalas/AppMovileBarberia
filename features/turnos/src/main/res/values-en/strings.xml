@@ -25,7 +25,7 @@
     <string name="features_turnos_inicio">Home</string>
     <string name="features_turnos_fin">End</string>
     <string name="features_turnos_elegi_la_hora_de_inicio_y_de_fin">Choose the start and end times.</string>
-    <string name="features_turnos_la_franja_debe_durar_al_menos_40_minutos">The time range must last at least 40 minutes.</string>
+    <string name="features_turnos_la_franja_debe_durar_al_menos_5_minutos">The time range must last at least 5 minutes.</string>
     <string name="features_turnos_este_horario_se_superpone_con_otra_franja">This time overlaps another time range.</string>
     <string name="features_turnos_elegir_hora">Choose time</string>
     <string name="features_turnos_confirmar">Confirm</string>
@@ -62,7 +62,7 @@
     <string name="features_turnos_barbero">Barber</string>
     <string name="features_turnos_servicio">Service</string>
     <string name="features_turnos_no_hay_barberos_habilitados">No barbers are available.</string>
-    <string name="features_turnos_no_hay_servicios_habilitados_de_40_minutos">No 40-minute services are available.</string>
+    <string name="features_turnos_no_hay_servicios_habilitados">No enabled services are available for this barber.</string>
     <string name="features_turnos_actualizar">Refresh</string>
     <string name="features_turnos_actualizar_disponibilidad">Refresh availability</string>
     <string name="features_turnos_confirmar_modificacion">Confirm changes</string>
@@ -109,7 +109,7 @@
     <string name="turnos_until">Until %1$s</string>
     <string name="turnos_available_times">%1$d available times</string>
     <string name="agenda_pending">The schedule was saved, but the available times still need updating. Try saving and publishing again.</string>
-    <string name="agenda_published">Schedule saved. Available times published for the selected week: %1$d.</string>
+    <string name="agenda_published">%1$d time ranges published. Availability depends on the selected service.</string>
     <string name="turnos_changed">Appointment updated successfully!</string>
     <string name="turnos_booked">Appointment booked successfully!</string>
     <string name="turnos_reference_title">Haircut reference</string>

@@ -17,9 +17,6 @@ sealed interface NetworkResult<out T> {
     data class ParseError(val message: String?) : NetworkResult<Nothing>
 }
 
-/** Versión simplificada de la excepción de Retrofit, para que el FakeTodoApi simule errores HTTP. */
-class HttpException(val code: Int, message: String) : Exception(message)
-
 /**
  * Envuelve una llamada para que NUNCA lance excepciones hacia arriba.
  * Solo atrapamos errores de red/HTTP: una CancellationException sigue propagándose,
@@ -28,8 +25,6 @@ class HttpException(val code: Int, message: String) : Exception(message)
 suspend fun <T> safeApiCall(call: suspend () -> T): NetworkResult<T> =
     try {
         NetworkResult.Success(call())
-    } catch (e: HttpException) {
-        NetworkResult.HttpError(e.code, e.message)
     } catch (e: RetrofitHttpException) {
         NetworkResult.HttpError(e.code(), e.message())
     } catch (e: IOException) {

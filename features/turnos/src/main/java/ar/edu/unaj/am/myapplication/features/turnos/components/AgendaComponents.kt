@@ -50,7 +50,7 @@ internal fun FranjaHorariaFields(
     val end = runCatching { LocalTime.parse(fin) }.getOrNull()
     val error = when {
         start == null || end == null -> stringResource(R.string.features_turnos_elegi_la_hora_de_inicio_y_de_fin)
-        end.toSecondOfDay() - start.toSecondOfDay() < 40 * 60 -> stringResource(R.string.features_turnos_la_franja_debe_durar_al_menos_40_minutos)
+        end.toSecondOfDay() - start.toSecondOfDay() < 5 * 60 -> stringResource(R.string.features_turnos_la_franja_debe_durar_al_menos_5_minutos)
         superpuesta -> stringResource(R.string.features_turnos_este_horario_se_superpone_con_otra_franja)
         else -> null
     }

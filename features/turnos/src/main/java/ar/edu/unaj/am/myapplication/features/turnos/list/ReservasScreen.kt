@@ -143,7 +143,7 @@ private fun ReservasScreen(state: ReservasUiState, vm: ReservasViewModel, onBack
                                 !state.reservando && state.barberoId.isNotBlank(), Icons.Outlined.ContentCut, vm::servicio,
                                 detalles = serviciosDisponibles.associate { it.id to precioServicio(it.precioCentavos) })
                             if (catalogo.barberos.isEmpty()) Text(stringResource(R.string.features_turnos_no_hay_barberos_habilitados))
-                            if (state.barberoId.isNotBlank() && serviciosDisponibles.isEmpty()) Text(stringResource(R.string.features_turnos_no_hay_servicios_habilitados_de_40_minutos))
+                            if (state.barberoId.isNotBlank() && serviciosDisponibles.isEmpty()) Text(stringResource(R.string.features_turnos_no_hay_servicios_habilitados))
                         }
                     }
                 }

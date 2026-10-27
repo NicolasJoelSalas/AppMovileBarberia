@@ -57,7 +57,6 @@ fun ServiciosRoute(viewModel: ServiciosViewModel, onBack: () -> Unit) {
     }) { padding ->
         LazyColumn(Modifier.fillMaxSize().padding(padding), contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            item { Text(stringResource(R.string.servicios_description), color = MaterialTheme.colorScheme.onSurfaceVariant) }
             item {
                 Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.secondaryContainer) {
                     Text(stringResource(R.string.servicios_duration_notice), Modifier.padding(16.dp))

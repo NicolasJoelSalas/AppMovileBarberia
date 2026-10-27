@@ -23,5 +23,6 @@ data class SolicitudReserva(
     val inicioMillis: Long,
     val nombreCliente: String,
     val referenciaLocal: String? = null,
-    val cambiarReferencia: Boolean = false
+    val cambiarReferencia: Boolean = false,
+    val finMillisEsperado: Long? = null
 )

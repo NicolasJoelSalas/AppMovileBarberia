@@ -74,7 +74,7 @@
     <string name="error_schedule_days">Configurá los seis días de atención, de lunes a sábado.</string>
     <string name="error_schedule_empty_day">Agregá una franja o cerrá el día.</string>
     <string name="error_schedule_time_format">Ingresá horas válidas con formato HH:mm.</string>
-    <string name="error_schedule_duration">Cada franja debe permitir al menos un corte de 40 minutos.</string>
+    <string name="error_schedule_duration">Cada franja debe durar al menos 5 minutos.</string>
     <string name="error_schedule_overlap">Las franjas de atención no pueden superponerse.</string>
     <string name="error_schedule_week_changed">La semana cambió. Volvé a cargar la agenda actual o la próxima.</string>
     <string name="error_schedule_end">El fin de una franja debe ser posterior al inicio.</string>

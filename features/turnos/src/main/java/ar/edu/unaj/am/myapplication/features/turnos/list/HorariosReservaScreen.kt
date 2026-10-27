@@ -49,8 +49,9 @@ internal fun HorariosReservaScreen(state: ReservasUiState, vm: ReservasViewModel
                     val fecha = Instant.ofEpochMilli(inicio).atZone(zone)
                     Text(stringResource(R.string.turnos_current_time, fecha.format(dayFormat), fecha.format(hourFormat)))
                     if (state.barberoId == state.barberoOriginal) {
-                        OutlinedButton(onClick = { vm.seleccionar(ar.edu.unaj.am.myapplication.core.domain.model.HorarioDisponible(inicio, inicio + 2400000)) },
-                            enabled = !state.loading && !state.reservando && state.servicioId.isNotBlank()) {
+                        val actual = state.semana?.horarios?.firstOrNull { it.inicioMillis == inicio }
+                        OutlinedButton(onClick = { vm.seleccionar(actual) },
+                            enabled = !state.loading && !state.reservando && actual != null) {
                             Text(stringResource(R.string.features_turnos_conservar_horario_actual))
                         }
                     }
@@ -168,28 +169,27 @@ private fun HorariosDelDia(
                 HorizontalDivider(color = colors.outlineVariant)
                 Text(stringResource(R.string.features_turnos_elegi_un_horario), style = MaterialTheme.typography.labelMedium,
                     color = colors.onSurfaceVariant)
-                slots.chunked(2).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        row.forEach { slot ->
-                            OutlinedButton(
-                                onClick = { onSelect(slot) },
-                                enabled = enabled,
-                                modifier = Modifier.weight(1f).heightIn(min = 72.dp),
-                                shape = RoundedCornerShape(12.dp),
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 12.dp)
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    Text(Instant.ofEpochMilli(slot.inicioMillis).atZone(zone).format(hourFormat),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold)
-                                    Text(stringResource(R.string.turnos_until, Instant.ofEpochMilli(slot.finMillis).atZone(zone).format(hourFormat)),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = colors.onSurfaceVariant)
-                                }
-                            }
+                slots.forEach { slot ->
+                    OutlinedButton(
+                        onClick = { onSelect(slot) },
+                        enabled = enabled,
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(Instant.ofEpochMilli(slot.inicioMillis).atZone(zone).format(hourFormat),
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold)
+                            Text(stringResource(R.string.turnos_until,
+                                Instant.ofEpochMilli(slot.finMillis).atZone(zone).format(hourFormat)),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.onSurfaceVariant)
                         }
-                        if (row.size == 1) Spacer(Modifier.weight(1f))
                     }
                 }
             }

@@ -26,7 +26,7 @@
     <string name="features_turnos_inicio">Inicio</string>
     <string name="features_turnos_fin">Fin</string>
     <string name="features_turnos_elegi_la_hora_de_inicio_y_de_fin">Elegí la hora de inicio y de fin.</string>
-    <string name="features_turnos_la_franja_debe_durar_al_menos_40_minutos">La franja debe durar al menos 40 minutos.</string>
+    <string name="features_turnos_la_franja_debe_durar_al_menos_5_minutos">La franja debe durar al menos 5 minutos.</string>
     <string name="features_turnos_este_horario_se_superpone_con_otra_franja">Este horario se superpone con otra franja.</string>
     <string name="features_turnos_elegir_hora">Elegir hora</string>
     <string name="features_turnos_confirmar">Confirmar</string>
@@ -63,7 +63,7 @@
     <string name="features_turnos_barbero">Barbero</string>
     <string name="features_turnos_servicio">Servicio</string>
     <string name="features_turnos_no_hay_barberos_habilitados">No hay barberos habilitados.</string>
-    <string name="features_turnos_no_hay_servicios_habilitados_de_40_minutos">No hay servicios habilitados de 40 minutos.</string>
+    <string name="features_turnos_no_hay_servicios_habilitados">No hay servicios habilitados para este barbero.</string>
     <string name="features_turnos_actualizar">Actualizar</string>
     <string name="features_turnos_actualizar_disponibilidad">Actualizar disponibilidad</string>
     <string name="features_turnos_confirmar_modificacion">Confirmar modificación</string>
@@ -109,7 +109,7 @@
     <string name="turnos_until">Hasta %1$s</string>
     <string name="turnos_available_times">%1$d horarios disponibles</string>
     <string name="agenda_pending">La agenda se guardó, pero falta actualizar los horarios. Reintentá guardar y publicar.</string>
-    <string name="agenda_published">Agenda guardada. %1$d horarios libres publicados para la semana elegida.</string>
+    <string name="agenda_published">%1$d franjas publicadas. La disponibilidad depende del servicio elegido.</string>
     <string name="turnos_changed">¡Turno modificado correctamente!</string>
     <string name="turnos_booked">¡Turno reservado correctamente!</string>
     <string name="turnos_reference_title">Referencia de corte</string>

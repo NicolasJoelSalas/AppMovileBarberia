@@ -17,7 +17,7 @@ class ReporteGananciasViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
 
-    @Test fun `consulta como barbero actualiza importes y limpia resultados al fallar`() = runTest {
+    @Test fun `consulta como barbero actualiza importes y conserva resultados al fallar`() = runTest {
         val turno = Turno("t", "cliente", "barbero", "corte",
             Instant.parse("2026-10-16T13:00:00Z").toEpochMilli(), null, "realizado", precioCobradoCentavos = 1500000)
         val source = MutableStateFlow<AppResult<List<Turno>>>(AppResult.Success(listOf(turno)))

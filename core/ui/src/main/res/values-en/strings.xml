@@ -74,7 +74,7 @@
     <string name="error_schedule_days">Configure all six working days, Monday through Saturday.</string>
     <string name="error_schedule_empty_day">Add a time range or close the day.</string>
     <string name="error_schedule_time_format">Enter valid times in HH:mm format.</string>
-    <string name="error_schedule_duration">Each time range must allow at least one 40-minute haircut.</string>
+    <string name="error_schedule_duration">Each time range must last at least 5 minutes.</string>
     <string name="error_schedule_overlap">Working time ranges cannot overlap.</string>
     <string name="error_schedule_week_changed">The week has changed. Reload this week’s schedule or next week’s.</string>
     <string name="error_schedule_end">A time range must end after it starts.</string>

@@ -33,9 +33,13 @@ Comparar versiones solo permite ver el resultado final entre consultas: no garan
 
 No se necesita publicar ninguna función ni mantener una computadora encendida. Las reglas existentes de turnos ya autorizan al barbero a leer su agenda. Para conservar el registro opcional de tokens FCM, publicar `firestore.rules` desde la consola o con `firebase deploy --project barberia-2f570 --only firestore:rules`. Un fallo de registro FCM no detiene los avisos locales.
 
-## Backend opcional conservado
+## Plan de Firebase
 
-`functions/src/` conserva la implementación TypeScript anterior como alternativa futura que **requiere Blaze**. Está excluida de `firebase.json`, por lo que no se despliega con la configuración predeterminada. Su configuración separada está en `firebase.functions.json`. No habilitar ambas rutas de avisos sin deduplicación adicional: podrían notificar el mismo cambio dos veces.
+Los avisos locales y el registro de tokens no requieren Blaze. Se conserva el backend
+opcional de notificaciones en `functions`, pero no forma parte del flujo actual
+ni se debe desplegar para utilizar las reservas con Spark.
+Las reservas también utilizan transacciones directas de Firestore; ver
+[reservas sin Blaze](validacion-y-reservas.md).
 
 ## Verificación
 

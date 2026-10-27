@@ -9,11 +9,11 @@ class CargarCatalogoReservasUseCase @Inject constructor(private val repository: 
     suspend operator fun invoke() = repository.cargarCatalogo()
 }
 class ConsultarSemanaUseCase @Inject constructor(private val repository: ReservaRepository) {
-    suspend operator fun invoke(barberoId: String, servicioId: String, semanaOffset: Int = 0): AppResult<SemanaDisponible> =
+    suspend operator fun invoke(barberoId: String, servicioId: String, semanaOffset: Int = 0, turnoId: String? = null): AppResult<SemanaDisponible> =
         if (barberoId.isBlank() || servicioId.isBlank())
             AppResult.Error(DomainError.Known(ErrorReason.BOOKING_SELECTION))
         else if (semanaOffset !in 0..1) AppResult.Error(DomainError.Known(ErrorReason.WEEK_SELECTION))
-        else repository.consultarSemana(barberoId, servicioId, semanaOffset)
+        else repository.consultarSemana(barberoId, servicioId, semanaOffset, turnoId)
 }
 class ReservarTurnoUseCase @Inject constructor(private val repository: ReservaRepository) {
     suspend operator fun invoke(solicitud: SolicitudReserva): AppResult<String> =

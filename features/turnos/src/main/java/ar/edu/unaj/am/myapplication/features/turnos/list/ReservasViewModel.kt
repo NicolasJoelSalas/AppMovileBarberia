@@ -109,9 +109,10 @@ class ReservasViewModel @Inject constructor(
         val current = state.value
         if (current.reservando || current.barberoId.isBlank() || current.servicioId.isBlank()) return
         availabilityJob?.cancel()
-        state.update { it.copy(loading = true, semana = null, error = null) }
+        requestId = null
+        state.update { it.copy(loading = true, semana = null, selected = null, error = null) }
         availabilityJob = viewModelScope.launch {
-            when (val result = consultar(current.barberoId, current.servicioId, current.semanaOffset)) {
+            when (val result = consultar(current.barberoId, current.servicioId, current.semanaOffset, current.turnoId)) {
                 is AppResult.Error -> state.update { it.copy(loading = false, error = result.error) }
                 is AppResult.Success -> state.update { it.copy(loading = false, semana = result.data) }
             }
@@ -127,7 +128,8 @@ class ReservasViewModel @Inject constructor(
                 requestId ?: UUID.randomUUID().toString().also { requestId = it },
                 current.barberoId, current.servicioId, selected.inicioMillis, current.nombre,
                 referenciaLocal = current.referencia.takeIf { current.cambiarReferencia },
-                cambiarReferencia = current.cambiarReferencia
+                cambiarReferencia = current.cambiarReferencia,
+                finMillisEsperado = selected.finMillis
             )
             val result = if (current.turnoId != null) modificar?.invoke(current.turnoId, solicitud)
                 ?: AppResult.Error(DomainError.Known(ErrorReason.BOOKING_UPDATE)) else reservar(solicitud)

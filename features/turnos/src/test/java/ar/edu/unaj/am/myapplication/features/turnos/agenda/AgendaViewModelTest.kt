@@ -104,10 +104,9 @@ class AgendaViewModelTest {
             if (saved is AppResult.Success) this.agenda = agenda
             return saved
         }
-        override suspend fun obtenerMisTurnos() = AppResult.Success(emptyList<Turno>())
-        override suspend fun publicarSemana(agenda: AgendaSemanal, semana: SemanaDisponible) = AppResult.Success(semana.horarios.size)
+        override suspend fun publicarSemana(agenda: AgendaSemanal) = AppResult.Success(agenda.dias.filter { it.habilitado }.sumOf { it.franjas.size })
         override suspend fun cargarCatalogo(): AppResult<CatalogoReservas> = error("No usado")
-        override suspend fun consultarSemana(barberoId: String, servicioId: String, semanaOffset: Int): AppResult<SemanaDisponible> = error("No usado")
+        override suspend fun consultarSemana(barberoId: String, servicioId: String, semanaOffset: Int, turnoId: String?): AppResult<SemanaDisponible> = error("No usado")
         override suspend fun reservar(solicitud: SolicitudReserva): AppResult<String> = error("No usado")
     }
 }

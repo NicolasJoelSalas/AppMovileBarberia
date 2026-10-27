@@ -23,7 +23,7 @@ service cloud.firestore {
     }
 
     function horarioPublicable(id, h) {
-      return h.keys().hasOnly(['BarberoId', 'Inicio', 'Fin', 'Estado', 'Agenda', 'AgendaId', 'ZonaHoraria'])
+      return reservasAnteriores(h.BarberoId) && h.keys().hasOnly(['BarberoId', 'Inicio', 'Fin', 'Estado', 'Agenda', 'AgendaId', 'ZonaHoraria'])
         && h.AgendaId is string
         && h.BarberoId == request.auth.uid
         && h.Inicio is timestamp && h.Fin is timestamp
@@ -40,6 +40,10 @@ service cloud.firestore {
           && t.ReferenciaCorteUrl.matches('https://res[.]cloudinary[.]com/[^/]+/image/upload/.+'));
     }
 
+    // Las cuentas que publican la agenda por minutos usan las transacciones nuevas, compatibles con Spark.
+    function reservasAnteriores(barberoId) {
+      return get(/databases/$(database)/documents/barberos/$(barberoId)).data.get('ReservasVersion', 1) != 3;
+    }
     function turnoValido(id, t) {
       let horarioPath = /databases/$(database)/documents/horarios/$(t.HorarioId);
       let antes = get(horarioPath).data;
@@ -49,7 +53,7 @@ service cloud.firestore {
         && t.keys().hasOnly(['ClienteId', 'BarberoId', 'ServicioId', 'HorarioId', 'Inicio', 'Fin', 'Estado', 'CreadoEn', 'ReferenciaCorteUrl'])
         && referenciaValida(t)
         && t.ClienteId == request.auth.uid && t.Estado == 'confirmado' && t.CreadoEn == request.time
-        && barbero.Estado == true && servicioHabilitado(t.ServicioId, t.BarberoId)
+        && reservasAnteriores(t.BarberoId) && barbero.Estado == true && servicioHabilitado(t.ServicioId, t.BarberoId)
         && antes.Estado == 'libre' && despues.Estado == 'ocupado' && despues.TurnoId == id
         && t.BarberoId == antes.BarberoId && t.Inicio == antes.Inicio && t.Fin == antes.Fin
         && t.Inicio > request.time && t.Fin - t.Inicio == duration.value(40, 'm')
@@ -59,7 +63,7 @@ service cloud.firestore {
     }
 
     function editable(t) {
-      return esCliente() && t.ClienteId == request.auth.uid
+      return esCliente() && reservasAnteriores(t.BarberoId) && t.ClienteId == request.auth.uid
         && t.Estado in ['confirmado', 'Confirmado', 'pendiente', 'Pendiente'] && t.Inicio > request.time;
     }
     function estadoLiberado(h) {
@@ -77,7 +81,7 @@ service cloud.firestore {
       let h = get(/databases/$(database)/documents/horarios/$(t.HorarioId)).data;
       let despues = getAfter(/databases/$(database)/documents/horarios/$(t.HorarioId)).data;
       let b = get(/databases/$(database)/documents/barberos/$(t.BarberoId)).data;
-      return editable(antes)
+      return editable(antes) && reservasAnteriores(t.BarberoId)
         && t.diff(antes).affectedKeys().hasOnly(['BarberoId', 'ServicioId', 'HorarioId', 'Inicio', 'Fin', 'Estado', 'ReferenciaCorteUrl'])
         && referenciaValida(t)
         && t.Estado == 'confirmado' && b.Estado == true && servicioHabilitado(t.ServicioId, t.BarberoId)
@@ -100,7 +104,7 @@ service cloud.firestore {
     function cancelacionBarbero(id, antes, despues) {
       let h = get(/databases/$(database)/documents/horarios/$(antes.HorarioId)).data;
       let nuevo = getAfter(/databases/$(database)/documents/horarios/$(antes.HorarioId)).data;
-      return esBarberoHabilitado() && antes.BarberoId == request.auth.uid
+      return esBarberoHabilitado() && reservasAnteriores(antes.BarberoId) && antes.BarberoId == request.auth.uid
         && antes.Estado in ['confirmado', 'Confirmado', 'pendiente', 'Pendiente']
         && antes.Inicio > request.time
         && despues.diff(antes).affectedKeys().hasOnly(['Estado', 'CanceladoEn', 'CanceladoPor'])
@@ -112,6 +116,149 @@ service cloud.firestore {
         && !('TurnoId' in nuevo);
     }
 
+    // Una máscara pública de 0/1 por minuto permite validar el intervalo completo,
+    // sin iteraciones, consultas de otros clientes ni funciones de pago.
+    function comienzo(t, d) { return int((t.Inicio.toMillis() - d.Inicio.toMillis()) / 60000); }
+    function termino(t, d) { return int((t.Fin.toMillis() - d.Inicio.toMillis()) / 60000); }
+    function rangoValido(t, d) {
+      return t.Inicio is timestamp && t.Fin is timestamp && t.Fin > t.Inicio
+        && t.Inicio >= d.Inicio && t.Fin <= d.Fin
+        && (t.Inicio.toMillis() - d.Inicio.toMillis()) % 60000 == 0
+        && (t.Fin.toMillis() - d.Inicio.toMillis()) % 60000 == 0;
+    }
+    function liberarMinutos(m, t, d) {
+      let a = comienzo(t, d);
+      let b = termino(t, d);
+      return m[0:a] + m[a:b].replace('1', '0') + m[b:m.size()];
+    }
+    function ocuparMinutos(m, t, d) {
+      let a = comienzo(t, d);
+      let b = termino(t, d);
+      return m[0:a] + m[a:b].replace('0', '1') + m[b:m.size()];
+    }
+    function diaAnterior(antes, despues) {
+      return antes.get('DiaId', despues.get('DiaAnteriorId', despues.DiaId));
+    }
+    function diaVigente(d) {
+      return get(/databases/$(database)/documents/barberos/$(d.BarberoId)).data.Estado == true
+        && get(/databases/$(database)/documents/barberos/$(d.BarberoId)).data.ReservasVersion == 3
+        && d.ZonaHoraria == get(/databases/$(database)/documents/barberos/$(d.BarberoId)).data.ZonaHoraria
+        && d.Agenda == get(/databases/$(database)/documents/barberos/$(d.BarberoId)/agenda/$(d.AgendaId)).data;
+    }
+    function ocupacionNueva(diaId, d, nuevo, anterior, existe, t) {
+      let mismo = existe && diaAnterior(anterior, t) == diaId;
+      let libre = mismo ? liberarMinutos(d.Ocupacion, anterior, d) : d.Ocupacion;
+      return t.Estado == 'confirmado' && t.DiaId == diaId && t.BarberoId == d.BarberoId
+        && rangoValido(t, d) && diaVigente(d)
+        && (!mismo || (rangoValido(anterior, d) && d.Ocupacion[comienzo(anterior,d):termino(anterior,d)].matches('1+')))
+        && d.Atencion[comienzo(t,d):termino(t,d)].matches('1+')
+        && libre[comienzo(t,d):termino(t,d)].matches('0+')
+        && nuevo.Ocupacion == ocuparMinutos(libre, t, d);
+    }
+    function ocupacionLiberada(diaId, d, nuevo, anterior, existe, t) {
+      return existe && (anterior.Estado == true || anterior.Estado in ['confirmado','Confirmado','pendiente','Pendiente'])
+        && diaAnterior(anterior,t) == diaId && anterior.BarberoId == d.BarberoId
+        && rangoValido(anterior, d)
+        && d.Ocupacion[comienzo(anterior,d):termino(anterior,d)].matches('1+')
+        && (t.Estado == 'cancelado' || t.DiaId != diaId)
+        && nuevo.Ocupacion == liberarMinutos(d.Ocupacion, anterior, d);
+    }
+    function mutacionDia(diaId, d, nuevo) {
+      let turnoId = nuevo.UltimoTurnoId;
+      let ruta = /databases/$(database)/documents/turnos/$(turnoId);
+      let existe = exists(ruta);
+      let anterior = existe ? get(ruta).data : {};
+      let t = getAfter(ruta).data;
+      return request.auth != null
+        && (t.ClienteId == request.auth.uid || (t.Estado == 'cancelado' && d.BarberoId == request.auth.uid && esBarberoHabilitado()))
+        && nuevo.diff(d).affectedKeys().hasOnly(['Ocupacion', 'UltimoTurnoId'])
+        && (ocupacionNueva(diaId, d, nuevo, anterior, existe, t)
+          || ocupacionLiberada(diaId, d, nuevo, anterior, existe, t));
+    }
+    function ocupaDia(turnoId, t) {
+      let ruta = /databases/$(database)/documents/disponibilidad/$(t.DiaId);
+      let antes = get(ruta).data;
+      let despues = getAfter(ruta).data;
+      let turnoPath = /databases/$(database)/documents/turnos/$(turnoId);
+      // Si los minutos cambiaron, hubo una escritura del día, cuya regla valida el cambio exacto.
+      // Una edición sin cambio de intervalo puede conservar la misma máscara.
+      return despues.UltimoTurnoId == turnoId
+        && (antes.Ocupacion != despues.Ocupacion
+          || (exists(turnoPath) && get(turnoPath).data.get('DiaId', t.get('DiaAnteriorId','')) == t.DiaId
+            && get(turnoPath).data.Inicio == t.Inicio && get(turnoPath).data.Fin == t.Fin));
+    }
+    function liberaDia(turnoId, antes, despues) {
+      let diaId = diaAnterior(antes, despues);
+      let ruta = /databases/$(database)/documents/disponibilidad/$(diaId);
+      let d = get(ruta).data;
+      let nuevo = getAfter(ruta).data;
+      return nuevo.UltimoTurnoId == turnoId && rangoValido(antes,d)
+        && d.Ocupacion[comienzo(antes,d):termino(antes,d)].matches('1+')
+        && nuevo.Ocupacion[comienzo(antes,d):termino(antes,d)].matches('0+');
+    }
+    function datosReservaMinutos(t) {
+      let servicio = get(/databases/$(database)/documents/servicios/$(t.ServicioId)).data;
+      let d = get(/databases/$(database)/documents/disponibilidad/$(t.DiaId)).data;
+      return t.ReservaVersion == 3 && t.DuracionMinutos is int
+        && t.DuracionMinutos >= 5 && t.DuracionMinutos <= 240
+        && servicio.Duracion == t.DuracionMinutos && servicio.BarberoId == t.BarberoId
+        && (servicio.get('Estado', servicio.get('Activo', false)) == true)
+        && t.Estado == 'confirmado' && t.ClienteId == request.auth.uid
+        && t.Inicio > request.time && t.Fin - t.Inicio == duration.value(t.DuracionMinutos, 'm')
+        && t.AgendaId == d.AgendaId && t.BarberoId == d.BarberoId && diaVigente(d)
+        && rangoValido(t,d) && d.Atencion[comienzo(t,d):termino(t,d)].matches('1+')
+        && t.HorarioId == t.BarberoId + '_' + string(t.Inicio.toMillis())
+        && referenciaValida(t);
+    }
+    function crearReservaMinutos(id, t) {
+      return esCliente() && t.keys().hasAll(['ClienteId','BarberoId','ServicioId','HorarioId','DiaId','AgendaId',
+          'Inicio','Fin','DuracionMinutos','ReservaVersion','Estado','CreadoEn'])
+        && t.keys().hasOnly(['ClienteId','BarberoId','ServicioId','HorarioId','DiaId','AgendaId',
+          'Inicio','Fin','DuracionMinutos','ReservaVersion','Estado','CreadoEn','ReferenciaCorteUrl'])
+        && t.CreadoEn == request.time && datosReservaMinutos(t) && ocupaDia(id,t);
+    }
+    function editarReservaMinutos(id, antes, t) {
+      return esCliente() && antes.ClienteId == request.auth.uid
+        && (antes.Estado == true || antes.Estado in ['confirmado','Confirmado','pendiente','Pendiente'])
+        && antes.Inicio > request.time
+        && t.diff(antes).affectedKeys().hasOnly(['BarberoId','ServicioId','HorarioId','DiaId','DiaAnteriorId','AgendaId',
+          'Inicio','Fin','DuracionMinutos','ReservaVersion','Estado','ReferenciaCorteUrl'])
+        && datosReservaMinutos(t) && ocupaDia(id,t)
+        && (diaAnterior(antes,t) == t.DiaId || liberaDia(id,antes,t));
+    }
+    function cancelarReservaMinutos(id, antes, t) {
+      return request.auth != null && ((esCliente() && antes.ClienteId == request.auth.uid)
+          || (esBarberoHabilitado() && antes.BarberoId == request.auth.uid))
+        && (antes.Estado == true || antes.Estado in ['confirmado','Confirmado','pendiente','Pendiente'])
+        && antes.Inicio > request.time
+        && t.diff(antes).affectedKeys().hasOnly(['Estado','CanceladoEn','CanceladoPor','DiaId','DiaAnteriorId'])
+        && t.Estado == 'cancelado' && t.CanceladoPor == request.auth.uid && t.CanceladoEn == request.time
+        && t.DiaId == diaAnterior(antes,t) && liberaDia(id,antes,t);
+    }
+    function datosDia(id, d) {
+      return d.keys().hasAll(['BarberoId','Inicio','Fin','Atencion','Ocupacion','Agenda','AgendaId','ZonaHoraria'])
+        && id == d.BarberoId + '_' + string(d.Inicio.toMillis())
+        && d.Inicio is timestamp && d.Fin is timestamp && d.Fin > d.Inicio
+        && d.Atencion is string && d.Ocupacion is string
+        && d.Atencion.size() >= 1200 && d.Atencion.size() <= 1560
+        && d.Atencion.size() == d.Ocupacion.size()
+        && d.Atencion.size() * 60000 == d.Fin.toMillis() - d.Inicio.toMillis()
+        && d.Atencion.matches('[01]+') && d.Ocupacion.matches('[01]+');
+    }
+    match /disponibilidad/{diaId} {
+      allow read: if request.auth != null;
+      allow create: if esBarberoHabilitado() && request.resource.data.BarberoId == request.auth.uid
+        && request.resource.data.keys().hasOnly(['BarberoId','Inicio','Fin','Atencion','Ocupacion','Agenda','AgendaId','ZonaHoraria'])
+        && datosDia(diaId, request.resource.data) && diaVigente(request.resource.data);
+      allow update: if datosDia(diaId, request.resource.data) && (
+        (esBarberoHabilitado() && resource.data.BarberoId == request.auth.uid
+          && request.resource.data.Ocupacion == resource.data.Ocupacion
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['Atencion','Agenda','AgendaId','ZonaHoraria','UltimoTurnoId'])
+          && !('UltimoTurnoId' in request.resource.data) && diaVigente(request.resource.data))
+        || mutacionDia(diaId, resource.data, request.resource.data));
+      allow delete: if false;
+    }
+
     match /turnos/{turnoId} {
       allow list: if (esBarberoHabilitado() && resource.data.BarberoId == request.auth.uid)
         || (esCliente() && resource.data.ClienteId == request.auth.uid);
@@ -119,8 +266,22 @@ service cloud.firestore {
       allow get: if request.auth != null && (!exists(/databases/$(database)/documents/turnos/$(turnoId))
         || resource.data.ClienteId == request.auth.uid
         || (esBarberoHabilitado() && resource.data.BarberoId == request.auth.uid));
-      allow create: if esCliente() && turnoValido(turnoId, request.resource.data);
-      allow update: if cancelacionBarbero(turnoId, resource.data, request.resource.data);
+      allow create: if (request.resource.data.get('ReservaVersion',1) == 3
+          && crearReservaMinutos(turnoId, request.resource.data))
+        || (request.resource.data.get('ReservaVersion',1) != 3
+          && esCliente() && turnoValido(turnoId, request.resource.data));
+      allow update: if (('DiaId' in request.resource.data)
+          && request.resource.data.Estado == 'cancelado'
+          && cancelarReservaMinutos(turnoId,resource.data,request.resource.data))
+        || (('DiaId' in request.resource.data) && request.resource.data.Estado != 'cancelado'
+          && editarReservaMinutos(turnoId,resource.data,request.resource.data))
+        || (!('DiaId' in request.resource.data)
+          && (cancelacionBarbero(turnoId,resource.data,request.resource.data)
+            || ((editable(resource.data)
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['Estado','CanceladoEn'])
+              && request.resource.data.Estado == 'cancelado' && request.resource.data.CanceladoEn == request.time
+              && liberado(resource.data.HorarioId,turnoId))
+              || cambioValido(turnoId,resource.data,request.resource.data))));
       allow update: if esBarberoHabilitado()
         && resource.data.BarberoId == request.auth.uid
         && (resource.data.Estado == true || resource.data.Estado in ['confirmado', 'Confirmado', 'pendiente', 'Pendiente'])
@@ -132,11 +293,6 @@ service cloud.firestore {
         && request.resource.data.PrecioCobrado >= 0 && request.resource.data.PrecioCobrado <= 1000000000
         && math.abs(request.resource.data.PrecioCobrado * 100 - math.round(request.resource.data.PrecioCobrado * 100)) < 0.00001
         && request.resource.data.PrecioCobrado == get(/databases/$(database)/documents/servicios/$(resource.data.ServicioId)).data.Precio;
-      allow update: if (editable(resource.data)
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['Estado', 'CanceladoEn'])
-          && request.resource.data.Estado == 'cancelado' && request.resource.data.CanceladoEn == request.time
-          && liberado(resource.data.HorarioId, turnoId))
-        || cambioValido(turnoId, resource.data, request.resource.data);
       allow delete: if false;
     }
 
@@ -196,6 +352,9 @@ service cloud.firestore {
         && request.resource.data.Ubicacion.latitude() >= -90 && request.resource.data.Ubicacion.latitude() <= 90
         && request.resource.data.Ubicacion.longitude() >= -180 && request.resource.data.Ubicacion.longitude() <= 180
         && request.resource.data.UbicacionActualizadaEn == request.time;
+      allow update: if esBarberoHabilitado() && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['ReservasVersion'])
+        && request.resource.data.ReservasVersion == 3;
       allow create, delete: if false;
 
       match /agenda/{agendaId} {

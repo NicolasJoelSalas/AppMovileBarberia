@@ -25,7 +25,7 @@ class ApplicationLanguageTest {
                 awaitLanguage("", null)
             } finally {
                 instrumentation.runOnMainSync { AppCompatDelegate.setApplicationLocales(original) }
-                awaitLanguage(original.toLanguageTags(), null)
+                instrumentation.waitForIdleSync()
             }
         }
     }
@@ -37,11 +37,13 @@ class ApplicationLanguageTest {
         val deadline = SystemClock.uptimeMillis() + 10_000
         var stableSince = 0L
         var previous: MainActivity? = null
+        var observado = "Sin actividad"
         while (SystemClock.uptimeMillis() < deadline) {
             var matched = false
             instrumentation.runOnMainSync {
                 val current = ActivityLifecycleMonitorRegistry.getInstance()
                     .getActivitiesInStage(Stage.RESUMED).filterIsInstance<MainActivity>().firstOrNull()
+                observado = "locales=${AppCompatDelegate.getApplicationLocales().toLanguageTags()}, activity=${current?.javaClass?.simpleName}, text=${current?.getString(R.string.tab_mi_cuenta)}"
                 matched = current != null && !current.isDestroyed && !current.isFinishing &&
                     AppCompatDelegate.getApplicationLocales().toLanguageTags() == tag &&
                     (expected == null || current.getString(R.string.tab_mi_cuenta) == expected)
@@ -51,6 +53,6 @@ class ApplicationLanguageTest {
             if (matched && SystemClock.uptimeMillis() - stableSince >= 500) return
             SystemClock.sleep(50)
         }
-        assertTrue("No resumed activity with language $tag and text $expected", false)
+        assertTrue("No resumed activity with language $tag and text $expected; $observado", false)
     }
 }

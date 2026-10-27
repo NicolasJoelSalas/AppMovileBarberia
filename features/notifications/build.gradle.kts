@@ -29,4 +29,6 @@ dependencies {
     implementation(libs.androidx.compose.runtime)
     implementation(libs.androidx.compose.ui)
     implementation("androidx.core:core-ktx:1.17.0")
+    testImplementation(project(":core:testing"))
+    testImplementation("org.mockito:mockito-core:5.14.2")
 }

@@ -83,8 +83,7 @@
     <string name="cuenta_idioma_cancelar">Cancelar</string>
     <string name="servicios_title">Mis servicios</string>
     <string name="servicios_menu_description">Agregá, editá o desactivá tus servicios.</string>
-    <string name="servicios_description">Administrá el nombre, el precio y la duración de tus servicios. Los servicios desactivados se conservan para mantener el historial.</string>
-    <string name="servicios_duration_notice">Por ahora, las reservas usan servicios de 40 minutos. Podés guardar otras duraciones, pero estarán disponibles para reservar cuando se adapte la agenda.</string>
+    <string name="servicios_duration_notice">Administrá el nombre, el precio y la duración de tus servicios. Los servicios desactivados se conservan para mantener el historial.</string>
     <string name="servicios_add">Agregar servicio</string>
     <string name="servicios_edit">Editar</string>
     <string name="servicios_edit_title">Editar servicio</string>

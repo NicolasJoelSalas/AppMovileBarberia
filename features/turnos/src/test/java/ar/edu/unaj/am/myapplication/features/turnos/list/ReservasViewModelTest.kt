@@ -119,27 +119,49 @@ class ReservasViewModelTest {
         assertEquals("otro-corte", vm.uiState.value.servicioId)
     }
 
+    @Test fun `confirmation uses the real finish and refreshing discards stale selection`() = runTest {
+        repo.fin = 4501000L
+        val vm = vm()
+        vm.barbero("barbero"); vm.servicio("corte")
+        val horario = vm.uiState.value.semana!!.horarios.single()
+        vm.seleccionar(horario)
+        repo.result = AppResult.Error(DomainError.Network)
+        vm.confirmar()
+        assertEquals(4501000L, repo.requests.single().finMillisEsperado)
+        vm.refrescar()
+        assertNull(vm.uiState.value.selected)
+        vm.confirmar()
+        assertEquals(1, repo.requests.size)
+    }
+    @Test fun `editing requests availability excluding its own reservation`() = runTest {
+        val vm = vm()
+        vm.editar("propio", "barbero", "corte", 1000)
+        assertEquals("propio", repo.consultaTurnoId)
+    }
+
     private class Fake: ReservaRepository {
         var modifiedId: String? = null
         override suspend fun modificar(turnoId: String, solicitud: SolicitudReserva): AppResult<String> {
             modifiedId = turnoId
             return result
         }
+        var fin = 2401000L
+        var consultaTurnoId: String? = null
         var offset = 0
         override suspend fun guardarMiAgenda(agenda: AgendaSemanal): AppResult<Unit> = error("No es barbero")
         override suspend fun obtenerMiAgenda(semanaOffset: Int): AppResult<AgendaSemanal> = error("No es barbero")
-        override suspend fun obtenerMisTurnos(): AppResult<List<Turno>> = error("No es barbero")
-        override suspend fun publicarSemana(agenda: AgendaSemanal, semana: SemanaDisponible): AppResult<Int> = error("No es barbero")
+        override suspend fun publicarSemana(agenda: AgendaSemanal): AppResult<Int> = error("No es barbero")
         var queries=0
         val requests=mutableListOf<SolicitudReserva>()
         var result: AppResult<String> = AppResult.Success("turno")
         var pending: CompletableDeferred<AppResult<String>>?=null
         override suspend fun cargarCatalogo()=AppResult.Success(CatalogoReservas(false,
             listOf(Barbero("barbero","Barbero")),listOf(Servicio("corte","Corte",40,"barbero"), Servicio("otro-corte","Otro",40,"otro")),"Ana"))
-        override suspend fun consultarSemana(barberoId:String,servicioId:String,semanaOffset:Int): AppResult<SemanaDisponible> {
+        override suspend fun consultarSemana(barberoId:String,servicioId:String,semanaOffset:Int, turnoId: String?): AppResult<SemanaDisponible> {
+            consultaTurnoId = turnoId
             offset = semanaOffset
             queries++
-            return AppResult.Success(SemanaDisponible(0,listOf(HorarioDisponible(1000,2401000))))
+            return AppResult.Success(SemanaDisponible(0,listOf(HorarioDisponible(1000,fin))))
         }
         override suspend fun reservar(solicitud:SolicitudReserva): AppResult<String> {
             requests.add(solicitud)

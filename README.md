@@ -1,98 +1,64 @@
-# Compose Academy
+# Barbería UNAJ
 
-Proyecto base para aprender **Jetpack Compose + MVVM + Clean Architecture** en Android, con una arquitectura **modular desde el día 1**.
+Aplicación Android de clientes y barberos, con Jetpack Compose, ViewModels,
+Hilt, Firebase y persistencia local con Room.
 
-Es un proyecto **iterativo**: crece clase a clase. Cada clase suma un tema (DI, testing…) sobre la misma base, así que
-el código que ves hoy es el punto de partida, no el final. Ver [Hoja de ruta](#hoja-de-ruta).
+## Funcionalidades
 
-La configuración actual de Hilt y los alcances de las dependencias se describen en [Inyección de dependencias](docs/inyeccion-dependencias.md).
+- Clientes: autenticación, publicaciones, reservas, modificación y cancelación,
+  recordatorios y rutas hacia la barbería.
+- Barberos: gestión de servicios, agenda semanal, turnos, ganancias y avisos.
+- Consulta offline de turnos de la cuenta; publicaciones e imágenes locales para clientes.
+- Servicios de 5 a 240 minutos. Las reservas respetan duración real, descansos,
+  cierres y turnos existentes mediante transacciones y reglas de Firestore, sin Blaze.
 
-## La app
+## Estructura
 
-Tres tabs en una bottom bar:
+| Módulo | Responsabilidad |
+|---|---|
+| `app` | Inicio, navegación, Hilt, sesión y recordatorios Android |
+| `core:domain` | Modelos, contratos, validaciones y casos de uso Kotlin |
+| `core:data` | Repositorios Firebase, caché local y adaptación de respuestas |
+| `core:database` | Room, DAO, entidades y migraciones |
+| `core:network` | Retrofit, rutas y carga/descarga de imágenes |
+| `core:auth` | Adaptadores de autenticación Firebase |
+| `core:ui` | Tema, componentes, mapas y mensajes compartidos |
+| `core:testing` | Repositorios simulados, datos y reglas de pruebas |
+| `features:auth` | Inicio de sesión y registro |
+| `features:home` | Publicaciones |
+| `features:turnos` | Reservas, agenda, listado y rutas |
+| `features:cuenta` | Perfil, servicios, ubicación y ganancias |
+| `features:notifications` | Avisos, tokens y trabajo en segundo plano |
+| `firestore-tests` | Pruebas de las reglas de acceso |
 
-| Tab | Qué muestra | Datos |
-|---|---|---|
-| **Tareas** | Master-detail: crear, completar, editar y borrar. Cada tarea es un apunte sobre un concepto de Compose | Simulados (API y base local falsas en memoria) |
-| **Libros** | Master-detail con scroll infinito, portadas y detalle | API real: [Gutendex](https://gutendex.com/books/) |
-| **Playground** | Pantalla libre donde el docente escribe los ejemplos de la clase en vivo | — |
+Los tests se mantienen en cada módulo. `core:testing` se usa exclusivamente
+como dependencia de pruebas. Ver [arquitectura](ARCHITECTURE.md).
 
-> La tarea **"ERROR: Tarea corrupta"** fuerza un error de red al abrir su detalle: sirve para ver el estado `Error`.
-> Libros necesita internet, y Gutendex a veces tarda en responder.
+## Ejecutar y comprobar
 
-## Cómo correrlo
+Requiere Android Studio compatible con las versiones de `gradle/libs.versions.toml`,
+SDK 37, JDK 21 y dispositivo/emulador Android 8.0 o superior.
+Configurar `local.properties` y la conexión Firebase de la aplicación.
 
-**Requisitos**
-- Android Studio compatible con AGP 9.2.1 (si el IDE avisa de incompatibilidad, actualizalo).
-- Android SDK Platform 37 (`compileSdk = 37`). El JDK 21 lo descarga Gradle solo.
-- Un emulador o dispositivo con Android 8.0+ (`minSdk = 26`).
-
-**Pasos**
-1. Abrí la carpeta en Android Studio y esperá el *Gradle Sync*.
-2. Elegí el módulo `app` y tocá ▶ Run.
-
-**Por consola**
-```bash
-./gradlew assembleDebug   # compila la app
-./gradlew test            # corre todos los tests unitarios
-./gradlew lintDebug       # análisis estático
+```powershell
+.\gradlew.bat :app:assembleDebug
+.\gradlew.bat test
+.\gradlew.bat :app:connectedDebugAndroidTest
 ```
 
-Para ver los requests de red en Logcat, filtrá por `tag:API_BOOKS` (solo en builds debug).
+Para las pruebas de reglas se utilizan Node y el emulador de Firestore desde
+`firestore-tests`. Ver [validación y activación](docs/validacion-y-reservas.md).
 
-## Mapa del proyecto
-
-```
-:app                      Integra Hilt, configura la variante de build y organiza la navegación
-:features:todos           Feature Tareas  → list/ y detail/
-:features:books           Feature Libros  → list/ y detail/
-:features:playground      Pantalla de práctica
-:core:ui                  Tema y componentes de UI compartidos
-:core:domain              Modelos, contratos de repositorio y casos de uso (Kotlin puro)
-:core:data                Implementación de los repositorios + mappers
-:core:network             API remota (Retrofit real + fake)
-:core:database            Base local (simulada en memoria)
-```
-
-Paquete base: `ar.edu.unaj.am.myapplication` (cada módulo agrega su sufijo: `.core.domain`, `.features.todos`…).
-
-La regla que sostiene todo: **las features solo conocen el dominio**. Nunca ven la red ni la base de datos.
-Detalle completo en [ARCHITECTURE.md](ARCHITECTURE.md).
-
-## Cómo leer el código
-
-Seguí un caso de uso de punta a punta, de la pantalla hacia los datos. Por ejemplo, **completar una tarea**:
-
-1. `features/todos/.../list/TodoListScreen.kt` — la UI avisa el evento (`onToggle`).
-2. `features/todos/.../list/TodoListViewModel.kt` — `onToggleTodo` lanza el caso de uso.
-3. `core/domain/.../usecase/ToggleTodoUseCase.kt` — la regla de negocio.
-4. `core/domain/.../repository/TodoRepository.kt` — el contrato (interfaz).
-5. `core/data/.../repository/TodoRepositoryImpl.kt` — el *cómo*: red + base local.
-6. `core/database/.../dao/InMemoryTodoDao.kt` — la base emite un `Flow` y la lista se actualiza sola.
+**Las reservas no requieren Cloud Functions ni plan Blaze.** Para activar la versión
+nueva, publicar las reglas de Firestore, actualizar la app y republicar las agendas.
 
 ## Documentación
 
-- [docs/ubicacion-y-rutas.md](docs/ubicacion-y-rutas.md) — mapa de la barbería, permisos de GPS, recorridos y reglas de Firestore necesarias.
-- [ARCHITECTURE.md](ARCHITECTURE.md) — **qué** hay en cada capa y qué puede depender de qué.
-- [docs/decisiones.md](docs/decisiones.md) — **por qué** se tomó cada decisión, qué cuesta y cuándo conviene revisarla.
-- [docs/publicar-una-clase.md](docs/publicar-una-clase.md) — *para el docente*: qué es un tag, qué hacer con el Playground y cómo publicar cada clase.
-
-## Hoja de ruta
-
-| Clase | Tema | Tag |
-|---|---|---|
-| 1 | UI en Compose + MVVM + estado en composables + panorama de arquitectura | `clase-01-ui-mvvm` |
-| 2 | Inyección de dependencias (reemplazar `AppContainer` por Hilt o Koin) | `clase-02-di` |
-| 3 | Testing | `clase-03-testing` |
-| … | A definir | |
-
-Cada clase se publica con un **tag de git**: una etiqueta con nombre pegada al código tal como quedó al terminar esa clase.
-Así, si te perdiste una clase (o querés ver el punto de partida de la siguiente), podés ver el proyecto exactamente como estaba:
-```bash
-git checkout clase-01-ui-mvvm
-```
-
-Ideas para próximas clases, ya preparadas en el código: reemplazar los fakes por Retrofit y Room reales,
-un módulo `:core:testing` para compartir fakes entre tests, *convention plugins* para no repetir los `build.gradle.kts`,
-Paging 3 y búsqueda.
-# AppMovileBarberia
+- [Validación, duración variable y activación](docs/validacion-y-reservas.md)
+- [Herramientas compartidas de pruebas](docs/testing-compartido.md)
+- [Inyección de dependencias](docs/inyeccion-dependencias.md)
+- [Turnos offline](docs/turnos-almacenamiento-local.md)
+- [Publicaciones offline](docs/publicaciones-almacenamiento-local.md)
+- [Gestión de servicios](docs/gestion-servicios.md)
+- [Ubicación y rutas](docs/ubicacion-y-rutas.md)
+- [Notificaciones](docs/notificaciones-fcm.md)

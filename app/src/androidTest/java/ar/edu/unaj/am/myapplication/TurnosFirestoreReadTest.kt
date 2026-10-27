@@ -26,6 +26,8 @@ import org.junit.runner.RunWith
 class TurnosFirestoreReadTest {
     @Test
     fun readsOnlyAuthenticatedBarberAppointmentsFromServer() {
+        assumeTrue("Diagnóstico remoto opcional: habilitar validarFirestoreReal=true explícitamente.",
+            InstrumentationRegistry.getArguments().getString("validarFirestoreReal") == "true")
         val auth = FirebaseAuth.getInstance()
         val uid = auth.currentUser?.uid
         assumeTrue("Requiere una sesión de barbero iniciada en la app del emulador.", uid != null)

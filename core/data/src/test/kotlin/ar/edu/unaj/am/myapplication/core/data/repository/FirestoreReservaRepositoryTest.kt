@@ -1,31 +1,30 @@
 package ar.edu.unaj.am.myapplication.core.data.repository
 
 import ar.edu.unaj.am.myapplication.core.domain.model.*
+import ar.edu.unaj.am.myapplication.core.data.remote.ReservasApi
 import com.google.android.gms.tasks.*
-import com.google.firebase.Timestamp
 import com.google.firebase.auth.*
 import com.google.firebase.firestore.*
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Test
-import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.*
 import org.mockito.Mockito.*
-import java.util.Date
-import java.time.LocalDate
-import java.time.ZoneId
-import java.time.DayOfWeek
-import java.time.temporal.TemporalAdjusters
 import java.util.concurrent.Executor
 
 class FirestoreReservaRepositoryTest {
     @Test fun `only an enabled remote barber is remembered for offline access`() = runTest {
-        setup()
+        autenticar()
         `when`(auth.currentUser!!.uid).thenReturn("barbero")
+        val collection = mock(CollectionReference::class.java)
+        val reference = mock(DocumentReference::class.java)
+        val profile = mock(DocumentSnapshot::class.java)
+        `when`(firestore.collection("barberos")).thenReturn(collection)
+        `when`(collection.document("barbero")).thenReturn(reference)
+        `when`(profile.getBoolean("Estado")).thenReturn(true)
         val session = mock(ar.edu.unaj.am.myapplication.core.data.session.SesionBarberoLocal::class.java)
         val clientSession = mock(ar.edu.unaj.am.myapplication.core.data.session.SesionClienteLocal::class.java)
         val ref = firestore.collection("barberos").document("barbero")
-        val profile = docs.getValue("barberos/barbero")
         `when`(profile.exists()).thenReturn(true)
         doReturn(completed(profile)).`when`(ref).get(Source.SERVER)
         val cached = FirestoreReservaRepository(firestore, auth, clientSession, session)
@@ -90,279 +89,137 @@ class FirestoreReservaRepositoryTest {
             assertTrue(cached.cargarCatalogo() is AppResult.Error)
         }
     }
-    private val firestore = mock(FirebaseFirestore::class.java)
-    private val auth = mock(FirebaseAuth::class.java)
-    private val tx = mock(Transaction::class.java)
-    private val refs = mutableMapOf<String, DocumentReference>()
-    private val docs = mutableMapOf<String, DocumentSnapshot>()
-    private val start = System.currentTimeMillis() + 86400000
-    private val slotId = "barbero_$start"
-    private val request = SolicitudReserva("solicitud", "barbero", "corte", start, "Ana")
-    private val repo = FirestoreReservaRepository(firestore, auth)
-
-    private fun collection(path: String): CollectionReference {
-        val collection = mock(CollectionReference::class.java)
-        `when`(collection.document(anyString())).thenAnswer { call ->
-            val id = call.getArgument<String>(0)
-            refs.getOrPut("$path/$id") {
-                val ref = mock(DocumentReference::class.java)
-                `when`(ref.id).thenReturn(id)
-                `when`(ref.collection(anyString())).thenAnswer { collection("$path/$id/${it.getArgument<String>(0)}") }
-                ref
-            }
-        }
-        return collection
-    }
-    @Suppress("UNCHECKED_CAST")
-    private fun setup(occupied: Boolean = false, existing: Boolean = false) {
-        val user = mock(FirebaseUser::class.java)
-        `when`(auth.currentUser).thenReturn(user)
-        `when`(user.uid).thenReturn("ana")
-        `when`(firestore.collection(anyString())).thenAnswer { collection(it.getArgument(0)) }
-        for (path in listOf("turnos/solicitud", "horarios/$slotId", "clientes/ana", "barberos/barbero",
-            "servicios/corte", "barberos/barbero/agenda/semanal")) {
-            docs[path] = mock(DocumentSnapshot::class.java)
-        }
-        `when`(tx.get(any(DocumentReference::class.java))).thenAnswer { call ->
-            val path = refs.entries.single { it.value === call.getArgument<DocumentReference>(0) }.key
-            docs.getValue(path)
-        }
-        `when`(docs.getValue("turnos/solicitud").exists()).thenReturn(existing)
-        if (existing) {
-            val previous = docs.getValue("turnos/solicitud")
-            `when`(previous.getString("ClienteId")).thenReturn("ana")
-            `when`(previous.getString("BarberoId")).thenReturn("barbero")
-            `when`(previous.getString("ServicioId")).thenReturn("corte")
-            `when`(previous.getString("HorarioId")).thenReturn(slotId)
-        }
-        val slot = docs.getValue("horarios/$slotId")
-        `when`(slot.exists()).thenReturn(true)
-        `when`(slot.getString("Estado")).thenReturn(if (occupied) "ocupado" else "libre")
-        `when`(slot.getTimestamp("Inicio")).thenReturn(Timestamp(Date(start)))
-        `when`(slot.getTimestamp("Fin")).thenReturn(Timestamp(Date(start + 2400000)))
-        `when`(slot.get("Agenda")).thenReturn(emptyMap<String, Any>())
-        `when`(slot.getString("ZonaHoraria")).thenReturn("America/Argentina/Buenos_Aires")
-        `when`(docs.getValue("clientes/ana").exists()).thenReturn(true)
-        `when`(docs.getValue("clientes/ana").getString("Nombre")).thenReturn("")
-        `when`(docs.getValue("barberos/barbero").getBoolean("Estado")).thenReturn(true)
-        `when`(docs.getValue("barberos/barbero").getString("ZonaHoraria")).thenReturn("America/Argentina/Buenos_Aires")
-        `when`(docs.getValue("servicios/corte").get("Activo")).thenReturn(true)
-        `when`(docs.getValue("servicios/corte").getLong("Duracion")).thenReturn(40L)
-        `when`(docs.getValue("servicios/corte").getString("BarberoId")).thenReturn("barbero")
-        `when`(docs.getValue("barberos/barbero/agenda/semanal").data).thenReturn(emptyMap())
-        `when`(firestore.runTransaction(any<Transaction.Function<Any?>>())).thenAnswer { call ->
-            val value = call.getArgument<Transaction.Function<Any?>>(0).apply(tx)
-            val task = mock(Task::class.java) as Task<Any?>
-            `when`(task.isSuccessful).thenReturn(true)
-            `when`(task.result).thenReturn(value)
-            `when`(task.addOnCompleteListener(any(Executor::class.java), any<OnCompleteListener<Any?>>())).thenAnswer {
-                it.getArgument<OnCompleteListener<Any?>>(1).onComplete(task)
-                task
-            }
-            task
-        }
-    }
-
-    private fun editableBooking() {
-        setup(occupied = true, existing = true)
-        val turno = docs.getValue("turnos/solicitud")
-        `when`(turno.getString("Estado")).thenReturn("confirmado")
-        `when`(turno.getTimestamp("Inicio")).thenReturn(Timestamp(Date(start)))
-        `when`(turno.get("CreadoEn")).thenReturn(Timestamp(Date(start - 86400000)))
-        val slot = docs.getValue("horarios/$slotId")
-        `when`(slot.getString("TurnoId")).thenReturn("solicitud")
-        `when`(slot.getString("BarberoId")).thenReturn("barbero")
-    }
-    @Test fun `cancellation frees slot and preserves booking as cancelled`() = runTest {
-        editableBooking()
-        assertTrue(repo.cancelar("solicitud") is AppResult.Success)
-        @Suppress("UNCHECKED_CAST")
-        val fields = ArgumentCaptor.forClass(Map::class.java) as ArgumentCaptor<Map<String, Any>>
-        verify(tx).update(eq(refs.getValue("horarios/$slotId")), fields.capture())
-        assertEquals("libre", (fields.value as Map<*, *>)["Estado"])
-        verify(tx).update(eq(refs.getValue("turnos/solicitud")), fields.capture())
-        assertEquals("cancelado", (fields.value as Map<*, *>)["Estado"])
-    }
-    @Test fun `barber cancellation records actor and frees slot`() = runTest {
-        editableBooking()
-        `when`(auth.currentUser!!.uid).thenReturn("barbero")
-        assertTrue(repo.cancelar("solicitud") is AppResult.Success)
-        @Suppress("UNCHECKED_CAST")
-        val fields = ArgumentCaptor.forClass(Map::class.java) as ArgumentCaptor<Map<String, Any>>
-        verify(tx).update(eq(refs.getValue("turnos/solicitud")), fields.capture())
-        assertEquals("cancelado", fields.value["Estado"])
-        assertEquals("barbero", fields.value["CanceladoPor"])
-        verify(tx).update(eq(refs.getValue("horarios/$slotId")), fields.capture())
-        assertEquals("libre", fields.value["Estado"])
-    }
-    @Test fun `disabled barber cannot cancel a booking`() = runTest {
-        editableBooking()
-        `when`(auth.currentUser!!.uid).thenReturn("barbero")
-        `when`(docs.getValue("barberos/barbero").getBoolean("Estado")).thenReturn(false)
-        assertTrue(repo.cancelar("solicitud") is AppResult.Error)
-        verify(tx, never()).update(any(DocumentReference::class.java), anyMap<String, Any>())
-    }
-    @Test fun `cancellation rejects another client without writes`() = runTest {
-        editableBooking()
-        `when`(docs.getValue("turnos/solicitud").getString("ClienteId")).thenReturn("otro")
-        assertTrue(repo.cancelar("solicitud") is AppResult.Error)
-        verify(tx, never()).update(any(DocumentReference::class.java), anyMap<String, Any>())
-    }
-    @Test fun `cancellation blocks slot when agenda changed`() = runTest {
-        editableBooking()
-        `when`(docs.getValue("barberos/barbero/agenda/semanal").data).thenReturn(mapOf("Lunes" to false))
-        assertTrue(repo.cancelar("solicitud") is AppResult.Success)
-        @Suppress("UNCHECKED_CAST")
-        val fields = ArgumentCaptor.forClass(Map::class.java) as ArgumentCaptor<Map<String, Any>>
-        verify(tx).update(eq(refs.getValue("horarios/$slotId")), fields.capture())
-        assertEquals("bloqueado", (fields.value as Map<*, *>)["Estado"])
-    }
-    @Test fun `modification keeps booking identity and creation time`() = runTest {
-        editableBooking()
-        assertTrue(repo.modificar("solicitud", request) is AppResult.Success)
-        val fields = ArgumentCaptor.forClass(Any::class.java)
-        verify(tx).set(eq(refs.getValue("turnos/solicitud")), fields.capture())
-        assertEquals(docs.getValue("turnos/solicitud").get("CreadoEn"), (fields.value as Map<*, *>)["CreadoEn"])
-        verify(tx, never()).update(eq(refs.getValue("horarios/$slotId")), anyMap<String, Any>())
-    }
-    @Test fun `modification cannot take another occupied slot`() = runTest {
-        editableBooking()
-        val next = start + 2400000
-        val other = mock(DocumentSnapshot::class.java)
-        docs["horarios/barbero_$next"] = other
-        `when`(other.exists()).thenReturn(true)
-        `when`(other.getString("Estado")).thenReturn("ocupado")
-        `when`(other.getString("TurnoId")).thenReturn("ajeno")
-        assertTrue(repo.modificar("solicitud", request.copy(inicioMillis = next)) is AppResult.Error)
-        verify(tx, never()).set(any(DocumentReference::class.java), any<Any>())
-        verify(tx, never()).update(any(DocumentReference::class.java), anyMap<String, Any>())
-    }
-
-    @Test fun `reservation uses authenticated UID and atomically occupies slot with booking`() = runTest {
-        setup()
-        assertTrue(repo.reservar(request) is AppResult.Success)
-        val fields = ArgumentCaptor.forClass(Any::class.java)
-        verify(tx).set(eq(refs.getValue("turnos/solicitud")), fields.capture())
-        val booking = fields.value as Map<*, *>
-        assertEquals("ana", booking["ClienteId"])
-        assertEquals(slotId, booking["HorarioId"])
-        assertEquals("corte", booking["ServicioId"])
-        verify(tx).update(refs.getValue("horarios/$slotId"), mapOf("Estado" to "ocupado", "TurnoId" to "solicitud"))
-        verify(tx).update(refs.getValue("clientes/ana"), "Nombre", "Ana")
-    }
-    @Test fun `occupied slot produces no writes`() = runTest {
-        setup(occupied = true)
-        assertTrue(repo.reservar(request) is AppResult.Error)
-        verify(tx, never()).set(any(DocumentReference::class.java), any<Any>())
-        verify(tx, never()).update(any(DocumentReference::class.java), anyMap<String, Any>())
-    }
-    @Test fun `retry returns existing own booking without writes`() = runTest {
-        setup(existing = true)
-        assertEquals("solicitud", (repo.reservar(request) as AppResult.Success).data)
-        verify(tx, never()).set(any(DocumentReference::class.java), any<Any>())
-        verify(tx, never()).get(refs.getValue("horarios/$slotId"))
-    }
-    @Test fun `unauthenticated user cannot submit reservation`() = runTest {
-        assertTrue(repo.reservar(request) is AppResult.Error)
-        verifyNoInteractions(firestore)
-    }
-    @Test fun `barber saves own agenda with exact Firestore field names`() = runTest {
-        setup()
-        `when`(auth.currentUser!!.uid).thenReturn("barbero")
-        val agenda = AgendaSemanal("America/Argentina/Buenos_Aires", List(6) {
-            DiaAtencion(it == 0, listOf(FranjaAtencion("09:00", "13:00")))
-        }, LocalDate.now(ZoneId.of("America/Argentina/Buenos_Aires"))
-            .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).toString())
-        assertTrue(repo.guardarMiAgenda(agenda) is AppResult.Success)
-        val fields = ArgumentCaptor.forClass(Any::class.java)
-        verify(tx).set(eq(refs.getValue("barberos/barbero/agenda/${agenda.inicioSemana}")), fields.capture())
-        val data = fields.value as Map<*, *>
-        assertEquals(setOf("Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado"), data.keys)
-        assertEquals(mapOf("Estado" to true, "Franjas" to listOf(mapOf("Inicio" to "09:00", "Fin" to "13:00"))), data["Lunes"])
-        verify(tx, times(1)).set(any(DocumentReference::class.java), any<Any>())
-    }
-    @Test fun `disabled barber cannot save agenda`() = runTest {
-        setup()
-        `when`(auth.currentUser!!.uid).thenReturn("barbero")
-        `when`(docs.getValue("barberos/barbero").getBoolean("Estado")).thenReturn(false)
-        val date = LocalDate.now(ZoneId.of("America/Argentina/Buenos_Aires"))
-            .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).toString()
-        assertTrue(repo.guardarMiAgenda(AgendaSemanal("America/Argentina/Buenos_Aires", emptyList(), date)) is AppResult.Error)
-        verify(tx, never()).set(any(DocumentReference::class.java), any<Any>())
-    }
     @Suppress("UNCHECKED_CAST")
     private fun <T> completed(value: T): Task<T> {
         val task = mock(Task::class.java) as Task<T>
         `when`(task.isSuccessful).thenReturn(true)
         `when`(task.result).thenReturn(value)
         `when`(task.addOnCompleteListener(any(Executor::class.java), any<OnCompleteListener<T>>())).thenAnswer {
-            it.getArgument<OnCompleteListener<T>>(1).onComplete(task)
-            task
+            it.getArgument<OnCompleteListener<T>>(1).onComplete(task); task
         }
         return task
     }
-    @Test fun `publishing one week never retires slots from the other week`() = runTest {
-        setup()
-        `when`(auth.currentUser!!.uid).thenReturn("barbero")
-        val zone = ZoneId.of("America/Argentina/Buenos_Aires")
-        val monday = LocalDate.now(zone).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-        val agenda = AgendaSemanal(zone.id, List(6) { DiaAtencion(false, emptyList()) }, monday.toString())
-        val barberRef = firestore.collection("barberos").document("barbero")
-        val barberDoc = docs.getValue("barberos/barbero")
-        `when`(barberDoc.reference).thenReturn(barberRef)
-        doReturn(completed(barberDoc)).`when`(barberRef).get(Source.SERVER)
-        val weeklyRef = barberRef.collection("agenda").document(monday.toString())
-        val weeklyDoc = mock(DocumentSnapshot::class.java)
-        `when`(weeklyDoc.reference).thenReturn(weeklyRef)
-        doReturn(weeklyDoc).`when`(tx).get(weeklyRef)
-        `when`(weeklyDoc.exists()).thenReturn(true)
-        for (day in listOf("Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado")) {
-            `when`(weeklyDoc.get(day)).thenReturn(mapOf("Estado" to false, "Franjas" to emptyList<Any>()))
-        }
-        doReturn(completed(weeklyDoc)).`when`(weeklyRef).get(Source.SERVER)
-        val horarios = mock(CollectionReference::class.java)
-        val query = mock(Query::class.java)
-        val snapshot = mock(QuerySnapshot::class.java)
-        `when`(firestore.collection("horarios")).thenReturn(horarios)
-        `when`(horarios.whereEqualTo("BarberoId", "barbero")).thenReturn(query)
-        doReturn(completed(snapshot)).`when`(query).get(Source.SERVER)
-        val currentRef = mock(DocumentReference::class.java)
-        val nextRef = mock(DocumentReference::class.java)
-        val current = mock(DocumentSnapshot::class.java)
-        val next = mock(DocumentSnapshot::class.java)
-        `when`(current.reference).thenReturn(currentRef)
-        `when`(next.reference).thenReturn(nextRef)
-        `when`(current.id).thenReturn("actual")
-        `when`(next.id).thenReturn("proxima")
-        `when`(current.getTimestamp("Inicio")).thenReturn(Timestamp(Date(monday.atTime(9, 0).atZone(zone).toInstant().toEpochMilli())))
-        `when`(next.getTimestamp("Inicio")).thenReturn(Timestamp(Date(monday.plusWeeks(1).atTime(9, 0).atZone(zone).toInstant().toEpochMilli())))
-        `when`(current.getString("Estado")).thenReturn("libre")
-        `when`(snapshot.documents).thenReturn(listOf(current, next))
-        doReturn(current).`when`(tx).get(currentRef)
-        val result = repo.publicarSemana(agenda, SemanaDisponible(monday.atStartOfDay(zone).toInstant().toEpochMilli(), emptyList()))
-        assertTrue(result.toString(), result is AppResult.Success)
-        verify(tx).update(currentRef, "Estado", "bloqueado")
-        verify(tx, never()).get(nextRef)
+    private val firestore = mock(FirebaseFirestore::class.java)
+    private val auth = mock(FirebaseAuth::class.java)
+    private val llamadas = mutableListOf<Pair<String, Map<String, Any?>>>()
+    private var respuesta: Map<String, Any?> = mapOf("turnoId" to "solicitud")
+    private var falla = false
+    private val api = ReservasApi { operacion, datos ->
+        llamadas += operacion to datos
+        if (falla) error("No se confirmó la operación")
+        respuesta
     }
-    @Test fun `loading next week reads its own dated agenda`() = runTest {
-        setup()
-        `when`(auth.currentUser!!.uid).thenReturn("barbero")
-        val zone = ZoneId.of("America/Argentina/Buenos_Aires")
-        val nextMonday = LocalDate.now(zone).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).plusWeeks(1)
-        val barberRef = firestore.collection("barberos").document("barbero")
-        val barber = docs.getValue("barberos/barbero")
-        `when`(barber.reference).thenReturn(barberRef)
-        doReturn(completed(barber)).`when`(barberRef).get(Source.SERVER)
-        val nextRef = barberRef.collection("agenda").document(nextMonday.toString())
-        val nextDoc = mock(DocumentSnapshot::class.java)
-        `when`(nextDoc.exists()).thenReturn(true)
-        for (day in listOf("Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado")) {
-            `when`(nextDoc.get(day)).thenReturn(mapOf("Estado" to false, "Franjas" to emptyList<Any>()))
+    private val solicitud = SolicitudReserva("solicitud", "barbero", "corte", 1000, "Ana",
+        finMillisEsperado = 4501000)
+    private fun autenticar() {
+        val user = mock(FirebaseUser::class.java)
+        `when`(auth.currentUser).thenReturn(user)
+        `when`(user.uid).thenReturn("ana")
+    }
+    private fun repo(subir: (suspend (String) -> String)? = null) = FirestoreReservaRepository(
+        firestore, auth, subirReferencia = subir, api = api)
+
+    @Test fun `catalog includes all supported durations and excludes inactive or foreign services`() = runTest {
+        autenticar()
+        val barberos = mock(CollectionReference::class.java)
+        val clientes = mock(CollectionReference::class.java)
+        val servicios = mock(CollectionReference::class.java)
+        val perfil = mock(DocumentReference::class.java)
+        val cliente = mock(DocumentReference::class.java)
+        val consulta = mock(Query::class.java)
+        `when`(firestore.collection("barberos")).thenReturn(barberos)
+        `when`(firestore.collection("clientes")).thenReturn(clientes)
+        `when`(firestore.collection("servicios")).thenReturn(servicios)
+        `when`(barberos.document("ana")).thenReturn(perfil)
+        `when`(clientes.document("ana")).thenReturn(cliente)
+        doReturn(completed(mock(DocumentSnapshot::class.java))).`when`(perfil).get(Source.SERVER)
+        doReturn(completed(mock(DocumentSnapshot::class.java))).`when`(cliente).get(Source.SERVER)
+        `when`(barberos.whereEqualTo("Estado", true)).thenReturn(consulta)
+        val b = mock(DocumentSnapshot::class.java)
+        `when`(b.id).thenReturn("barbero")
+        val listaBarberos = mock(QuerySnapshot::class.java)
+        `when`(listaBarberos.documents).thenReturn(listOf(b))
+        doReturn(completed(listaBarberos)).`when`(consulta).get(Source.SERVER)
+        fun servicio(id: String, minutos: Long, propietario: String = "barbero", activo: Boolean = true): DocumentSnapshot {
+            val s = mock(DocumentSnapshot::class.java)
+            `when`(s.id).thenReturn(id)
+            `when`(s.getLong("Duracion")).thenReturn(minutos)
+            `when`(s.getString("BarberoId")).thenReturn(propietario)
+            `when`(s.get("Estado")).thenReturn(activo)
+            return s
         }
-        doReturn(completed(nextDoc)).`when`(nextRef).get(Source.SERVER)
-        val result = repo.obtenerMiAgenda(1) as AppResult.Success
-        assertEquals(nextMonday.toString(), result.data.inicioSemana)
-        assertTrue(result.data.dias.none { it.habilitado })
-        verify(tx, never()).set(any(DocumentReference::class.java), any<Any>())
+        val lista = mock(QuerySnapshot::class.java)
+        val documentos = listOf(servicio("60", 60), servicio("75", 75), servicio("90", 90),
+            servicio("41", 41), servicio("ajeno", 60, "deshabilitado"), servicio("inactivo", 60, activo = false), servicio("largo", 241))
+        `when`(lista.documents).thenReturn(documentos)
+        doReturn(completed(lista)).`when`(servicios).get(Source.SERVER)
+        val catalogo = (repo().cargarCatalogo() as AppResult.Success).data
+        assertEquals(listOf(60, 75, 90, 41), catalogo.servicios.map { it.duracion })
+    }
+
+    @Test fun `reservation sends expected finish but never trusts a client UID or writes Firestore directly`() = runTest {
+        autenticar()
+        assertEquals("solicitud", (repo().reservar(solicitud) as AppResult.Success).data)
+        val (operacion, datos) = llamadas.single()
+        assertEquals("reservarTurno", operacion)
+        assertEquals(4501000L, datos["finMillisEsperado"])
+        assertEquals("solicitud", datos["solicitudId"])
+        assertFalse(datos.containsKey("ClienteId"))
+        verifyNoInteractions(firestore)
+    }
+    @Test fun `availability includes editing identity and preserves actual service duration`() = runTest {
+        autenticar()
+        respuesta = mapOf("inicioSemanaMillis" to 0L, "zonaHoraria" to "America/Argentina/Buenos_Aires",
+            "horarios" to listOf(mapOf("inicioMillis" to 1000L, "finMillis" to 5401000L)))
+        val semana = (repo().consultarSemana("barbero", "corte", 1, "mi-turno") as AppResult.Success).data
+        assertEquals(90 * 60000L, semana.horarios.single().finMillis - semana.horarios.single().inicioMillis)
+        assertEquals("mi-turno", llamadas.single().second["turnoId"])
+        assertEquals(1, llamadas.single().second["semanaOffset"])
+    }
+    @Test fun `retry reuses request and uploaded reference after a failed confirmation`() = runTest {
+        autenticar()
+        var subidas = 0
+        val repo = repo { subidas++; "https://res.cloudinary.com/demo/image/upload/foto.jpg" }
+        val foto = solicitud.copy(referenciaLocal = "content://foto", cambiarReferencia = true)
+        falla = true
+        assertTrue(repo.reservar(foto) is AppResult.Error)
+        falla = false
+        assertTrue(repo.reservar(foto) is AppResult.Success)
+        assertEquals(1, subidas)
+        assertEquals(llamadas[0], llamadas[1])
+    }
+    @Test fun `modification and cancellation call the corresponding operation`() = runTest {
+        autenticar()
+        assertTrue(repo().modificar("turno", solicitud) is AppResult.Success)
+        assertEquals("modificarTurno", llamadas.last().first)
+        assertEquals("turno", llamadas.last().second["turnoId"])
+        respuesta = mapOf("cancelado" to true)
+        assertTrue(repo().cancelar("turno") is AppResult.Success)
+        assertEquals("cancelarTurno", llamadas.last().first)
+        verifyNoInteractions(firestore)
+    }
+    @Test fun `publication sends the selected week and all six days`() = runTest {
+        autenticar()
+        respuesta = mapOf("franjasPublicadas" to 6)
+        val agenda = AgendaSemanal("America/Argentina/Buenos_Aires",
+            List(6) { DiaAtencion(true, listOf(FranjaAtencion("09:00", "20:00"))) }, "2026-11-02")
+        assertEquals(6, (repo().publicarSemana(agenda) as AppResult.Success).data)
+        assertEquals("publicarAgenda", llamadas.single().first)
+        assertEquals("2026-11-02", llamadas.single().second["inicioSemana"])
+        assertEquals(6, (llamadas.single().second["agenda"] as Map<*, *>).size)
+    }
+    @Test fun `missing session cannot upload reference or call server`() = runTest {
+        var subidas = 0
+        val repo = repo { subidas++; "https://foto" }
+        assertTrue(repo.reservar(solicitud.copy(referenciaLocal = "content://foto")) is AppResult.Error)
+        assertEquals(0, subidas)
+        assertTrue(llamadas.isEmpty())
+    }
+    @Test fun `malformed server responses never report success`() = runTest {
+        autenticar()
+        respuesta = emptyMap()
+        assertTrue(repo().reservar(solicitud) is AppResult.Error)
+        assertTrue(repo().cancelar("turno") is AppResult.Error)
+        assertTrue(repo().consultarSemana("barbero", "corte", 0, null) is AppResult.Error)
     }
 }

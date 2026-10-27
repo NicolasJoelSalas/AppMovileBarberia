@@ -83,8 +83,7 @@
     <string name="cuenta_idioma_cancelar">Cancel</string>
     <string name="servicios_title">My services</string>
     <string name="servicios_menu_description">Add, edit or deactivate your services.</string>
-    <string name="servicios_description">Manage the name, price and duration of your services. Deactivated services are kept to preserve appointment history.</string>
-    <string name="servicios_duration_notice">Appointments currently use 40-minute services. You can save other durations, but they will become bookable when scheduling supports them.</string>
+    <string name="servicios_duration_notice">Manage the name, price and duration of your services. Deactivated services are kept to preserve appointment history.</string>
     <string name="servicios_add">Add service</string>
     <string name="servicios_edit">Edit</string>
     <string name="servicios_edit_title">Edit service</string>

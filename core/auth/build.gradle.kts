@@ -28,6 +28,6 @@ dependencies {
     implementation("com.google.firebase:firebase-auth")
 
     testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation("org.mockito:mockito-core:5.14.2")
 }

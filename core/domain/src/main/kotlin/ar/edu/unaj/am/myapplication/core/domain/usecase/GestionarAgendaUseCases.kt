@@ -26,7 +26,7 @@ class ValidarAgendaUseCase @Inject constructor() {
                         ErrorReason.SCHEDULE_TIME_FORMAT, index + 1)
                     val start = LocalTime.parse(span.inicio)
                     val end = LocalTime.parse(span.fin)
-                    requireDomain(Duration.between(start, end).toMinutes() >= 40,
+                    requireDomain(Duration.between(start, end).toMinutes() >= 5,
                         ErrorReason.SCHEDULE_DURATION, index + 1)
                     start to end
                 }.sortedBy { it.first }

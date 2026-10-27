@@ -64,7 +64,6 @@ la regla y de los repositorios simulados.
 - Tests locales: `src/test` del módulo correspondiente.
 - Tests con dispositivo o emulador Android: `src/androidTest`.
 - Reglas de Firestore: `firestore-tests`.
-- Funciones del servidor: `functions`.
 
 Para ejecutar las pruebas locales de los módulos adaptados, desde la raíz:
 

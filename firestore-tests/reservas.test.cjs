@@ -543,3 +543,20 @@ test('modificar: no permite ocupar horarios adicionales con el mismo turno', asy
   batch.update(doc(store, `horarios/${extraId}`), {Estado:'ocupado',TurnoId:'cambio'});
   await assertFails(batch.commit());
 });
+
+
+test('agenda nueva: impide reservar por el mecanismo anterior y falsificar publicación o bloqueo', async () => {
+  await publish();
+  await env.withSecurityRulesDisabled(ctx => updateDoc(doc(ctx.firestore(), 'barberos/barbero'), {ReservasVersion:3}));
+  const store = db('ana');
+  const batch = writeBatch(store);
+  batch.set(doc(store, 'turnos/solicitud'), booking('ana'));
+  batch.update(doc(store, `horarios/${horarioId}`), {Estado:'ocupado',TurnoId:'solicitud'});
+  await assertFails(batch.commit());
+  await assertFails(updateDoc(doc(db('barbero'),'barberos/barbero'), {ReservasVersion:1}));
+  await assertFails(setDoc(doc(db('barbero'),'agendasPublicadas/barbero_semana'), {Agenda:agenda}));
+  await assertFails(setDoc(doc(db('ana'),'agendaLocks/barbero'), {actualizadoEn:serverTimestamp()}));
+  await assertFails(setDoc(doc(db('barbero'),`horarios/barbero_${start.toMillis()+2400000}`), {
+    ...slot(), Inicio:end, Fin:Timestamp.fromMillis(end.toMillis()+2400000)
+  }));
+});

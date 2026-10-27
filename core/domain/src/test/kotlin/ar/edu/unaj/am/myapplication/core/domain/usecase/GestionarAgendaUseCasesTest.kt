@@ -2,7 +2,6 @@ package ar.edu.unaj.am.myapplication.core.domain.usecase
 
 import ar.edu.unaj.am.myapplication.core.domain.model.*
 import ar.edu.unaj.am.myapplication.core.domain.repository.ReservaRepository
-import java.time.*
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.*
 import org.junit.Test
@@ -15,6 +14,11 @@ class GestionarAgendaUseCasesTest {
     @Test fun `breaks and closed days are allowed`() {
         assertNull(validate(valid))
         assertNull(validate(valid.copy(dias = List(6) { DiaAtencion(false, emptyList()) })))
+    }
+    @Test fun `five minute spans are valid for short services and four minute spans are rejected`() {
+        val corta = valid.copy(dias = List(6) { DiaAtencion(true, listOf(FranjaAtencion("09:00", "09:05"))) })
+        assertNull(validate(corta))
+        assertNotNull(validate(corta.copy(dias = List(6) { DiaAtencion(true, listOf(FranjaAtencion("09:00", "09:04"))) })))
     }
     @Test fun `validation retains weekday independently of translated wording`() {
         val agenda = valid.copy(dias = valid.dias.toMutableList().also {
@@ -30,7 +34,7 @@ class GestionarAgendaUseCasesTest {
     }
     @Test fun `overlaps reversed spans and too short spans are rejected`() {
         for (spans in listOf(listOf(FranjaAtencion("13:00", "09:00")),
-            listOf(FranjaAtencion("09:00", "09:30")),
+            listOf(FranjaAtencion("09:00", "09:04")),
             listOf(FranjaAtencion("09:00", "11:00"),FranjaAtencion("10:00", "12:00")))) {
             assertNotNull(validate(valid.copy(dias = List(6) { DiaAtencion(true, spans) })))
         }
@@ -42,7 +46,7 @@ class GestionarAgendaUseCasesTest {
         assertEquals(0, repo.writes)
         assertEquals(0, repo.publications)
     }
-    @Test fun `saved agenda is published excluding existing bookings`() = runTest {
+    @Test fun `saved agenda is sent to authoritative publication`() = runTest {
         val repo = Fake(valid)
         val result = save(repo)(valid) as AppResult.Success
         assertNull(result.data.errorPublicacion)
@@ -60,8 +64,7 @@ class GestionarAgendaUseCasesTest {
         assertTrue(save(repo)(valid) is AppResult.Error)
         assertEquals(1, repo.publications)
     }
-    private fun save(repo: Fake) = GuardarYPublicarAgendaUseCase(repo, PublicarSemanaUseCase(repo,
-        clock = Clock.fixed(Instant.parse("2026-10-12T11:00:00Z"), ZoneOffset.UTC)))
+    private fun save(repo: Fake) = GuardarYPublicarAgendaUseCase(repo, PublicarSemanaUseCase(repo))
     private class Fake(var agenda: AgendaSemanal) : ReservaRepository {
         var writes = 0
         var publications = 0
@@ -73,13 +76,12 @@ class GestionarAgendaUseCasesTest {
             if (saveResult is AppResult.Success) this.agenda = agenda
             return saveResult
         }
-        override suspend fun obtenerMisTurnos() = AppResult.Success(emptyList<Turno>())
-        override suspend fun publicarSemana(agenda: AgendaSemanal, semana: SemanaDisponible): AppResult<Int> {
+        override suspend fun publicarSemana(agenda: AgendaSemanal): AppResult<Int> {
             publications++
-            return publishResult ?: AppResult.Success(semana.horarios.size)
+            return publishResult ?: AppResult.Success(agenda.dias.filter { it.habilitado }.sumOf { it.franjas.size })
         }
         override suspend fun cargarCatalogo(): AppResult<CatalogoReservas> = error("No usado")
-        override suspend fun consultarSemana(barberoId: String, servicioId: String, semanaOffset: Int): AppResult<SemanaDisponible> = error("No usado")
+        override suspend fun consultarSemana(barberoId: String, servicioId: String, semanaOffset: Int, turnoId: String?): AppResult<SemanaDisponible> = error("No usado")
         override suspend fun reservar(solicitud: SolicitudReserva): AppResult<String> = error("No usado")
     }
 }

@@ -12,7 +12,11 @@ Los documentos anteriores sin `BarberoId` quedan excluidos de nuevas reservas. N
 
 ## Reservas y duración
 
-Por decisión de alcance, la agenda continúa usando bloques de **40 minutos**. Se pueden guardar otras duraciones, y la pantalla explica que aún no se ofrecen para nuevas reservas. Los servicios propios activos de 40 minutos aparecen únicamente al elegir su barbero. Los servicios anteriores sin propietario no se ofrecen para nuevas reservas hasta asignarles un barbero. El repositorio y las reglas rechazan reservar un servicio propio de otro barbero.
+Las reservas utilizan la duración real del servicio activo, entre 5 y 240 minutos.
+El servicio debe pertenecer al barbero seleccionado. La disponibilidad se calcula
+con la agenda publicada y los turnos existentes, respetando pausas y cierres.
+Un cambio de duración no altera turnos ya reservados; una confirmación con duración
+antigua se rechaza y requiere actualizar. Ver [activación y pruebas](validacion-y-reservas.md).
 
 La baja no cancela los turnos existentes. Los importes de turnos ya realizados se conservan en `PrecioCobrado`; los pendientes mantienen el comportamiento previo de cobrar el precio vigente al completarse.
 
@@ -22,4 +26,4 @@ La interfaz y sus validaciones tienen recursos en español e inglés. Los nombre
 
 ## Verificación y publicación
 
-Ejecutar los tests de `core:domain`, `features:cuenta`, `features:turnos`, `core:data` y las reglas con `npm test` en `firestore-tests`. Publicar las reglas de `firestore.rules` antes de utilizar el alta o la edición contra Firebase real. No se requiere una migración de Room.
+Ejecutar los tests de `core:domain`, `features:cuenta`, `features:turnos`, `core:data` y las reglas con `npm test` en `firestore-tests`. Publicar las reglas de `firestore.rules` antes de utilizar el alta o la edición contra Firebase real. No se requiere una migración de Room. Para reservas de duración variable hay que publicar las reglas actualizadas y las agendas; no se requiere Blaze.
