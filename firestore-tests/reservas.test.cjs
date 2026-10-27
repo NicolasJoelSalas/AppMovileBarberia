@@ -434,6 +434,27 @@ async function cancelBooking(uid = 'ana', released = 'libre') {
   return batch.commit();
 }
 async function setupChange() { await publish(); await reserve('ana', 'cambio'); }
+
+test('quitar franja: barbero cancela y bloquea el horario de forma atomica', async () => {
+  await setupChange();
+  await assertFails(cancelBooking('otro', 'bloqueado'));
+  await assertFails(updateDoc(doc(db('barbero'), 'turnos/cambio'), {Estado:'cancelado', CanceladoEn:serverTimestamp()}));
+  await assertFails(updateDoc(doc(db('barbero'), `horarios/${horarioId}`), {Estado:'bloqueado', TurnoId:deleteField()}));
+  await assertFails(cancelBooking('barbero', 'libre'));
+  await assertSucceeds(cancelBooking('barbero', 'bloqueado'));
+  assert.equal((await getDoc(doc(db('ana'), 'turnos/cambio'))).data().Estado, 'cancelado');
+  const horario = (await getDoc(doc(db('barbero'), `horarios/${horarioId}`))).data();
+  assert.equal(horario.Estado, 'bloqueado');
+  assert.equal(horario.TurnoId, undefined);
+});
+
+test('quitar franja: no cancela turnos que ya comenzaron', async () => {
+  await setupChange();
+  await env.withSecurityRulesDisabled(ctx => updateDoc(doc(ctx.firestore(), 'turnos/cambio'), {
+    Inicio:Timestamp.fromMillis(Date.now() - 60000)
+  }));
+  await assertFails(cancelBooking('barbero', 'bloqueado'));
+});
 test('cancelar: requiere dueño y liberar el horario en la misma operación', async () => {
   await setupChange();
   await assertFails(cancelBooking('juan'));

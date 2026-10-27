@@ -294,6 +294,8 @@ class FirestoreReservaRepositoryTest {
         doReturn(completed(barberDoc)).`when`(barberRef).get(Source.SERVER)
         val weeklyRef = barberRef.collection("agenda").document(monday.toString())
         val weeklyDoc = mock(DocumentSnapshot::class.java)
+        `when`(weeklyDoc.reference).thenReturn(weeklyRef)
+        doReturn(weeklyDoc).`when`(tx).get(weeklyRef)
         `when`(weeklyDoc.exists()).thenReturn(true)
         for (day in listOf("Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado")) {
             `when`(weeklyDoc.get(day)).thenReturn(mapOf("Estado" to false, "Franjas" to emptyList<Any>()))

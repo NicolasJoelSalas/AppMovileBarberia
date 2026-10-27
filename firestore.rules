@@ -97,6 +97,19 @@ service cloud.firestore {
         && (despues.Estado == 'cancelado' || despues.HorarioId != id);
     }
 
+    function cancelacionBarbero(id, antes, despues) {
+      let h = get(/databases/$(database)/documents/horarios/$(antes.HorarioId)).data;
+      let nuevo = getAfter(/databases/$(database)/documents/horarios/$(antes.HorarioId)).data;
+      return esBarberoHabilitado() && antes.BarberoId == request.auth.uid
+        && antes.Estado in ['confirmado', 'Confirmado', 'pendiente', 'Pendiente']
+        && antes.Inicio > request.time
+        && despues.diff(antes).affectedKeys().hasOnly(['Estado', 'CanceladoEn'])
+        && despues.Estado == 'cancelado' && despues.CanceladoEn == request.time
+        && h.BarberoId == request.auth.uid && h.Estado == 'ocupado' && h.TurnoId == id
+        && nuevo.diff(h).affectedKeys().hasOnly(['Estado', 'TurnoId'])
+        && nuevo.Estado == 'bloqueado' && !('TurnoId' in nuevo);
+    }
+
     match /turnos/{turnoId} {
       allow list: if (esBarberoHabilitado() && resource.data.BarberoId == request.auth.uid)
         || (esCliente() && resource.data.ClienteId == request.auth.uid);
@@ -105,6 +118,7 @@ service cloud.firestore {
         || resource.data.ClienteId == request.auth.uid
         || (esBarberoHabilitado() && resource.data.BarberoId == request.auth.uid));
       allow create: if esCliente() && turnoValido(turnoId, request.resource.data);
+      allow update: if cancelacionBarbero(turnoId, resource.data, request.resource.data);
       allow update: if esBarberoHabilitado()
         && resource.data.BarberoId == request.auth.uid
         && (resource.data.Estado == true || resource.data.Estado in ['confirmado', 'Confirmado', 'pendiente', 'Pendiente'])
@@ -127,6 +141,12 @@ service cloud.firestore {
     // No contiene nombre, correo ni UID de cliente. Solo disponibilidad y referencia opaca al turno.
     match /horarios/{horarioId} {
       allow read: if request.auth != null;
+      allow update: if esBarberoHabilitado() && resource.data.BarberoId == request.auth.uid
+        && resource.data.Estado == 'ocupado'
+        && get(/databases/$(database)/documents/turnos/$(resource.data.TurnoId)).data.HorarioId == horarioId
+        && cancelacionBarbero(resource.data.TurnoId,
+          get(/databases/$(database)/documents/turnos/$(resource.data.TurnoId)).data,
+          getAfter(/databases/$(database)/documents/turnos/$(resource.data.TurnoId)).data);
       allow update: if esCliente() && (
         (resource.data.Estado == 'ocupado' && liberarHorario(horarioId, resource.data, request.resource.data))
         || (resource.data.Estado == 'libre' && request.resource.data.Estado == 'ocupado'

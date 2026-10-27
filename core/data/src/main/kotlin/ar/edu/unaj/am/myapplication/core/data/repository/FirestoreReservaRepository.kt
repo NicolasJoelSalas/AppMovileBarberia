@@ -152,12 +152,33 @@ class FirestoreReservaRepository(
             .get(Source.SERVER).awaitReserva().documents
         val weekStart = semana.inicioSemanaMillis
         val weekEnd = LocalDate.parse(date).plusWeeks(1).atStartOfDay(ZoneId.of(semana.zonaHoraria)).toInstant().toEpochMilli()
+        // La lista publicada excluye reservas existentes: comprobar la franja, no solo desired.
+        fun perteneceALaAgenda(doc: DocumentSnapshot): Boolean {
+            val inicio = doc.getTimestamp("Inicio")?.toDate()?.toInstant()
+                ?.atZone(ZoneId.of(semana.zonaHoraria)) ?: return false
+            val fin = doc.getTimestamp("Fin")?.toDate()?.toInstant()
+                ?.atZone(ZoneId.of(semana.zonaHoraria)) ?: return false
+            return agenda.contieneTurno(inicio, fin)
+        }
         for (doc in old.filter {
             val start = it.getTimestamp("Inicio")?.toDate()?.time
             start != null && start >= weekStart && start < weekEnd && it.id !in desired
         }) {
             firestore.runTransaction { tx ->
-                if (tx.get(doc.reference).getString("Estado") == "libre") tx.update(doc.reference, "Estado", "bloqueado")
+                val actual = tx.get(doc.reference)
+                val vigente = tx.get(source.reference)
+                check(vigente.data == source.data) { "La agenda cambió. Volvé a publicar la semana." }
+                if (actual.getString("Estado") == "ocupado" && !perteneceALaAgenda(actual) &&
+                    (actual.getTimestamp("Inicio")?.toDate()?.time ?: 0L) > System.currentTimeMillis()) {
+                    val turnoRef = firestore.collection("turnos").document(requireNotNull(actual.getString("TurnoId")))
+                    val turno = tx.get(turnoRef)
+                    check(turno.getString("HorarioId") == actual.id && turno.getString("BarberoId") == uid)
+                    check(turno.getString("Estado")?.lowercase() in listOf("confirmado", "pendiente"))
+                    tx.update(turnoRef, mapOf("Estado" to "cancelado", "CanceladoEn" to FieldValue.serverTimestamp()))
+                    tx.update(doc.reference, mapOf("Estado" to "bloqueado", "TurnoId" to FieldValue.delete()))
+                } else if (actual.getString("Estado") == "libre") {
+                    tx.update(doc.reference, "Estado", "bloqueado")
+                }
             }.awaitReserva()
         }
         var count = 0
@@ -319,6 +340,13 @@ class FirestoreReservaRepository(
         AppResult.Error(if (e is FirebaseFirestoreException && e.code in listOf(
                 FirebaseFirestoreException.Code.UNAVAILABLE, FirebaseFirestoreException.Code.DEADLINE_EXCEEDED))
             DomainError.Network else DomainError.Unknown(message))
+    }
+}
+
+internal fun AgendaSemanal.contieneTurno(inicio: ZonedDateTime, fin: ZonedDateTime): Boolean {
+    val dia = dias.getOrNull(inicio.dayOfWeek.value - 1) ?: return false
+    return dia.habilitado && inicio.toLocalDate() == fin.toLocalDate() && dia.franjas.any {
+        inicio.toLocalTime() >= LocalTime.parse(it.inicio) && fin.toLocalTime() <= LocalTime.parse(it.fin)
     }
 }
 

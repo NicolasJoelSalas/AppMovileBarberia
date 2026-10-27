@@ -77,7 +77,8 @@ class AgendaViewModel @Inject constructor(
     }
     fun agregar(index: Int) = editar(index) { it.copy(franjas = it.franjas + FranjaAtencion("", "")) }
     fun quitar(index: Int, span: Int) = editar(index) {
-        it.copy(franjas = it.franjas.filterIndexed { i, _ -> i != span })
+        val franjas = it.franjas.filterIndexed { i, _ -> i != span }
+        it.copy(franjas = franjas, habilitado = it.habilitado && franjas.isNotEmpty())
     }
     fun hora(index: Int, span: Int, inicio: Boolean, value: String) = editar(index) { day ->
         day.copy(franjas = day.franjas.mapIndexed { i, item ->

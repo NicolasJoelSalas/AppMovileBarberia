@@ -17,6 +17,18 @@ class AgendaViewModelTest {
     @After fun cleanup() { Dispatchers.resetMain() }
     private fun vm() = AgendaViewModel(ObtenerMiAgendaUseCase(repo),
         GuardarYPublicarAgendaUseCase(repo, PublicarSemanaUseCase(repo)))
+    @Test fun `removing last span closes day and allows saving`() = runTest {
+        val vm = vm()
+        vm.habilitar(0, true)
+        vm.hora(0, 0, true, "09:00")
+        vm.hora(0, 0, false, "13:00")
+        vm.quitar(0, 0)
+        assertFalse(vm.uiState.value.agenda!!.dias[0].habilitado)
+        assertTrue(vm.uiState.value.agenda!!.dias[0].franjas.isEmpty())
+        vm.guardar()
+        assertEquals(1, repo.writes)
+        assertNull(vm.uiState.value.error)
+    }
     @Test fun `edits remain draft until saved and duplicate taps do not submit twice`() = runTest {
         val vm = vm()
         vm.habilitar(0, true)
