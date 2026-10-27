@@ -44,11 +44,14 @@ fun ServiciosRoute(viewModel: ServiciosViewModel, onBack: () -> Unit) {
         })
     }, bottomBar = {
         Surface(shadowElevation = 6.dp) {
-            Button(onClick = { viewModel.editar() }, enabled = !state.cargando && !state.guardando,
-                modifier = Modifier.fillMaxWidth().padding(16.dp).heightIn(min = 50.dp), shape = RoundedCornerShape(14.dp)) {
-                Icon(Icons.Outlined.Add, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text(stringResource(R.string.servicios_add))
+            // El bottomBar personalizado debe reservar el espacio de la navegación del sistema.
+            Box(Modifier.windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom))) {
+                Button(onClick = { viewModel.editar() }, enabled = !state.cargando && !state.guardando,
+                    modifier = Modifier.fillMaxWidth().padding(16.dp).heightIn(min = 50.dp), shape = RoundedCornerShape(14.dp)) {
+                    Icon(Icons.Outlined.Add, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.servicios_add))
+                }
             }
         }
     }) { padding ->
