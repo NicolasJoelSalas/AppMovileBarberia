@@ -1,12 +1,17 @@
 package ar.edu.unaj.am.myapplication.core.data.session
 
+import javax.inject.Inject
+import javax.inject.Singleton
+import dagger.hilt.android.qualifiers.ApplicationContext
+
 import android.content.Context
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 /** Perfil de cliente previamente confirmado. Nunca concede permisos de escritura remotos. */
-class SesionClienteLocal(context: Context) {
+@Singleton
+class SesionClienteLocal @Inject constructor(@ApplicationContext context: Context) {
     private val preferences = context.applicationContext
         .getSharedPreferences("sesion_cliente_local", Context.MODE_PRIVATE)
     private val cambios = MutableStateFlow(0L)

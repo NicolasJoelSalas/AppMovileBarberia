@@ -1,13 +1,15 @@
 package ar.edu.unaj.am.myapplication.core.domain.usecase
 
+import javax.inject.Inject
+
 import ar.edu.unaj.am.myapplication.core.domain.model.*
 import ar.edu.unaj.am.myapplication.core.domain.repository.PublicacionRepository
 
-class ObservarPublicacionesUseCase(private val repository: PublicacionRepository) {
+class ObservarPublicacionesUseCase @Inject constructor(private val repository: PublicacionRepository) {
     operator fun invoke() = repository.observar()
 }
 
-class PublicarTrabajoUseCase(private val repository: PublicacionRepository) {
+class PublicarTrabajoUseCase @Inject constructor(private val repository: PublicacionRepository) {
     suspend operator fun invoke(publicacion: NuevaPublicacion): AppResult<Unit> {
         if (publicacion.solicitudId.isBlank() || publicacion.imagenLocal.isBlank())
             return AppResult.Error(DomainError.Known(ErrorReason.PHOTO_REQUIRED))
@@ -20,7 +22,7 @@ class PublicarTrabajoUseCase(private val repository: PublicacionRepository) {
     }
 }
 
-class ModificarDescripcionPublicacionUseCase(private val repository: PublicacionRepository) {
+class ModificarDescripcionPublicacionUseCase @Inject constructor(private val repository: PublicacionRepository) {
     suspend operator fun invoke(id: String, descripcion: String): AppResult<Unit> {
         if (id.isBlank() || descripcion.trim().length > 300)
             return AppResult.Error(DomainError.Known(ErrorReason.DESCRIPTION_LENGTH))
@@ -28,7 +30,7 @@ class ModificarDescripcionPublicacionUseCase(private val repository: Publicacion
     }
 }
 
-class EliminarPublicacionUseCase(private val repository: PublicacionRepository) {
+class EliminarPublicacionUseCase @Inject constructor(private val repository: PublicacionRepository) {
     suspend operator fun invoke(id: String): AppResult<Unit> = if (id.isBlank())
         AppResult.Error(DomainError.Known(ErrorReason.POST_INVALID)) else repository.eliminar(id)
 }

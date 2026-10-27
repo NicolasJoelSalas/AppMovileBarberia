@@ -5,6 +5,8 @@ Proyecto base para aprender **Jetpack Compose + MVVM + Clean Architecture** en A
 Es un proyecto **iterativo**: crece clase a clase. Cada clase suma un tema (DI, testing…) sobre la misma base, así que
 el código que ves hoy es el punto de partida, no el final. Ver [Hoja de ruta](#hoja-de-ruta).
 
+La configuración actual de Hilt y los alcances de las dependencias se describen en [Inyección de dependencias](docs/inyeccion-dependencias.md).
+
 ## La app
 
 Tres tabs en una bottom bar:
@@ -41,7 +43,7 @@ Para ver los requests de red en Logcat, filtrá por `tag:API_BOOKS` (solo en bui
 ## Mapa del proyecto
 
 ```
-:app                      Composition root: arma las dependencias (AppContainer) y la navegación
+:app                      Integra Hilt, configura la variante de build y organiza la navegación
 :features:todos           Feature Tareas  → list/ y detail/
 :features:books           Feature Libros  → list/ y detail/
 :features:playground      Pantalla de práctica

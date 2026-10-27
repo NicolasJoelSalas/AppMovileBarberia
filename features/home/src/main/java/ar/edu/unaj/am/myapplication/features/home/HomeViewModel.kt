@@ -1,5 +1,8 @@
 package ar.edu.unaj.am.myapplication.features.home
 
+import javax.inject.Inject
+import dagger.hilt.android.lifecycle.HiltViewModel
+
 import ar.edu.unaj.am.myapplication.features.home.R
 
 import ar.edu.unaj.am.myapplication.core.ui.components.UiMessage
@@ -33,7 +36,8 @@ data class HomeUiState(
     val mensaje: UiMessage? = null
 )
 
-class HomeViewModel(
+@HiltViewModel
+class HomeViewModel @Inject constructor(
     private val observar: ObservarPublicacionesUseCase,
     private val publicar: PublicarTrabajoUseCase,
     private val eliminar: EliminarPublicacionUseCase,

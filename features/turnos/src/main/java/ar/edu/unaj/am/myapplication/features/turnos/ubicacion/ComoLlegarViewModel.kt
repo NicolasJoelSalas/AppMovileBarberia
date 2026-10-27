@@ -1,5 +1,11 @@
 package ar.edu.unaj.am.myapplication.features.turnos.ubicacion
 
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedInject
+import dagger.assisted.AssistedFactory
+import dagger.hilt.android.lifecycle.HiltViewModel
+import ar.edu.unaj.am.myapplication.features.turnos.di.MonotonicClock
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ar.edu.unaj.am.myapplication.core.domain.model.*
@@ -21,12 +27,18 @@ data class ComoLlegarUiState(
     val error: DomainError? = null
 )
 
-class ComoLlegarViewModel(
-    private val barberoId: String,
+@HiltViewModel(assistedFactory = ComoLlegarViewModel.Factory::class)
+class ComoLlegarViewModel @AssistedInject constructor(
+    @Assisted private val barberoId: String,
     private val obtener: ObtenerUbicacionBarberiaUseCase,
     private val calcular: CalcularRutaBarberiaUseCase,
-    private val reloj: () -> Long = { System.nanoTime() / 1_000_000 }
+    @MonotonicClock private val reloj: () -> Long = { System.nanoTime() / 1_000_000 }
 ) : ViewModel() {
+    @AssistedFactory
+    interface Factory {
+        fun create(barberoId: String): ComoLlegarViewModel
+    }
+
     private val _uiState = MutableStateFlow(ComoLlegarUiState())
     val uiState = _uiState.asStateFlow()
     private var carga: Job? = null

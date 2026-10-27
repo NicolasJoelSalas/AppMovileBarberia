@@ -1,5 +1,8 @@
 package ar.edu.unaj.am.myapplication.features.turnos.list
 
+import javax.inject.Inject
+import dagger.hilt.android.lifecycle.HiltViewModel
+
 import ar.edu.unaj.am.myapplication.features.turnos.R
 
 import ar.edu.unaj.am.myapplication.core.ui.components.UiMessage
@@ -35,7 +38,8 @@ data class ReservasUiState(
     val mensaje: UiMessage? = null
 )
 
-class ReservasViewModel(
+@HiltViewModel
+class ReservasViewModel @Inject constructor(
     private val catalogo: CargarCatalogoReservasUseCase,
     private val consultar: ConsultarSemanaUseCase,
     private val reservar: ReservarTurnoUseCase,

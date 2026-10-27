@@ -1,5 +1,8 @@
 package ar.edu.unaj.am.myapplication.core.auth.repository
 
+import javax.inject.Inject
+import javax.inject.Singleton
+
 import ar.edu.unaj.am.myapplication.core.domain.model.ErrorReason
 
 import ar.edu.unaj.am.myapplication.core.domain.model.AppResult
@@ -14,8 +17,9 @@ import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
-class FirebaseAuthRepository(
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+@Singleton
+class FirebaseAuthRepository @Inject constructor(
+    private val auth: FirebaseAuth
 ) : AuthRepository {
 
     override suspend fun login(

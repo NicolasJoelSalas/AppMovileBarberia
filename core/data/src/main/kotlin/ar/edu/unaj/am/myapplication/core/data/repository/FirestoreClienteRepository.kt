@@ -1,5 +1,8 @@
 package ar.edu.unaj.am.myapplication.core.data.repository
 
+import javax.inject.Inject
+import javax.inject.Singleton
+
 import ar.edu.unaj.am.myapplication.core.domain.model.ErrorReason
 
 import ar.edu.unaj.am.myapplication.core.domain.model.AppResult
@@ -14,9 +17,10 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import java.util.concurrent.Executor
 import kotlin.coroutines.resume
 
-class FirestoreClienteRepository(
-    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
+@Singleton
+class FirestoreClienteRepository @Inject constructor(
+    private val firestore: FirebaseFirestore,
+    private val auth: FirebaseAuth,
     private val sesionLocal: SesionClienteLocal? = null,
     private val sesionBarberoLocal: SesionBarberoLocal? = null
 ) : ClienteRepository {

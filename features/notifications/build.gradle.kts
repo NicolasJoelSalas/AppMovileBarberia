@@ -1,4 +1,6 @@
 plugins {
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.ksp)
     alias(libs.plugins.android.library)
     alias(libs.plugins.compose.compiler)
 }
@@ -15,6 +17,8 @@ android {
 }
 
 dependencies {
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
     implementation("androidx.work:work-runtime-ktx:2.11.0")
     implementation(project(":core:domain"))
     implementation(platform("com.google.firebase:firebase-bom:35.0.0"))

@@ -1,5 +1,7 @@
 package ar.edu.unaj.am.myapplication.core.domain.usecase
 
+import javax.inject.Inject
+
 import ar.edu.unaj.am.myapplication.core.domain.model.Turno
 import java.time.Clock
 import java.time.DayOfWeek
@@ -7,9 +9,10 @@ import java.time.LocalDate
 import java.time.ZoneId
 import java.time.temporal.TemporalAdjusters
 
-class FiltrarTurnosPorSemanaUseCase(
-    private val clock: Clock = Clock.system(ZoneId.of("America/Argentina/Buenos_Aires"))
+class FiltrarTurnosPorSemanaUseCase @Inject constructor(
+    private val clock: Clock
 ) {
+    constructor() : this(Clock.system(ZoneId.of("America/Argentina/Buenos_Aires")))
     operator fun invoke(turnos: List<Turno>, semanaOffset: Int): List<Turno> {
         require(semanaOffset in 0..1)
         val lunes = LocalDate.now(clock)

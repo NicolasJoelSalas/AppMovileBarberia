@@ -1,6 +1,8 @@
 import java.util.Properties
 
 plugins {
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.ksp)
 
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
@@ -51,10 +53,13 @@ android {
 }
 
 dependencies {
+    implementation(libs.hilt.viewmodel.compose)
+    implementation("com.google.firebase:firebase-firestore")
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
     implementation(project(":features:notifications"))
     implementation(libs.androidx.sqlite.bundled)
-    // :app es el "composition root": el único módulo que conoce TODAS las capas
-    // para poder conectarlas (inyección de dependencias manual en AppContainer).
+    // :app agrega los módulos de Hilt de todas las capas y configura las variantes de build.
     implementation(project(":features:auth"))
     implementation(project(":features:turnos"))
     implementation(project(":features:home"))

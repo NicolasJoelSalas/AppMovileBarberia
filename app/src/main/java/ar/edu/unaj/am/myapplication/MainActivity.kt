@@ -1,5 +1,11 @@
 package ar.edu.unaj.am.myapplication
 
+import dagger.hilt.android.AndroidEntryPoint
+import javax.inject.Inject
+import dagger.Lazy
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import ar.edu.unaj.am.myapplication.session.GestorSesion
+
 import ar.edu.unaj.am.myapplication.R
 
 import androidx.compose.ui.res.stringResource
@@ -40,13 +46,15 @@ import ar.edu.unaj.am.myapplication.features.auth.detail.LoginViewModel
 import ar.edu.unaj.am.myapplication.ui.AppShell
 import ar.edu.unaj.am.myapplication.ui.AuthenticatedSessionViewModel
 
+@AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
+
+    @Inject lateinit var sessionProvider: Lazy<GestorSesion>
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
-        val container = (application as ComposeAcademyApp).container
 
         setContent {
             var language by remember {
@@ -68,17 +76,10 @@ class MainActivity : AppCompatActivity() {
                 enableEdgeToEdge(statusBarStyle = barStyle, navigationBarStyle = barStyle)
             }
             val sessionOwner: AuthenticatedSessionViewModel = viewModel()
+            sessionOwner.defaultViewModelProviderFactory = defaultViewModelProviderFactory
+            sessionOwner.defaultViewModelCreationExtras = defaultViewModelCreationExtras
             var cerrandoSesion by remember { mutableStateOf(false) }
-            val loginViewModel: LoginViewModel = viewModel {
-                LoginViewModel(
-                    login = container.login,
-                    loginWithGoogle = container.loginWithGoogle,
-                    register = container.register,
-                    ensureClienteProfile = container.ensureClienteProfile,
-                    logout = container.logout,
-                    initiallyLoggedIn = container.isLoggedIn()
-                )
-            }
+            val loginViewModel: LoginViewModel = hiltViewModel()
 
             val loginState by loginViewModel.uiState
                 .collectAsStateWithLifecycle()
@@ -102,14 +103,14 @@ class MainActivity : AppCompatActivity() {
                     } else if (loginState.isAuthenticated) {
                         // Cada sesión tiene sus propios ViewModels de navegación y datos.
                         CompositionLocalProvider(LocalViewModelStoreOwner provides sessionOwner) {
-                            AppShell(container = container, onLogout = {
+                            AppShell(onLogout = {
                                 if (!cerrandoSesion) {
                                     cerrandoSesion = true
-                                    val uid = container.clienteActualId()
+                                    val uid = sessionProvider.get().clienteActualId()
                                     lifecycleScope.launch {
                                         try {
                                             sessionOwner.clearSession()
-                                            if (uid != null) container.limpiarSesion(uid)
+                                            if (uid != null) sessionProvider.get().limpiarSesion(uid)
                                         } catch (e: kotlinx.coroutines.CancellationException) {
                                             throw e
                                         } catch (e: Exception) {

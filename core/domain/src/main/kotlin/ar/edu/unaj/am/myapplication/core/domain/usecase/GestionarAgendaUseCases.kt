@@ -1,17 +1,19 @@
 package ar.edu.unaj.am.myapplication.core.domain.usecase
 
+import javax.inject.Inject
+
 import ar.edu.unaj.am.myapplication.core.domain.model.*
 import ar.edu.unaj.am.myapplication.core.domain.repository.ReservaRepository
 import java.time.*
 
-class ObtenerMiAgendaUseCase(private val repository: ReservaRepository) {
+class ObtenerMiAgendaUseCase @Inject constructor(private val repository: ReservaRepository) {
     suspend operator fun invoke(semanaOffset: Int = 0): AppResult<AgendaSemanal> =
         if (semanaOffset !in 0..1) AppResult.Error(DomainError.Known(ErrorReason.WEEK_SELECTION))
         else repository.obtenerMiAgenda(semanaOffset)
 }
 
 /** Se valida la configuración completa, incluso los días que ya pasaron esta semana. */
-class ValidarAgendaUseCase {
+class ValidarAgendaUseCase @Inject constructor() {
     operator fun invoke(agenda: AgendaSemanal): DomainError? = try {
         ZoneId.of(agenda.zonaHoraria)
         requireDomain(agenda.dias.size == 6, ErrorReason.SCHEDULE_DAYS)
@@ -44,7 +46,7 @@ class ValidarAgendaUseCase {
 
 data class ResultadoGuardarAgenda(val horariosPublicados: Int?, val errorPublicacion: DomainError?)
 
-class GuardarYPublicarAgendaUseCase(
+class GuardarYPublicarAgendaUseCase @Inject constructor(
     private val repository: ReservaRepository,
     private val publicar: PublicarSemanaUseCase,
     private val validar: ValidarAgendaUseCase = ValidarAgendaUseCase()

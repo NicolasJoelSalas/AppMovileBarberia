@@ -1,5 +1,8 @@
 package ar.edu.unaj.am.myapplication.core.data.repository
 
+import javax.inject.Inject
+import javax.inject.Singleton
+
 import ar.edu.unaj.am.myapplication.core.domain.model.ErrorReason
 
 import ar.edu.unaj.am.myapplication.core.database.dao.TurnoDao
@@ -32,10 +35,11 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 
-class FirestoreTurnoRepository(
+@Singleton
+class FirestoreTurnoRepository @Inject constructor(
     private val turnoDao: TurnoDao,
-    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val firestore: FirebaseFirestore,
+    private val auth: FirebaseAuth
 ) : TurnoRepository {
     private val cacheMutex = Mutex()
     private val cacheVersions = mutableMapOf<String, Long>()

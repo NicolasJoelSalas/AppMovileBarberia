@@ -1,5 +1,8 @@
 package ar.edu.unaj.am.myapplication.features.cuenta.servicios
 
+import javax.inject.Inject
+import dagger.hilt.android.lifecycle.HiltViewModel
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ar.edu.unaj.am.myapplication.core.domain.model.*
@@ -23,7 +26,8 @@ data class ServiciosUiState(
     val error: DomainError? = null
 )
 
-class ServiciosViewModel(
+@HiltViewModel
+class ServiciosViewModel @Inject constructor(
     private val obtener: ObtenerMisServiciosUseCase,
     private val guardarServicio: GuardarServicioUseCase,
     private val cambiarEstado: CambiarEstadoServicioUseCase

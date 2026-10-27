@@ -7,7 +7,7 @@ import retrofit2.Retrofit
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.util.concurrent.TimeUnit
 
-/** Arma el cliente HTTP. Lo usa AppContainer; nadie más conoce Retrofit ni OkHttp. */
+/** Arma el cliente HTTP. Lo usa NetworkModule; nadie más conoce Retrofit ni OkHttp. */
 object NetworkFactory {
     fun createRutasApi(baseUrl: String = "https://router.project-osrm.org/"): RutasApi = Retrofit.Builder()
         .baseUrl(baseUrl)

@@ -1,5 +1,8 @@
 package ar.edu.unaj.am.myapplication.core.data.repository
 
+import javax.inject.Inject
+import javax.inject.Singleton
+
 import ar.edu.unaj.am.myapplication.core.domain.model.*
 import ar.edu.unaj.am.myapplication.core.domain.repository.ServicioRepository
 import com.google.android.gms.tasks.Task
@@ -12,9 +15,10 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
 /** La baja es lógica: conserva los servicios usados por turnos anteriores. */
-class FirestoreServicioRepository(
-    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+@Singleton
+class FirestoreServicioRepository @Inject constructor(
+    private val firestore: FirebaseFirestore,
+    private val auth: FirebaseAuth
 ) : ServicioRepository {
     private fun uid() = requireNotNull(auth.currentUser?.uid) { "Iniciá sesión nuevamente." }
 

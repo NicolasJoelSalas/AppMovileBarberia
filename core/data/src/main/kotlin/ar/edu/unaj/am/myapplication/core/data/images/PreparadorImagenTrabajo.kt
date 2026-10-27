@@ -1,5 +1,9 @@
 package ar.edu.unaj.am.myapplication.core.data.images
 
+import javax.inject.Inject
+import javax.inject.Singleton
+import dagger.hilt.android.qualifiers.ApplicationContext
+
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -10,7 +14,8 @@ import java.io.ByteArrayOutputStream
 import kotlin.math.min
 
 /** Limita memoria, corrige orientación y exporta todas las fotos como JPEG cuadrado. */
-class PreparadorImagenTrabajo(private val context: Context) {
+@Singleton
+class PreparadorImagenTrabajo @Inject constructor(@ApplicationContext private val context: Context) {
     fun preparar(local: String, x: Float, y: Float, recortar: Boolean = true): ByteArray {
         val uri = Uri.parse(local)
         require(uri.scheme == "content") { "Elegí una imagen desde la cámara o la galería." }

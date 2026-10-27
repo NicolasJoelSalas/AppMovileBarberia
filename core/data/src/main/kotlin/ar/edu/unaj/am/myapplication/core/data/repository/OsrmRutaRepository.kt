@@ -1,5 +1,8 @@
 package ar.edu.unaj.am.myapplication.core.data.repository
 
+import javax.inject.Inject
+import javax.inject.Singleton
+
 import ar.edu.unaj.am.myapplication.core.domain.model.*
 import ar.edu.unaj.am.myapplication.core.domain.repository.RutaRepository
 import ar.edu.unaj.am.myapplication.core.network.*
@@ -7,7 +10,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-class OsrmRutaRepository(private val api: RutasApi) : RutaRepository {
+@Singleton
+class OsrmRutaRepository @Inject constructor(private val api: RutasApi) : RutaRepository {
     private val mutex = Mutex()
     private var ultimaConsulta = 0L
     // Una sola solicitud a la vez y como máximo una por segundo para el servidor de demostración.

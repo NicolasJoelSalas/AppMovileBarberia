@@ -1,5 +1,7 @@
 package ar.edu.unaj.am.myapplication.core.domain.usecase
 
+import javax.inject.Inject
+
 import ar.edu.unaj.am.myapplication.core.domain.model.Turno
 import java.time.*
 import java.time.temporal.TemporalAdjusters
@@ -12,9 +14,10 @@ data class ReporteGanancias(
     val sinImporte: Int
 )
 
-class CalcularReporteGananciasUseCase(
-    private val clock: Clock = Clock.system(ZoneId.of("America/Argentina/Buenos_Aires"))
+class CalcularReporteGananciasUseCase @Inject constructor(
+    private val clock: Clock
 ) {
+    constructor() : this(Clock.system(ZoneId.of("America/Argentina/Buenos_Aires")))
     operator fun invoke(turnos: List<Turno>, mensual: Boolean, offset: Int): ReporteGanancias {
         val hoy = LocalDate.now(clock)
         val desde = if (mensual) hoy.withDayOfMonth(1).plusMonths(offset.toLong())

@@ -26,14 +26,13 @@ import ar.edu.unaj.am.myapplication.core.domain.model.AppResult
 import ar.edu.unaj.am.myapplication.core.domain.model.Turno
 import ar.edu.unaj.am.myapplication.reminders.rememberTurnoReminderControl
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import ar.edu.unaj.am.myapplication.features.turnos.list.ReservasViewModel
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import ar.edu.unaj.am.myapplication.di.AppContainer
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import ar.edu.unaj.am.myapplication.navigation.AppNavDisplay
 import ar.edu.unaj.am.myapplication.navigation.NavigationState
 import ar.edu.unaj.am.myapplication.navigation.TopLevelDestination
@@ -42,19 +41,16 @@ import ar.edu.unaj.am.myapplication.navigation.rememberNavigationState
 /** Estructura general de la app: bottom bar + NavDisplay. Cada pantalla tiene su propio Scaffold adentro. */
 @Composable
 fun AppShell(
-    container: AppContainer,
     onLogout: () -> Unit,
-    navigationState: NavigationState = rememberNavigationState()
+    navigationState: NavigationState = rememberNavigationState(),
+    shellViewModel: AppShellViewModel = hiltViewModel()
 ) {
-    val reservasViewModel = viewModel(key = "catalogo-sesion") {
-        ReservasViewModel(container.cargarCatalogoReservas, container.consultarSemana,
-            container.reservarTurno)
-    }
+    val reservasViewModel: ReservasViewModel = hiltViewModel(key = "catalogo-sesion")
     val reservasState by reservasViewModel.uiState.collectAsStateWithLifecycle()
     val esBarbero = reservasState.catalogo?.esBarbero == true
     val notificationContext = androidx.compose.ui.platform.LocalContext.current
     suspend fun sincronizarNotificaciones() {
-        try { container.notificaciones.sincronizar() }
+        try { shellViewModel.notificaciones.sincronizar() }
         catch (e: kotlinx.coroutines.CancellationException) { throw e }
         catch (e: Exception) { android.util.Log.w("BarberiaFCM", "No se pudo sincronizar el dispositivo", e) }
     }
@@ -64,7 +60,7 @@ fun AppShell(
     }
     LaunchedEffect(esBarbero) {
         if (esBarbero) {
-            container.clienteActualId()?.let { container.avisosTurnos.iniciar(it) }
+            shellViewModel.clienteActualId()?.let { shellViewModel.avisosTurnos.iniciar(it) }
             sincronizarNotificaciones()
         }
     }
@@ -87,7 +83,7 @@ fun AppShell(
         turnosPendientes = 0
         val rolBarbero = reservasState.catalogo?.esBarbero
         if (rolBarbero != null) {
-            container.observeTurnos(comoCliente = !rolBarbero).collect { result ->
+            shellViewModel.observeTurnos(comoCliente = !rolBarbero).collect { result ->
                 when (result) {
                     is AppResult.Success -> {
                         if (rolBarbero) {
@@ -128,7 +124,6 @@ fun AppShell(
     ) { innerPadding ->
         AppNavDisplay(
             navigationState = navigationState,
-            container = container,
             reservasViewModel = reservasViewModel,
             esBarbero = esBarbero,
             onEditorTrabajoVisible = { editorTrabajoVisible = it },

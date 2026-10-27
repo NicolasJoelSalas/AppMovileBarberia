@@ -49,7 +49,10 @@ Las features **no ven** `:core:data`, `:core:network` ni `:core:database`: Gradl
 
 ### App — `:app`
 
-- `ComposeAcademyApp` + `di/AppContainer`: inyección de dependencias manual (el "composition root")
+- `ComposeAcademyApp` (`@HiltAndroidApp`) inicia el grafo de Hilt. `di/AppModule` aporta la configuración de la variante de build y la ruta de la base de datos.
+- Cada capa declara sus dependencias: `AuthModule`, `DataModule`, `NetworkModule`, `DatabaseModule` y `NotificationsModule`. Los constructores con `@Inject` reciben las dependencias; `@Binds` conecta interfaces e implementaciones y `@Provides` configura servicios externos.
+- Los repositorios, la base de datos y los servicios con estado compartido tienen alcance `@Singleton`. `session/GestorSesion` coordina la limpieza al salir sin crear dependencias.
+- Los ViewModels usan `@HiltViewModel` y se obtienen mediante `hiltViewModel()`. Los parámetros de navegación de turnos y ubicación usan `@AssistedInject`. El almacén de sesión conserva la factory y los extras del Activity para mantener la integración con Hilt y `SavedStateHandle`.
 - `navigation/`: **Navigation 3**. No hay `NavController`: el back stack es una lista de keys tipadas (`@Serializable … : NavKey`) que modificamos nosotros
   - `Destinations`: una key por pantalla; los argumentos son propiedades (`BookDetailDestination(bookId)`)
   - `NavigationState`: tab actual + un `NavBackStack` por tab; `navigate()` = `add`, `goBack()` = `removeAt(lastIndex)`
@@ -83,7 +86,7 @@ Convenciones de todas las features:
 
 ### Domain — `:core:domain`
 
-- Módulo Kotlin puro: sin Android ni frameworks
+- Módulo Kotlin puro: sin Android. Los constructores usan la anotación estándar `javax.inject.Inject`; no depende de las APIs de Hilt.
 - Casos de uso de una sola responsabilidad con `operator fun invoke()`, algunos con reglas de negocio (validación del título, pendientes primero)
 - `TodoRepository` y `BookRepository` son interfaces; las implementaciones viven en `:core:data`
 - `AppResult<T>` + `DomainError`: los errores viajan como valores, no como excepciones

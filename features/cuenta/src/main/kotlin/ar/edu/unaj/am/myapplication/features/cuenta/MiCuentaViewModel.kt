@@ -1,5 +1,8 @@
 package ar.edu.unaj.am.myapplication.features.cuenta
 
+import javax.inject.Inject
+import dagger.hilt.android.lifecycle.HiltViewModel
+
 import ar.edu.unaj.am.myapplication.features.cuenta.R
 
 import ar.edu.unaj.am.myapplication.core.ui.components.UiMessage
@@ -14,7 +17,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class MiCuentaViewModel(
+@HiltViewModel
+class MiCuentaViewModel @Inject constructor(
     private val obtenerMiPerfil: ObtenerMiPerfilUseCase,
     private val actualizarMiNombre: ActualizarMiNombreUseCase
 ) : ViewModel() {

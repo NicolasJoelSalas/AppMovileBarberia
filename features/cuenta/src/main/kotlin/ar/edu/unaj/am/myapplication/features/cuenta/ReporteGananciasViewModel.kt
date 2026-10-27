@@ -1,5 +1,8 @@
 package ar.edu.unaj.am.myapplication.features.cuenta
 
+import javax.inject.Inject
+import dagger.hilt.android.lifecycle.HiltViewModel
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ar.edu.unaj.am.myapplication.core.domain.model.*
@@ -16,7 +19,8 @@ data class ReporteGananciasUiState(
     val error: DomainError? = null
 )
 
-class ReporteGananciasViewModel(
+@HiltViewModel
+class ReporteGananciasViewModel @Inject constructor(
     private val observar: ObserveTurnosUseCase,
     private val calcular: CalcularReporteGananciasUseCase = CalcularReporteGananciasUseCase()
 ) : ViewModel() {

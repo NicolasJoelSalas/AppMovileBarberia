@@ -1,5 +1,8 @@
 package ar.edu.unaj.am.myapplication.features.auth.detail
 
+import javax.inject.Inject
+import dagger.hilt.android.lifecycle.HiltViewModel
+
 import ar.edu.unaj.am.myapplication.core.domain.model.ErrorReason
 
 import androidx.lifecycle.ViewModel
@@ -17,6 +20,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+@HiltViewModel
 class LoginViewModel(
     private val login: LoginUseCase,
     private val loginWithGoogle: LoginWithGoogleUseCase,
@@ -25,6 +29,15 @@ class LoginViewModel(
     private val logout: LogoutUseCase,
     initiallyLoggedIn: Boolean
 ) : ViewModel() {
+    @Inject constructor(
+        login: LoginUseCase,
+        loginWithGoogle: LoginWithGoogleUseCase,
+        register: RegisterUseCase,
+        ensureClienteProfile: EnsureClienteProfileUseCase,
+        logout: LogoutUseCase,
+        auth: ar.edu.unaj.am.myapplication.core.domain.repository.AuthRepository
+    ) : this(login, loginWithGoogle, register, ensureClienteProfile, logout, auth.isLoggedIn())
+
 
     private val _uiState = MutableStateFlow(
         LoginUiState(isLoading = initiallyLoggedIn)

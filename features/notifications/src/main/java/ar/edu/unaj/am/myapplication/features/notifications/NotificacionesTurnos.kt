@@ -35,7 +35,8 @@ interface NotificacionesDependencies {
 class RegistroNotificaciones(
     context: Context,
     private val registrar: RegistrarDispositivoUseCase,
-    private val desvincular: DesvincularDispositivoUseCase
+    private val desvincular: DesvincularDispositivoUseCase,
+    private val messaging: FirebaseMessaging
 ) {
     private val mutex = Mutex()
     @Volatile var sesionCerrada = false
@@ -47,7 +48,7 @@ class RegistroNotificaciones(
     suspend fun sincronizar() {
         sesionCerrada = false
         val token = suspendCancellableCoroutine<String> { continuation ->
-            FirebaseMessaging.getInstance().token
+            messaging.token
                 .addOnSuccessListener { if (continuation.isActive) continuation.resume(it) }
                 .addOnFailureListener { if (continuation.isActive) continuation.resumeWithException(it) }
         }
@@ -59,7 +60,7 @@ class RegistroNotificaciones(
     suspend fun cerrarSesion() {
         sesionCerrada = true
         mutex.withLock {
-            try { FirebaseMessaging.getInstance().deleteToken().esperarTokenEliminado() }
+            try { messaging.deleteToken().esperarTokenEliminado() }
             finally { desvincular(instalacionId) }
         }
     }

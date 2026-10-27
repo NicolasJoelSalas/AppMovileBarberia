@@ -1,5 +1,8 @@
 package ar.edu.unaj.am.myapplication.features.cuenta.ubicacion
 
+import javax.inject.Inject
+import dagger.hilt.android.lifecycle.HiltViewModel
+
 import ar.edu.unaj.am.myapplication.features.cuenta.R
 
 import ar.edu.unaj.am.myapplication.core.ui.components.UiMessage
@@ -23,7 +26,8 @@ data class UbicacionBarberiaUiState(
     val puedeGuardar get() = cargada && !guardando && seleccion != null && seleccion != guardada
 }
 
-class UbicacionBarberiaViewModel(
+@HiltViewModel
+class UbicacionBarberiaViewModel @Inject constructor(
     private val obtener: ObtenerMiUbicacionUseCase,
     private val guardar: GuardarMiUbicacionUseCase
 ) : ViewModel() {

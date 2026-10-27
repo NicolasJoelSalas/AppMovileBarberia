@@ -1,5 +1,8 @@
 package ar.edu.unaj.am.myapplication.core.data.repository
 
+import javax.inject.Inject
+import javax.inject.Singleton
+
 import ar.edu.unaj.am.myapplication.core.domain.model.*
 import ar.edu.unaj.am.myapplication.core.domain.repository.UbicacionBarberiaRepository
 import com.google.android.gms.tasks.Task
@@ -10,9 +13,10 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-class FirestoreUbicacionBarberiaRepository(
-    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+@Singleton
+class FirestoreUbicacionBarberiaRepository @Inject constructor(
+    private val firestore: FirebaseFirestore,
+    private val auth: FirebaseAuth
 ) : UbicacionBarberiaRepository {
     override suspend fun obtenerMiUbicacion(): AppResult<Coordenadas?> = resultado {
         leer(uidActual())

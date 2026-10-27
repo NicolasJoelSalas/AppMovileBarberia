@@ -7,7 +7,7 @@ La arquitectura no es gratis: todo lo de acá tiene un costo, y es parte de la l
 [3 Un módulo por feature](#3-un-módulo-por-feature) · [4 Dominio en Kotlin puro](#4-dominio-en-kotlin-puro) ·
 [5 Repositorio como interfaz](#5-el-repositorio-es-una-interfaz) · [6 Casos de uso](#6-casos-de-uso) ·
 [7 Un modelo por capa](#7-un-modelo-por-capa-y-mappers) · [8 Errores como valores](#8-errores-como-valores) ·
-[9 AppContainer](#9-appcontainer-inyección-de-dependencias-manual) · [10 Route y Screen](#10-route-y-screen) ·
+[9 Hilt](#9-hilt-inyección-de-dependencias-por-constructor) · [10 Route y Screen](#10-route-y-screen) ·
 [11 UiState y eventos](#11-uistate-sealed-y-eventos-como-estado) · [12 Estrategia de datos](#12-estrategia-de-datos-por-feature) ·
 [13 Navigation 3](#13-navigation-3) · [14 Datos simulados](#14-datos-simulados)
 
@@ -97,15 +97,15 @@ Hoy ninguna se cumple, por eso no están separados. Cuando aparezca el segundo p
 
 **Por qué:** una excepción es invisible en la firma de la función: nada obliga a manejarla. Con un tipo, el `when` del ViewModel es exhaustivo y el compilador exige tratar el error. Además la UI nunca ve un `IOException` ni un código HTTP: ve `DomainError.Network`, y decide qué texto mostrar.
 
-## 9. AppContainer: inyección de dependencias manual
+## 9. Hilt: inyección de dependencias por constructor
 
-**Qué:** `AppContainer` crea todos los objetos y se los pasa a quien los necesita por constructor.
+**Qué:** Hilt genera la construcción y conexión de objetos. `AppContainer` fue eliminado; los casos de uso y los repositorios sencillos reciben sus dependencias mediante `@Inject constructor`.
 
-**Por qué:** alguien tiene que decidir qué implementación concreta usa cada contrato; ese lugar único es el *composition root*. Para pasar de datos falsos a una API real se cambia una línea ahí y nada más. Y como todo recibe sus dependencias por constructor, en un test se le pasa un fake.
+**Por qué:** cada capa declara qué implementación proporciona y cómo configura sus dependencias. `@Binds` conecta contratos con implementaciones; `@Provides` configura Room, Firebase, las APIs HTTP, Cloudinary y los servicios de notificaciones. Los tests pueden seguir construyendo los objetos con fakes.
 
-**Por qué a mano:** para que se vea que **no hay magia**: es crear objetos y pasarlos. Hilt y Koin hacen lo mismo, generando ese código.
+**Alcances:** las dependencias con estado compartido son `@Singleton`, para reutilizar repositorios, sesiones locales y la misma base de datos. Los ViewModels conservan el alcance de sesión o de entrada de Navigation 3. Los argumentos conocidos al navegar se proporcionan con inyección asistida.
 
-**Revisar:** cuando el container crece demasiado o hace falta controlar el *scope* de los objetos → la **clase 2** lo reemplaza por Hilt o Koin.
+**Sesión:** `GestorSesion` conserva la coordinación de limpieza que antes estaba en el contenedor. No es un contenedor alternativo: recibe sus dependencias de Hilt y no construye objetos. La aplicación mantiene los contratos de acceso para el servicio de mensajes y el Worker, usando instancias proporcionadas por Hilt.
 
 ## 10. Route y Screen
 

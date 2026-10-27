@@ -1,13 +1,15 @@
 package ar.edu.unaj.am.myapplication.core.domain.usecase
 
+import javax.inject.Inject
+
 import ar.edu.unaj.am.myapplication.core.domain.model.*
 import ar.edu.unaj.am.myapplication.core.domain.repository.ServicioRepository
 
-class ObtenerMisServiciosUseCase(private val repository: ServicioRepository) {
+class ObtenerMisServiciosUseCase @Inject constructor(private val repository: ServicioRepository) {
     suspend operator fun invoke() = repository.obtenerMisServicios()
 }
 
-class GuardarServicioUseCase(private val repository: ServicioRepository) {
+class GuardarServicioUseCase @Inject constructor(private val repository: ServicioRepository) {
     suspend operator fun invoke(servicio: ServicioBarbero): AppResult<Unit> {
         val nombre = servicio.nombre.trim()
         if (nombre.isEmpty() || nombre.length > 120 || servicio.precioCentavos !in 0..100000000000L ||
@@ -18,7 +20,7 @@ class GuardarServicioUseCase(private val repository: ServicioRepository) {
     }
 }
 
-class CambiarEstadoServicioUseCase(private val repository: ServicioRepository) {
+class CambiarEstadoServicioUseCase @Inject constructor(private val repository: ServicioRepository) {
     suspend operator fun invoke(id: String, activo: Boolean): AppResult<Unit> =
         if (id.isBlank()) AppResult.Error(DomainError.Known(ErrorReason.SERVICE_SELECTION))
         else repository.cambiarEstado(id, activo)

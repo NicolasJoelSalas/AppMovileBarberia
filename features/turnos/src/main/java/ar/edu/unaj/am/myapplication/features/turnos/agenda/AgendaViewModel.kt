@@ -1,5 +1,8 @@
 package ar.edu.unaj.am.myapplication.features.turnos.agenda
 
+import javax.inject.Inject
+import dagger.hilt.android.lifecycle.HiltViewModel
+
 import ar.edu.unaj.am.myapplication.features.turnos.R
 
 import ar.edu.unaj.am.myapplication.core.ui.components.UiMessage
@@ -23,7 +26,8 @@ data class AgendaUiState(
     val mensaje: UiMessage? = null
 )
 
-class AgendaViewModel(
+@HiltViewModel
+class AgendaViewModel @Inject constructor(
     private val obtener: ObtenerMiAgendaUseCase,
     private val guardar: GuardarYPublicarAgendaUseCase
 ) : ViewModel() {

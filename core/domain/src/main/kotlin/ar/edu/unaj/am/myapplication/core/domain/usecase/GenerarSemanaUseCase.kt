@@ -1,12 +1,14 @@
 package ar.edu.unaj.am.myapplication.core.domain.usecase
 
+import javax.inject.Inject
+
 import ar.edu.unaj.am.myapplication.core.domain.model.*
 import ar.edu.unaj.am.myapplication.core.domain.repository.ReservaRepository
 import java.time.*
 import java.time.temporal.TemporalAdjusters
 
 /** Regla de negocio: cortes de 40 minutos, de lunes a sábado, dentro de cada franja. */
-class GenerarSemanaUseCase {
+class GenerarSemanaUseCase @Inject constructor() {
     operator fun invoke(agenda: AgendaSemanal, ahora: Instant, turnos: List<Turno> = emptyList()): SemanaDisponible {
         val zone = ZoneId.of(agenda.zonaHoraria)
         requireDomain(agenda.dias.size == 6, ErrorReason.SCHEDULE_DAYS)
@@ -50,7 +52,7 @@ class GenerarSemanaUseCase {
     }
 }
 
-class PublicarSemanaUseCase(
+class PublicarSemanaUseCase @Inject constructor(
     private val repository: ReservaRepository,
     private val generar: GenerarSemanaUseCase = GenerarSemanaUseCase(),
     private val clock: Clock = Clock.systemUTC()

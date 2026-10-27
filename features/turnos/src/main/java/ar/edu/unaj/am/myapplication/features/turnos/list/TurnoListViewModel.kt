@@ -1,5 +1,10 @@
 package ar.edu.unaj.am.myapplication.features.turnos.list
 
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedInject
+import dagger.assisted.AssistedFactory
+import dagger.hilt.android.lifecycle.HiltViewModel
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import ar.edu.unaj.am.myapplication.core.domain.model.AppResult
@@ -19,13 +24,19 @@ sealed interface TurnosListUiState {
     data class Error(val error: DomainError) : TurnosListUiState
 }
 
-class TurnoListViewModel(
+@HiltViewModel(assistedFactory = TurnoListViewModel.Factory::class)
+class TurnoListViewModel @AssistedInject constructor(
     private val observeTurnos: ObserveTurnosUseCase,
-    private val comoCliente: Boolean = false,
+    @Assisted private val comoCliente: Boolean = false,
     private val filtrarSemana: FiltrarTurnosPorSemanaUseCase = FiltrarTurnosPorSemanaUseCase(),
     private val completarTurno: MarcarTurnoRealizadoUseCase? = null,
     private val cancelarTurno: ar.edu.unaj.am.myapplication.core.domain.usecase.CancelarTurnoUseCase? = null
 ) : ViewModel() {
+    @AssistedFactory
+    interface Factory {
+        fun create(comoCliente: Boolean): TurnoListViewModel
+    }
+
     private val mutableUiState = MutableStateFlow<TurnosListUiState>(TurnosListUiState.Loading)
     val uiState = mutableUiState.asStateFlow()
     private val mutableAvisoSincronizacion = MutableStateFlow<DomainError?>(null)

@@ -1,5 +1,8 @@
 package ar.edu.unaj.am.myapplication.core.data.repository
 
+import javax.inject.Inject
+import javax.inject.Singleton
+
 import ar.edu.unaj.am.myapplication.core.domain.model.Turno
 import ar.edu.unaj.am.myapplication.core.domain.repository.NovedadesTurnosRepository
 import com.google.firebase.auth.FirebaseAuth
@@ -13,9 +16,10 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-class FirestoreNovedadesTurnosRepository(
-    private val firestore: FirebaseFirestore = FirebaseFirestore.getInstance(),
-    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+@Singleton
+class FirestoreNovedadesTurnosRepository @Inject constructor(
+    private val firestore: FirebaseFirestore,
+    private val auth: FirebaseAuth
 ) : NovedadesTurnosRepository {
     private fun query(uid: String) = firestore.collection("turnos").whereEqualTo("BarberoId", uid)
     override suspend fun consultar(uid: String): List<Turno> {

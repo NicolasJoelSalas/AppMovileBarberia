@@ -18,6 +18,8 @@ kotlin {
 }
 
 dependencies {
+    implementation(libs.hilt.core)
+    ksp(libs.hilt.compiler)
     implementation(project(":core:domain"))
 
     api(libs.androidx.room3.runtime)

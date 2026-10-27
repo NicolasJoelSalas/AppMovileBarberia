@@ -1,4 +1,6 @@
 plugins {
+    alias(libs.plugins.hilt)
+    alias(libs.plugins.ksp)
     alias(libs.plugins.android.library)
     alias(libs.plugins.compose.compiler)
 }
@@ -15,6 +17,8 @@ android {
 }
 
 dependencies {
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.compiler)
     implementation(project(":core:domain"))
     implementation(project(":core:ui"))
     implementation(libs.androidx.core.ktx)

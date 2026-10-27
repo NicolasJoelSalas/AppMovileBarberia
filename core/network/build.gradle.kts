@@ -2,6 +2,7 @@ import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 // Módulo Kotlin puro: no conoce Android. Se compila y testea en la JVM.
 plugins {
+    alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.kotlin.serialization)
 }
@@ -18,6 +19,8 @@ kotlin {
 }
 
 dependencies {
+    implementation(libs.hilt.core)
+    ksp(libs.hilt.compiler)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.retrofit)
