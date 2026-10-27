@@ -31,6 +31,7 @@ include(":app")
 
 // Capas compartidas
 include(":core:domain")
+include(":core:testing")
 include(":core:data")
 include(":core:network")
 include(":core:database")

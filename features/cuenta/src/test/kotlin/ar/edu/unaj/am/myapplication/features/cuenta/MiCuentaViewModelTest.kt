@@ -3,21 +3,20 @@ package ar.edu.unaj.am.myapplication.features.cuenta
 import ar.edu.unaj.am.myapplication.core.domain.model.*
 import ar.edu.unaj.am.myapplication.core.domain.repository.PerfilRepository
 import ar.edu.unaj.am.myapplication.core.domain.usecase.*
-import kotlinx.coroutines.Dispatchers
+import ar.edu.unaj.am.myapplication.core.testing.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.*
-import org.junit.After
-import org.junit.Before
-import org.junit.Test
 import org.junit.Assert.*
+import org.junit.Rule
+import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class MiCuentaViewModelTest {
     private val dispatcher = StandardTestDispatcher()
     private val repository = FakeRepository()
 
-    @Before fun setup() { Dispatchers.setMain(dispatcher) }
-    @After fun cleanup() { Dispatchers.resetMain() }
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule(dispatcher)
 
     private fun viewModel() = MiCuentaViewModel(ObtenerMiPerfilUseCase(repository), ActualizarMiNombreUseCase(repository))
 

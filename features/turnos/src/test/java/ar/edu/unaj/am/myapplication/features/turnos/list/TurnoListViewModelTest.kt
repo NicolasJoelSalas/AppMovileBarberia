@@ -5,20 +5,16 @@ import ar.edu.unaj.am.myapplication.core.domain.model.Turno
 import ar.edu.unaj.am.myapplication.core.domain.repository.TurnoRepository
 import ar.edu.unaj.am.myapplication.core.domain.usecase.FiltrarTurnosPorSemanaUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.ObserveTurnosUseCase
+import ar.edu.unaj.am.myapplication.core.testing.MainDispatcherRule
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
-import org.junit.After
-import org.junit.Before
-import org.junit.Test
 import org.junit.Assert.*
+import org.junit.Rule
+import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class TurnoListViewModelTest {
@@ -58,8 +54,8 @@ class TurnoListViewModelTest {
         assertNull(vm.avisoSincronizacion.value)
         assertEquals("cancelado", (vm.uiState.value as TurnosListUiState.Success).turnos.single().estado)
     }
-    @Before fun setup() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
-    @After fun cleanup() { Dispatchers.resetMain() }
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule()
 
     @Test fun `switching week preserves client scope and filters live updates`() = runTest {
         fun turno(id: String, date: String) = Turno(id, "cliente", "barbero", "corte",

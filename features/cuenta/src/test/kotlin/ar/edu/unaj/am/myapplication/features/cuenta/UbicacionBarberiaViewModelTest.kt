@@ -1,10 +1,10 @@
 package ar.edu.unaj.am.myapplication.features.cuenta
 
-import ar.edu.unaj.am.myapplication.features.cuenta.ubicacion.*
 import ar.edu.unaj.am.myapplication.core.domain.model.*
 import ar.edu.unaj.am.myapplication.core.domain.repository.*
 import ar.edu.unaj.am.myapplication.core.domain.usecase.*
-import kotlinx.coroutines.Dispatchers
+import ar.edu.unaj.am.myapplication.core.testing.MainDispatcherRule
+import ar.edu.unaj.am.myapplication.features.cuenta.ubicacion.*
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.*
 import org.junit.*
@@ -13,8 +13,8 @@ import org.junit.Assert.*
 @OptIn(ExperimentalCoroutinesApi::class)
 class UbicacionBarberiaViewModelTest {
     private val dispatcher = StandardTestDispatcher()
-    @Before fun setup() { Dispatchers.setMain(dispatcher) }
-    @After fun cleanup() { Dispatchers.resetMain() }
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule(dispatcher)
 
     @Test fun `conserva el pin ante fallo y evita guardar dos veces`() = runTest(dispatcher) {
         val repo = FakeUbicacion()

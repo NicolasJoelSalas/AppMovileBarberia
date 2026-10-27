@@ -112,6 +112,10 @@ Convenciones de todas las features:
 
 ## Tests
 
+El módulo `:core:testing` comparte repositorios simulados, datos de prueba y
+`MainDispatcherRule`. Se consume mediante `testImplementation`; los tests
+permanecen en cada módulo. Ver [herramientas compartidas de pruebas](docs/testing-compartido.md).
+
 ```bash
 ./gradlew test
 ```

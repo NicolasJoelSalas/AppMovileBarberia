@@ -3,18 +3,18 @@ package ar.edu.unaj.am.myapplication.features.turnos.list
 import ar.edu.unaj.am.myapplication.core.domain.model.*
 import ar.edu.unaj.am.myapplication.core.domain.repository.ReservaRepository
 import ar.edu.unaj.am.myapplication.core.domain.usecase.*
+import ar.edu.unaj.am.myapplication.core.testing.MainDispatcherRule
 import kotlinx.coroutines.*
 import kotlinx.coroutines.test.*
-import org.junit.After
-import org.junit.Before
-import org.junit.Test
 import org.junit.Assert.*
+import org.junit.Rule
+import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ReservasViewModelTest {
     private val repo = Fake()
-    @Before fun setup() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
-    @After fun cleanup() { Dispatchers.resetMain() }
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule()
     private fun vm() = ReservasViewModel(CargarCatalogoReservasUseCase(repo),
         ConsultarSemanaUseCase(repo), ReservarTurnoUseCase(repo), ModificarTurnoUseCase(repo))
 

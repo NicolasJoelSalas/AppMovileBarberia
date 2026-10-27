@@ -6,19 +6,15 @@ import ar.edu.unaj.am.myapplication.core.domain.repository.AuthRepository
 import ar.edu.unaj.am.myapplication.core.domain.repository.ClienteRepository
 import ar.edu.unaj.am.myapplication.core.domain.usecase.EnsureClienteProfileUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.LoginUseCase
-import ar.edu.unaj.am.myapplication.core.domain.usecase.LogoutUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.LoginWithGoogleUseCase
+import ar.edu.unaj.am.myapplication.core.domain.usecase.LogoutUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.RegisterUseCase
+import ar.edu.unaj.am.myapplication.core.testing.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.test.UnconfinedTestDispatcher
-import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
-import kotlinx.coroutines.test.setMain
-import org.junit.After
 import org.junit.Assert.*
-import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -33,8 +29,8 @@ class LoginViewModelTest {
         }
     }
 
-    @Before fun setUp() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
-    @After fun tearDown() { Dispatchers.resetMain() }
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule()
 
     private fun viewModel(initiallyLoggedIn: Boolean = false) = LoginViewModel(
         LoginUseCase(repository), LoginWithGoogleUseCase(repository), RegisterUseCase(repository),

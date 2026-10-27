@@ -1,9 +1,10 @@
 package ar.edu.unaj.am.myapplication.features.turnos.list
 
-import ar.edu.unaj.am.myapplication.features.turnos.ubicacion.*
 import ar.edu.unaj.am.myapplication.core.domain.model.*
 import ar.edu.unaj.am.myapplication.core.domain.repository.*
 import ar.edu.unaj.am.myapplication.core.domain.usecase.*
+import ar.edu.unaj.am.myapplication.core.testing.MainDispatcherRule
+import ar.edu.unaj.am.myapplication.features.turnos.ubicacion.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.test.*
 import org.junit.*
@@ -12,8 +13,8 @@ import org.junit.Assert.*
 @OptIn(ExperimentalCoroutinesApi::class)
 class ComoLlegarViewModelTest {
     private val dispatcher = StandardTestDispatcher()
-    @Before fun setup() { Dispatchers.setMain(dispatcher) }
-    @After fun cleanup() { Dispatchers.resetMain() }
+    @get:Rule
+    val mainDispatcherRule = MainDispatcherRule(dispatcher)
 
     @Test fun `usa el destino del barbero del turno y cancela la ruta anterior`() = runTest(dispatcher) {
         val repo = FakeUbicacion()
