@@ -56,7 +56,7 @@ class FirestorePerfilRepository @Inject constructor(
                 (error is FirebaseFirestoreException && error.code == FirebaseFirestoreException.Code.UNAVAILABLE) -> DomainError.Network
             error is FirebaseFirestoreException && error.code == FirebaseFirestoreException.Code.PERMISSION_DENIED ->
                 DomainError.Known(ErrorReason.PROFILE_PERMISSION)
-            error is IllegalStateException || error is IllegalArgumentException -> DomainError.Unknown(error.message)
+            error is IllegalStateException || error is IllegalArgumentException -> DomainError.Known(ErrorReason.PROFILE_LOAD)
             else -> DomainError.Known(ErrorReason.PROFILE_LOAD)
         }
         AppResult.Error(domainError)

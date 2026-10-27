@@ -9,6 +9,9 @@ import java.util.concurrent.TimeUnit
 
 /** Arma el cliente HTTP. Lo usa NetworkModule; nadie más conoce Retrofit ni OkHttp. */
 object NetworkFactory {
+    fun createMapClient(userAgent: String): OkHttpClient = OkHttpClient.Builder()
+        .addInterceptor { chain -> chain.proceed(chain.request().newBuilder().header("User-Agent",userAgent).build()) }.build()
+
     fun createRutasApi(baseUrl: String = "https://router.project-osrm.org/"): RutasApi = Retrofit.Builder()
         .baseUrl(baseUrl)
         .client(OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS)

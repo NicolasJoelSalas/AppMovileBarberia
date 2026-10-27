@@ -34,12 +34,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import ar.edu.unaj.am.myapplication.core.domain.model.Publicacion
 import ar.edu.unaj.am.myapplication.core.ui.components.*
 import coil3.compose.SubcomposeAsyncImage   
-import java.io.File
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -263,7 +261,7 @@ private fun EditorTrabajo(state: HomeUiState, vm: HomeViewModel) {
     val camera = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
         val uri = cameraUri
         if (success && uri != null) vm.imagen(uri)
-        else if (uri != null) runCatching { context.contentResolver.delete(Uri.parse(uri), null, null) }
+        else if (uri != null) vm.descartarCaptura(uri)
         cameraUri = null
     }
     val gallery = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
@@ -288,16 +286,13 @@ private fun EditorTrabajo(state: HomeUiState, vm: HomeViewModel) {
             item {
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedButton(onClick = {
-                        runCatching {
-                            val folder = File(context.cacheDir, "trabajos").apply { mkdirs() }
-                            // Solo borra capturas temporales de más de un día dentro de esta carpeta.
-                            folder.listFiles()?.filter { it.lastModified() < System.currentTimeMillis() - 86400000 }
-                                ?.forEach { it.delete() }
-                            val file = File.createTempFile("trabajo-", ".jpg", folder)
-                            val uri = FileProvider.getUriForFile(context, "${context.packageName}.trabajos.files", file)
-                            cameraUri = uri.toString()
-                            camera.launch(uri)
-                        }.onFailure { vm.errorFoto(resources.getString(R.string.features_home_no_se_pudo_abrir_la_camara_podes_elegir_una_foto_de_la_galeria)) }
+                        vm.prepararCaptura { uri ->
+                            cameraUri = uri
+                            runCatching { camera.launch(Uri.parse(uri)) }.onFailure {
+                                vm.descartarCaptura(uri)
+                                vm.errorFoto(resources.getString(R.string.features_home_no_se_pudo_abrir_la_camara_podes_elegir_una_foto_de_la_galeria))
+                            }
+                        }
                     }, enabled = !state.publicando, modifier = Modifier.weight(1f)) { Text(stringResource(R.string.features_home_camara)) }
                     OutlinedButton(onClick = {
                         runCatching { gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }
@@ -348,7 +343,9 @@ private fun EditorTrabajo(state: HomeUiState, vm: HomeViewModel) {
 @Composable
 private fun FotoTrabajo(model: String, descripcion: String, modifier: Modifier, alignment: Alignment = Alignment.Center,
     rutaLocal: String? = null) {
-    val imagen = rutaLocal?.let(::File)?.takeIf { it.isFile } ?: model.ifBlank { null }
+    val imagen = rutaLocal?.takeIf { it.isNotBlank() }?.let {
+        Uri.Builder().scheme("file").path(it).build()
+    } ?: model.ifBlank { null }
     SubcomposeAsyncImage(model = imagen, contentDescription = descripcion,
         modifier = modifier, contentScale = ContentScale.Crop, alignment = alignment,
         loading = { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() } },

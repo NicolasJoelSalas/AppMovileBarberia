@@ -43,7 +43,8 @@ class ReservasViewModel @Inject constructor(
     private val catalogo: CargarCatalogoReservasUseCase,
     private val consultar: ConsultarSemanaUseCase,
     private val reservar: ReservarTurnoUseCase,
-    private val modificar: ModificarTurnoUseCase? = null
+    private val modificar: ModificarTurnoUseCase? = null,
+    private val politica: PoliticaReservas = PoliticaReservas()
 ) : ViewModel() {
     private val state = MutableStateFlow(ReservasUiState())
     val uiState = state.asStateFlow()
@@ -66,12 +67,10 @@ class ReservasViewModel @Inject constructor(
     }
     fun editar(turnoId: String, barberoId: String, servicioId: String, inicio: Long, referencia: String? = null) {
         if (state.value.turnoId == turnoId) return
-        val zone = java.time.ZoneId.of("America/Argentina/Buenos_Aires")
-        val hoy = java.time.LocalDate.now(zone)
-        val lunes = hoy.with(java.time.temporal.TemporalAdjusters.previousOrSame(java.time.DayOfWeek.MONDAY))
-        val fecha = java.time.Instant.ofEpochMilli(inicio).atZone(zone).toLocalDate()
+        val zona = state.value.catalogo?.barberos?.firstOrNull { it.id == barberoId }?.zonaHoraria
+        val offset = if (zona == null) politica.offsetOriginal(inicio) else politica.offsetOriginal(inicio,java.time.ZoneId.of(zona))
         state.update { it.copy(turnoId = turnoId, referencia = referencia, inicioOriginal = inicio, barberoOriginal = barberoId, barberoId = barberoId, servicioId = servicioId,
-            semanaOffset = if (fecha >= lunes.plusWeeks(1)) 1 else 0) }
+            semanaOffset = offset) }
         refrescar()
     }
     fun nombre(value: String) { if (!state.value.reservando) state.update { it.copy(nombre = value) } }

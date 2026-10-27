@@ -66,7 +66,7 @@ fun AppShell(
         }
     }
     if (reservasState.catalogo != null) {
-        ar.edu.unaj.am.myapplication.features.notifications.PermisoNotificacionesBarbero()
+        ar.edu.unaj.am.myapplication.features.notifications.PermisoNotificacionesBarbero(shellViewModel.solicitudPermiso.solicitado, shellViewModel.solicitudPermiso::registrar)
     }
     LaunchedEffect(reservasState.catalogo?.esBarbero, notificationContext) {
         val intent = (notificationContext as? android.app.Activity)?.intent
@@ -89,7 +89,7 @@ fun AppShell(
                     is AppResult.Success -> {
                         if (rolBarbero) {
                             turnosPendientes = result.data.count {
-                                it.estado.lowercase() in listOf("confirmado", "pendiente")
+                                ar.edu.unaj.am.myapplication.core.domain.model.estadoTurno(it.estado) == ar.edu.unaj.am.myapplication.core.domain.model.EstadoTurno.PENDIENTE
                             }
                         } else {
                             turnosParaAvisos = result.data

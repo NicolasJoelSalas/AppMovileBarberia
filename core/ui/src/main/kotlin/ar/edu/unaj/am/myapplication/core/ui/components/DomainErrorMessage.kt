@@ -94,4 +94,16 @@ internal fun ErrorReason.resourceId(): Int = when (this) {
     ErrorReason.APPOINTMENT_START_MISSING -> R.string.error_appointment_start_missing
     ErrorReason.APPOINTMENT_END_MISSING -> R.string.error_appointment_end_missing
     ErrorReason.APPOINTMENT_DURATION -> R.string.error_appointment_duration
+    ErrorReason.CAPTURE_FAILED -> R.string.error_capture_failed
+    ErrorReason.AVAILABILITY_INVALID -> R.string.error_availability_invalid
+    ErrorReason.BOOKING_OUTSIDE_RANGE -> R.string.error_booking_outside_range
+    ErrorReason.BOOKING_TAKEN -> R.string.error_booking_taken
+    ErrorReason.BOOKING_NOT_EDITABLE -> R.string.error_booking_not_editable
+    ErrorReason.BOOKING_NOT_OWNED -> R.string.error_booking_not_owned
+    ErrorReason.SERVICE_CHANGED -> R.string.error_service_changed
+    ErrorReason.BARBER_DISABLED -> R.string.error_barber_disabled
+    ErrorReason.SCHEDULE_REPUBLISH -> R.string.error_schedule_republish
+    ErrorReason.SCHEDULE_ZONE_BOOKINGS -> R.string.error_schedule_zone_bookings
+    ErrorReason.ACCESS_DENIED -> R.string.error_access_denied
+    ErrorReason.RESERVATION_OPERATION -> R.string.error_reservation_operation
 }

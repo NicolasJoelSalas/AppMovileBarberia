@@ -86,4 +86,16 @@
     <string name="error_service_format">Ingresá un precio válido con hasta dos decimales y una duración en minutos.</string>
     <string name="error_service_selection">Seleccioná un servicio.</string>
     <string name="error_service_operation">No se pudo completar la operación. Revisá tu conexión y los permisos para gestionar tus servicios.</string>
+    <string name="error_capture_failed">No se pudo preparar la cámara. Podés elegir una imagen de la galería.</string>
+    <string name="error_availability_invalid">La disponibilidad guardada es inválida. El barbero debe volver a publicarla.</string>
+    <string name="error_booking_outside_range">El servicio no entra en la franja elegida.</string>
+    <string name="error_booking_taken">Ese horario acaba de ocuparse. Elegí otro.</string>
+    <string name="error_booking_not_editable">Solo podés cambiar turnos activos que no comenzaron.</string>
+    <string name="error_booking_not_owned">El turno no pertenece a tu cuenta.</string>
+    <string name="error_service_changed">La duración cambió. Actualizá los horarios.</string>
+    <string name="error_barber_disabled">El barbero no está habilitado para esta operación.</string>
+    <string name="error_schedule_republish">El barbero debe publicar nuevamente la semana para actualizar los horarios.</string>
+    <string name="error_schedule_zone_bookings">Hay reservas futuras en otra zona horaria. Cancelalas antes de cambiar la zona.</string>
+    <string name="error_access_denied">No tenés permiso para realizar esta operación.</string>
+    <string name="error_reservation_operation">No se pudo completar la operación del turno. Actualizá y reintentá.</string>
 </resources>

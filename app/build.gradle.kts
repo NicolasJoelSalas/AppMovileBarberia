@@ -56,6 +56,8 @@ dependencies {
     implementation(libs.hilt.viewmodel.compose)
     implementation("com.google.firebase:firebase-firestore")
     implementation(libs.hilt.android)
+    implementation(libs.maplibre)
+    implementation(libs.okhttp.logging)
     ksp(libs.hilt.compiler)
     implementation(project(":features:notifications"))
     implementation(libs.androidx.sqlite.bundled)
@@ -104,5 +106,9 @@ dependencies {
 
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-messaging")
+    implementation("androidx.work:work-runtime-ktx:2.11.0")
+    testImplementation(project(":core:testing"))
+    testImplementation("org.mockito:mockito-core:5.14.2")
 
 }

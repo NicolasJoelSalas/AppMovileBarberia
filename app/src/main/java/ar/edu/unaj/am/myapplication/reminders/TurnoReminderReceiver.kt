@@ -8,7 +8,6 @@ import android.content.Context
 import android.content.Intent
 import ar.edu.unaj.am.myapplication.MainActivity
 import ar.edu.unaj.am.myapplication.R
-import com.google.firebase.auth.FirebaseAuth
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -27,7 +26,7 @@ class TurnoReminderReceiver : BroadcastReceiver() {
         if (reminder.disabled || offset !in reminder.pending) return
         val now = System.currentTimeMillis()
         // Nunca mostrar información de otra cuenta ni avisos de un turno que ya empezó.
-        if (reminder.owner != FirebaseAuth.getInstance().currentUser?.uid || now >= reminder.inicio) {
+        if (reminder.owner != scheduler.owner || now >= reminder.inicio) {
             scheduler.cancel(id)
             return
         }

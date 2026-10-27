@@ -86,4 +86,16 @@
     <string name="error_service_format">Enter a valid price with up to two decimal places and a duration in minutes.</string>
     <string name="error_service_selection">Select a service.</string>
     <string name="error_service_operation">Could not complete the operation. Check your connection and your permissions to manage services.</string>
+    <string name="error_capture_failed">Could not prepare the camera. You can choose a gallery image.</string>
+    <string name="error_availability_invalid">Saved availability is invalid. The barber must publish it again.</string>
+    <string name="error_booking_outside_range">The service does not fit within the selected opening hours.</string>
+    <string name="error_booking_taken">That time has just been booked. Choose another one.</string>
+    <string name="error_booking_not_editable">Only active appointments that have not started can be changed.</string>
+    <string name="error_booking_not_owned">This appointment does not belong to your account.</string>
+    <string name="error_service_changed">The service duration changed. Refresh available times.</string>
+    <string name="error_barber_disabled">The barber is not enabled for this operation.</string>
+    <string name="error_schedule_republish">The barber must publish this week again to update availability.</string>
+    <string name="error_schedule_zone_bookings">There are future appointments in another time zone. Cancel them before changing the zone.</string>
+    <string name="error_access_denied">You do not have permission to perform this operation.</string>
+    <string name="error_reservation_operation">Could not complete the appointment operation. Refresh and try again.</string>
 </resources>

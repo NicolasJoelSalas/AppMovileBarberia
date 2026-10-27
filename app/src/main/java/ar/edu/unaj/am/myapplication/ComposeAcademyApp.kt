@@ -5,13 +5,13 @@ import kotlinx.coroutines.launch
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 import dagger.Lazy
-import ar.edu.unaj.am.myapplication.features.notifications.AvisosTurnos
-import ar.edu.unaj.am.myapplication.features.notifications.RegistroNotificaciones
+import ar.edu.unaj.am.myapplication.notifications.AvisosTurnos
+import ar.edu.unaj.am.myapplication.core.domain.usecase.RegistroNotificaciones
 import ar.edu.unaj.am.myapplication.core.domain.repository.SesionActual
 
 @HiltAndroidApp
-class ComposeAcademyApp : Application(), ar.edu.unaj.am.myapplication.features.notifications.NotificacionesDependencies,
-    ar.edu.unaj.am.myapplication.features.notifications.TurnosWorkerDependencies {
+class ComposeAcademyApp : Application(), ar.edu.unaj.am.myapplication.notifications.NotificacionesDependencies,
+    ar.edu.unaj.am.myapplication.notifications.TurnosWorkerDependencies {
     @Inject lateinit var avisosProvider: Lazy<AvisosTurnos>
     @Inject lateinit var registroProvider: Lazy<RegistroNotificaciones>
     @Inject lateinit var sesionActual: SesionActual
@@ -29,6 +29,7 @@ class ComposeAcademyApp : Application(), ar.edu.unaj.am.myapplication.features.n
 
     override fun onCreate() {
         super.onCreate()
+        ar.edu.unaj.am.myapplication.maps.configurarMapas(this)
         ar.edu.unaj.am.myapplication.features.notifications.crearCanalTurnos(this)
     }
 

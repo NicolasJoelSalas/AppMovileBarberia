@@ -25,7 +25,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import ar.edu.unaj.am.myapplication.core.domain.model.Coordenadas
-import okhttp3.OkHttpClient
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
@@ -33,7 +32,6 @@ import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
-import org.maplibre.android.module.http.HttpRequestUtil
 import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.PropertyFactory.*
@@ -70,10 +68,6 @@ fun MapaBarberia(
     var error by remember { mutableStateOf(false) }
     val mapView = remember {
         MapLibre.getInstance(context.applicationContext)
-        HttpRequestUtil.setOkHttpClient(OkHttpClient.Builder().addInterceptor { chain ->
-            chain.proceed(chain.request().newBuilder()
-                .header("User-Agent", "BarberApp-UNAJ/1.0 (${context.packageName}; Android)").build())
-        }.build())
         MapView(context).apply { onCreate(null) }
     }
     fun cargarEstilo(map: MapLibreMap) {

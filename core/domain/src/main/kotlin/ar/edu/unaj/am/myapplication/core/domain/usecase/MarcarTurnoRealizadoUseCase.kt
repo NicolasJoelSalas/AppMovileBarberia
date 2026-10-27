@@ -15,10 +15,11 @@ class MarcarTurnoRealizadoUseCase @Inject constructor(
     private val clock: Clock = Clock.systemUTC()
 ) {
     suspend operator fun invoke(turno: Turno): AppResult<Unit> {
-        if (turno.id.isBlank() || turno.estado.lowercase() !in listOf("confirmado", "pendiente"))
-            return AppResult.Error(DomainError.Known(ErrorReason.APPOINTMENT_PENDING))
-        if (turno.inicioMillis == null || turno.inicioMillis > clock.millis())
-            return AppResult.Error(DomainError.Known(ErrorReason.APPOINTMENT_NOT_STARTED))
+        if (turno.id.isBlank()) return AppResult.Error(DomainError.Known(ErrorReason.APPOINTMENT_PENDING))
+        try { PoliticaReservas(clock).validarRealizable(turno.estado, turno.inicioMillis) }
+        catch (e: ar.edu.unaj.am.myapplication.core.domain.model.DomainValidationException) {
+            return AppResult.Error(e.error)
+        }
         return repository.marcarRealizado(turno.id)
     }
 }

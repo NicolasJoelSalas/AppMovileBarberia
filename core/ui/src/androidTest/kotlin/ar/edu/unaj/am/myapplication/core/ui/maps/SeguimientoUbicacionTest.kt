@@ -1,5 +1,6 @@
 package ar.edu.unaj.am.myapplication.core.ui.maps
 
+import ar.edu.unaj.am.myapplication.core.domain.model.PosicionDispositivo
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.junit4.createAndroidComposeRule

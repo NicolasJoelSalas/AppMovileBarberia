@@ -4,7 +4,8 @@ import ar.edu.unaj.am.myapplication.core.data.repository.FirestoreTurnoRepositor
 import ar.edu.unaj.am.myapplication.core.data.repository.PublicacionesClienteLocal
 import ar.edu.unaj.am.myapplication.core.data.session.*
 import ar.edu.unaj.am.myapplication.core.domain.repository.SesionActual
-import ar.edu.unaj.am.myapplication.features.notifications.*
+import ar.edu.unaj.am.myapplication.notifications.AvisosTurnos
+import ar.edu.unaj.am.myapplication.core.domain.usecase.RegistroNotificaciones
 import javax.inject.Inject
 import javax.inject.Singleton
 

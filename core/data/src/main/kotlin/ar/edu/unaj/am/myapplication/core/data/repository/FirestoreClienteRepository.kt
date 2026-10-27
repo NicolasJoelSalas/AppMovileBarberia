@@ -49,10 +49,7 @@ class FirestoreClienteRepository @Inject constructor(
                 if (continuation.isActive) {
                     continuation.resume(
                         if (task.isSuccessful) AppResult.Success(Unit)
-                        else AppResult.Error(DomainError.Unknown(
-                            "Tu cuenta está autenticada, pero no se pudo completar tu perfil. " +
-                                "Revisá tu conexión y reintentá. Si continúa, revisá las reglas de Firestore."
-                        ))
+                        else AppResult.Error(DomainError.Known(ErrorReason.PROFILE_LOAD))
                     )
                 }
             }

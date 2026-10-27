@@ -2,7 +2,7 @@ package ar.edu.unaj.am.myapplication.core.domain.usecase
 
 import javax.inject.Inject
 
-import ar.edu.unaj.am.myapplication.core.domain.model.Turno
+import ar.edu.unaj.am.myapplication.core.domain.model.*
 import java.time.*
 import java.time.temporal.TemporalAdjusters
 
@@ -25,7 +25,7 @@ class CalcularReporteGananciasUseCase @Inject constructor(
         val fin = if (mensual) desde.plusMonths(1) else desde.plusWeeks(1)
         val inicioMillis = desde.atStartOfDay(clock.zone).toInstant().toEpochMilli()
         val finMillis = fin.atStartOfDay(clock.zone).toInstant().toEpochMilli()
-        val realizados = turnos.filter { it.estado.lowercase() in listOf("realizado", "completado") &&
+        val realizados = turnos.filter { it.estadoNormalizado == EstadoTurno.REALIZADO &&
             it.inicioMillis?.let { fecha -> fecha >= inicioMillis && fecha < finMillis } == true }
             .sortedByDescending { it.inicioMillis }
         return ReporteGanancias(desde, fin.minusDays(1), realizados,

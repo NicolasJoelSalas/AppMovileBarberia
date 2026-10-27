@@ -39,7 +39,8 @@ import kotlin.coroutines.resumeWithException
 class FirestoreTurnoRepository @Inject constructor(
     private val turnoDao: TurnoDao,
     private val firestore: FirebaseFirestore,
-    private val auth: FirebaseAuth
+    private val auth: FirebaseAuth,
+    private val reloj: java.time.Clock = java.time.Clock.systemUTC()
 ) : TurnoRepository {
     private val cacheMutex = Mutex()
     private val cacheVersions = mutableMapOf<String, Long>()
@@ -130,16 +131,7 @@ class FirestoreTurnoRepository @Inject constructor(
             .whereEqualTo(if (comoCliente) "ClienteId" else "BarberoId", uid)
             .addSnapshotListener(com.google.firebase.firestore.MetadataChanges.INCLUDE) { snapshot, error ->
             if (error != null) {
-                val message = when (error.code) {
-                    FirebaseFirestoreException.Code.PERMISSION_DENIED ->
-                        "No tenés permiso para consultar los turnos. Revisá las reglas de Firestore."
-                    FirebaseFirestoreException.Code.UNAUTHENTICATED ->
-                        "Iniciá sesión nuevamente para consultar los turnos."
-                    FirebaseFirestoreException.Code.UNAVAILABLE ->
-                        "No se pudo conectar con Firestore. Revisá tu conexión."
-                    else -> "No se pudieron cargar los turnos."
-                }
-                trySend(AppResult.Error(DomainError.Unknown(message)))
+                trySend(AppResult.Error(ar.edu.unaj.am.myapplication.core.data.errors.errorRemoto(error,ErrorReason.APPOINTMENTS_SYNC)))
                 return@addSnapshotListener
             }
             // La caché parcial de Firebase no debe reemplazar la copia completa de Room.
@@ -200,14 +192,9 @@ class FirestoreTurnoRepository @Inject constructor(
                 "Solo podés completar tus propios turnos como barbero habilitado."
             }
             if (doc.get("Estado") == "realizado") return@runTransaction Unit
-            check(doc.get("Estado") == true || doc.get("Estado") in
-                listOf("confirmado", "Confirmado", "pendiente", "Pendiente")) {
-                "El turno ya no está pendiente."
-            }
-            val inicio = doc.getTimestamp("Inicio")?.toDate()?.time
-            check(inicio != null && inicio <= System.currentTimeMillis()) {
-                "Todavía no llegó la hora del turno."
-            }
+            ar.edu.unaj.am.myapplication.core.domain.usecase.PoliticaReservas(reloj).validarRealizable(
+                doc.get("Estado").toString(), doc.getTimestamp("Inicio")?.toDate()?.time
+            )
             val servicioId = doc.getString("ServicioId").orEmpty()
             check(servicioId.isNotBlank()) { "El turno no tiene un servicio asignado." }
             val precio = tx.get(firestore.collection("servicios").document(servicioId)).get("Precio")
@@ -227,9 +214,7 @@ class FirestoreTurnoRepository @Inject constructor(
         AppResult.Success(Unit)
     } catch (e: CancellationException) { throw e
     } catch (e: Exception) {
-        AppResult.Error(DomainError.Unknown(if (e is FirebaseFirestoreException)
-            "No se pudo completar el turno. Revisá la conexión, la hora y los permisos."
-            else e.message ?: "No se pudo completar el turno."))
+        AppResult.Error(ar.edu.unaj.am.myapplication.core.data.errors.errorRemoto(e,ErrorReason.RESERVATION_OPERATION))
     }
 }
 

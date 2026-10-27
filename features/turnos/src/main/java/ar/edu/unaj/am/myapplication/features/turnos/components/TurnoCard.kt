@@ -20,7 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import ar.edu.unaj.am.myapplication.core.domain.model.Turno
+import ar.edu.unaj.am.myapplication.core.domain.model.*
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -38,10 +38,10 @@ fun TurnoCard(turno: Turno, modifier: Modifier = Modifier,
     recordatorioActivo: Boolean = false, recordatorioHabilitado: Boolean = false,
     onComoLlegar: (() -> Unit)? = null, onCancelar: (() -> Unit)? = null,
     onModificar: (() -> Unit)? = null, editable: Boolean = false, operando: Boolean = false) {
-    val zonaBarberia = ZoneId.systemDefault()
-    val inicio = turno.inicioMillis?.let { Instant.ofEpochMilli(it).atZone(zonaBarberia) }
-    val fin = turno.finMillis?.let { Instant.ofEpochMilli(it).atZone(zonaBarberia) }
-    val realizado = turno.estado.lowercase() in listOf("realizado", "completado")
+    val zonaDispositivo = ZoneId.systemDefault()
+    val inicio = turno.inicioMillis?.let { Instant.ofEpochMilli(it).atZone(zonaDispositivo) }
+    val fin = turno.finMillis?.let { Instant.ofEpochMilli(it).atZone(zonaDispositivo) }
+    val realizado = turno.estadoNormalizado == EstadoTurno.REALIZADO
     val colors = MaterialTheme.colorScheme
     ElevatedCard(modifier = modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.elevatedCardColors(containerColor = colors.surfaceContainer),
@@ -72,7 +72,7 @@ fun TurnoCard(turno: Turno, modifier: Modifier = Modifier,
                 Text(stringResource(R.string.turnos_reference_title), style = MaterialTheme.typography.titleSmall)
                 ar.edu.unaj.am.myapplication.features.turnos.list.ReferenciaCorteImagen(it)
             }
-            onComoLlegar?.takeIf { !realizado && turno.estado.lowercase() != "cancelado" }?.let { abrirRuta ->
+            onComoLlegar?.takeIf { !realizado && turno.estadoNormalizado != EstadoTurno.CANCELADO }?.let { abrirRuta ->
                 OutlinedButton(onClick = abrirRuta,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                     Icon(Icons.Outlined.Directions, contentDescription = null,
@@ -82,7 +82,7 @@ fun TurnoCard(turno: Turno, modifier: Modifier = Modifier,
                 }
             }
             if (onRecordatorio != null && !realizado &&
-                turno.estado.lowercase() in listOf("confirmado", "pendiente")) {
+                turno.estadoNormalizado == EstadoTurno.PENDIENTE) {
                 OutlinedButton(onClick = onRecordatorio,
                     enabled = recordatorioHabilitado || recordatorioActivo,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
@@ -106,14 +106,14 @@ fun TurnoCard(turno: Turno, modifier: Modifier = Modifier,
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.error),
                     modifier = Modifier.fillMaxWidth()) { Text(if (operando) stringResource(R.string.features_turnos_guardando) else stringResource(R.string.features_turnos_cancelar_turno)) } }
             }
-            if (turno.estado.lowercase() == "cancelado") Text(stringResource(R.string.features_turnos_cancelado), color = colors.error)
+            if (turno.estadoNormalizado == EstadoTurno.CANCELADO) Text(stringResource(R.string.features_turnos_cancelado), color = colors.error)
             if (realizado) {
                 HorizontalDivider(color = colors.outlineVariant)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = colors.primary)
                     Text(stringResource(R.string.features_turnos_realizado), color = colors.primary, fontWeight = FontWeight.SemiBold)
                 }
-            } else if (onMarcarRealizado != null && turno.estado.lowercase() in listOf("confirmado", "pendiente")) {
+            } else if (onMarcarRealizado != null && turno.estadoNormalizado == EstadoTurno.PENDIENTE) {
                 Button(onClick = onMarcarRealizado, enabled = habilitado,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                     if (completando) {

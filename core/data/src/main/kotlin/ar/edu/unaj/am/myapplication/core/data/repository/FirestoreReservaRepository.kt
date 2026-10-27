@@ -24,16 +24,14 @@ class FirestoreReservaRepository(
     private val sesionLocal: SesionClienteLocal? = null,
     private val sesionBarberoLocal: SesionBarberoLocal? = null,
     private val subirReferencia: (suspend (String) -> String)? = null,
-    private val api: ReservasApi = FirestoreReservasApi(firestore, auth)
+    private val reloj: Clock = Clock.systemUTC(),
+    private val api: ReservasApi = FirestoreReservasApi(firestore, auth, reloj)
 ) : ReservaRepository {
+    private val politica = ar.edu.unaj.am.myapplication.core.domain.usecase.PoliticaReservas(reloj)
     // Mantiene la misma subida cuando una confirmación falla y se reintenta.
     private val referenciasPendientes = java.util.concurrent.ConcurrentHashMap<String, String>()
     private fun uid() = requireNotNull(auth.currentUser?.uid) { "Iniciá sesión." }
-    private fun monday(zone: String, offset: Int): LocalDate {
-        require(offset in 0..1) { "Elegí la semana actual o la próxima." }
-        return LocalDate.now(ZoneId.of(zone)).with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-            .plusWeeks(offset.toLong())
-    }
+    private fun monday(zone: String, offset: Int): LocalDate = politica.lunes(ZoneId.of(zone),offset)
     private fun enabled(doc: DocumentSnapshot) = (doc.get("Estado") as? Boolean)
         ?: (doc.get("Activo") as? Boolean) ?: false
     private fun agenda(doc: DocumentSnapshot, zone: String): AgendaSemanal {
@@ -76,7 +74,7 @@ class FirestoreReservaRepository(
         } else {
             sesionBarberoLocal?.limpiar(uid)
             val barberos = firestore.collection("barberos").whereEqualTo("Estado", true)
-                .get(Source.SERVER).awaitReserva().documents.map { Barbero(it.id, it.getString("Nombre").orEmpty()) }
+                .get(Source.SERVER).awaitReserva().documents.map { Barbero(it.id, it.getString("Nombre").orEmpty(), it.getString("ZonaHoraria") ?: "America/Argentina/Buenos_Aires") }
             val servicios = firestore.collection("servicios").get(Source.SERVER).awaitReserva().documents
                 .filter { enabled(it) && it.getLong("Duracion") in 5L..240L &&
                     barberos.any { barbero -> barbero.id == it.getString("BarberoId") } }
@@ -174,20 +172,10 @@ class FirestoreReservaRepository(
         requireNotNull(respuesta["turnoId"] as? String) { "No se confirmó la reserva." }
     }
 
-    private suspend fun <T> result(block: suspend () -> T): AppResult<T> { return try {
+    private suspend fun <T> result(block: suspend () -> T): AppResult<T> = try {
         AppResult.Success(block())
-    } catch (e: CancellationException) { throw e
-    } catch (e: Exception) {
-        val message = if (e is FirebaseFirestoreException) when (e.code) {
-            FirebaseFirestoreException.Code.PERMISSION_DENIED -> "No tenés permiso. Revisá las reglas publicadas de Firestore."
-            FirebaseFirestoreException.Code.UNAVAILABLE -> "Necesitás conexión para consultar o reservar turnos."
-            else -> "No se pudo confirmar la operación. Actualizá y reintentá."
-        } else e.message ?: "No se pudo completar la operación."
-        AppResult.Error(if (e is FirebaseFirestoreException && e.code in listOf(
-                FirebaseFirestoreException.Code.UNAVAILABLE, FirebaseFirestoreException.Code.DEADLINE_EXCEEDED))
-            DomainError.Network else DomainError.Unknown(message))
-    }
-    }
+    } catch (e: CancellationException) { throw e }
+    catch (e: Exception) { AppResult.Error(ar.edu.unaj.am.myapplication.core.data.errors.errorRemoto(e,ErrorReason.RESERVATION_OPERATION)) }
 }
 
 private suspend fun <T> Task<T>.awaitReserva(): T = suspendCancellableCoroutine { continuation ->

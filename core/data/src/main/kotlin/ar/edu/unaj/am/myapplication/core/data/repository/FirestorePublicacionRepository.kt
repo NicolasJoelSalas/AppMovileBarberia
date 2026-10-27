@@ -118,11 +118,7 @@ class FirestorePublicacionRepository(
             AppResult.Success(Unit)
         } catch (e: CancellationException) { throw e
         } catch (e: Exception) {
-            AppResult.Error(DomainError.Unknown(when (e) {
-                is FirebaseFirestoreException -> "No se pudo guardar la publicación. Revisá la conexión y las reglas de Firestore; podés reintentar."
-                is retrofit2.HttpException -> "Cloudinary rechazó la foto. Revisá el cloud name y el preset unsigned con formato JPG."
-                else -> e.message ?: "No se pudo publicar el trabajo."
-            }))
+            AppResult.Error(ar.edu.unaj.am.myapplication.core.data.errors.errorRemoto(e,ErrorReason.WORK_LOAD))
         }
     }
 

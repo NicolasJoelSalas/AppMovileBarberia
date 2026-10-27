@@ -1,6 +1,6 @@
 package ar.edu.unaj.am.myapplication.core.domain.usecase
 
-import ar.edu.unaj.am.myapplication.core.domain.model.DiaAtencion
+import ar.edu.unaj.am.myapplication.core.domain.model.*
 import ar.edu.unaj.am.myapplication.core.domain.model.OcupacionDia
 import java.time.Duration
 import java.time.LocalDate
@@ -14,18 +14,18 @@ fun crearDiaAtencion(fecha: LocalDate, zona: ZoneId, dia: DiaAtencion): Ocupacio
     val minutos = Duration.between(inicio, fin).toMinutes().toInt()
     val mascara = CharArray(minutos) { '0' }
     if (dia.habilitado) {
-        require(dia.franjas.isNotEmpty()) { "Configurá las franjas del día." }
+        requireDomain(dia.franjas.isNotEmpty(), ErrorReason.SCHEDULE_EMPTY_DAY)
         dia.franjas.forEach { franja ->
             val desde = LocalTime.parse(franja.inicio)
             val hasta = LocalTime.parse(franja.fin)
             val a = fecha.atTime(desde).atZone(zona)
             val b = fecha.atTime(hasta).atZone(zona)
-            require(a.toLocalTime() == desde && b.toLocalTime() == hasta) { "La hora no existe en esta zona horaria." }
+            requireDomain(a.toLocalTime() == desde && b.toLocalTime() == hasta, ErrorReason.SCHEDULE_TIME_FORMAT)
             val primero = Duration.between(inicio, a.toInstant()).toMinutes().toInt()
             val ultimo = Duration.between(inicio, b.toInstant()).toMinutes().toInt()
-            require(primero >= 0 && ultimo <= minutos && ultimo - primero >= 5) { "La franja debe durar al menos 5 minutos." }
+            requireDomain(primero >= 0 && ultimo <= minutos && ultimo - primero >= 5, ErrorReason.SCHEDULE_DURATION)
             for (i in primero until ultimo) {
-                require(mascara[i] == '0') { "Las franjas se superponen." }
+                requireDomain(mascara[i] == '0', ErrorReason.SCHEDULE_OVERLAP)
                 mascara[i] = '1'
             }
         }

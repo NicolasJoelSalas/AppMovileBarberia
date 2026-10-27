@@ -24,9 +24,7 @@ class OsrmRutaRepository @Inject constructor(private val api: RutasApi) : RutaRe
         }) {
             is NetworkResult.Success -> mapearRuta(result.data)
             is NetworkResult.NetworkError -> AppResult.Error(DomainError.Network)
-            is NetworkResult.HttpError -> AppResult.Error(DomainError.Unknown(
-                if (result.code == 429) "El servicio de rutas está ocupado. Esperá un momento y reintentá."
-                else "No se pudo calcular el recorrido. Reintentá."))
+            is NetworkResult.HttpError -> AppResult.Error(DomainError.Known(ErrorReason.ROUTE_INVALID))
             is NetworkResult.ParseError -> AppResult.Error(DomainError.Known(ErrorReason.ROUTE_INVALID))
         }
     }

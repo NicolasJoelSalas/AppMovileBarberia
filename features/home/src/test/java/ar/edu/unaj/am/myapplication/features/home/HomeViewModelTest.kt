@@ -15,9 +15,28 @@ import org.junit.Test
 class HomeViewModelTest {
     @get:Rule
     val mainDispatcherRule = MainDispatcherRule()
-    private fun vm(repo: FakePublicacionRepository, saved: SavedStateHandle = SavedStateHandle()) = HomeViewModel(
+    private fun vm(repo: FakePublicacionRepository, saved: SavedStateHandle = SavedStateHandle(),
+        capturas: ar.edu.unaj.am.myapplication.core.domain.repository.CapturasTemporalesRepository = object : ar.edu.unaj.am.myapplication.core.domain.repository.CapturasTemporalesRepository {
+            override suspend fun crear() = "content://captura"
+            override suspend fun descartar(uri: String) = Unit
+        }) = HomeViewModel(
         ObservarPublicacionesUseCase(repo), PublicarTrabajoUseCase(repo), EliminarPublicacionUseCase(repo),
-        ModificarDescripcionPublicacionUseCase(repo), saved)
+        ModificarDescripcionPublicacionUseCase(repo), CapturasTemporalesUseCase(capturas), saved)
+
+    @Test fun `cerrar el editor mientras se prepara la captura evita abrir una camara tardia`() = runTest {
+        val pendiente = CompletableDeferred<String>()
+        var descartada: String? = null
+        var aperturas = 0
+        val capturas = object : ar.edu.unaj.am.myapplication.core.domain.repository.CapturasTemporalesRepository {
+            override suspend fun crear() = pendiente.await()
+            override suspend fun descartar(uri: String) { descartada = uri }
+        }
+        val vm = vm(FakePublicacionRepository(), capturas = capturas)
+        vm.nueva(); vm.prepararCaptura { aperturas++ }; vm.prepararCaptura { aperturas++ }
+        vm.cerrarEditor(); pendiente.complete("content://captura")
+        assertEquals(0, aperturas)
+        assertEquals("content://captura", descartada)
+    }
 
     @Test fun `offline warning keeps saved photos visible and recovery clears it`() = runTest {
         val repo = FakePublicacionRepository()

@@ -22,6 +22,13 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class DataModule {
+    @Binds abstract fun apariencia(value: PreferenciasApariencia): AparienciaRepository
+    @Binds abstract fun recordatorios(value: ar.edu.unaj.am.myapplication.core.data.notifications.PreferenciasRecordatorios): RecordatoriosRepository
+    @Binds abstract fun ubicacionDispositivo(value: ar.edu.unaj.am.myapplication.core.data.location.UbicacionDispositivoAndroid): UbicacionDispositivoRepository
+    @Binds abstract fun capturas(value: CapturasTemporales): CapturasTemporalesRepository
+    @Binds abstract fun tokens(value: ar.edu.unaj.am.myapplication.core.data.notifications.FirebaseTokenNotificaciones): TokenNotificacionesRepository
+    @Binds abstract fun permisoNotificaciones(value: ar.edu.unaj.am.myapplication.core.data.notifications.PreferenciasPermisoNotificaciones): PermisoNotificacionesRepository
+    @Binds abstract fun estadoAvisos(value: ar.edu.unaj.am.myapplication.core.data.notifications.PreferenciasAvisosTurnos): EstadoAvisosRepository
     @Binds abstract fun bindTurno(repository: FirestoreTurnoRepository): TurnoRepository
     @Binds abstract fun bindCliente(repository: FirestoreClienteRepository): ClienteRepository
     @Binds abstract fun bindServicio(repository: FirestoreServicioRepository): ServicioRepository
@@ -32,6 +39,7 @@ abstract class DataModule {
     @Binds abstract fun bindRuta(repository: OsrmRutaRepository): RutaRepository
 
     companion object {
+        @Provides @Singleton fun messaging(): com.google.firebase.messaging.FirebaseMessaging = com.google.firebase.messaging.FirebaseMessaging.getInstance()
         @Provides @Singleton
         fun provideFirestore(): FirebaseFirestore = FirebaseFirestore.getInstance()
 
@@ -52,8 +60,8 @@ abstract class DataModule {
         @Provides @Singleton
         fun provideReservas(firestore: FirebaseFirestore, auth: FirebaseAuth,
             cliente: SesionClienteLocal, barbero: SesionBarberoLocal,
-            subidor: SubidorReferenciaCorte): ReservaRepository =
-            FirestoreReservaRepository(firestore, auth, cliente, barbero, subidor::subir)
+            subidor: SubidorReferenciaCorte, reloj: java.time.Clock): ReservaRepository =
+            FirestoreReservaRepository(firestore, auth, cliente, barbero, subidor::subir, reloj)
 
         @Provides @Singleton
         fun providePublicaciones(preparador: PreparadorImagenTrabajo, api: CloudinaryApi,

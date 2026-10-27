@@ -5,15 +5,9 @@ import ar.edu.unaj.am.myapplication.core.ui.R
 import androidx.compose.ui.res.stringResource
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.location.Location
-import android.location.LocationManager
 import android.net.Uri
-import android.os.CancellationSignal
-import android.os.Build
-import android.os.SystemClock
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -21,12 +15,11 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
-import androidx.core.location.LocationManagerCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import ar.edu.unaj.am.myapplication.core.domain.model.Coordenadas
+import ar.edu.unaj.am.myapplication.core.domain.model.PosicionDispositivo
 import kotlinx.coroutines.*
-import kotlin.coroutines.resume
 
 class ControlUbicacion internal constructor(
     val buscando: Boolean,
@@ -47,7 +40,7 @@ fun rememberUbicacionDispositivo(onUbicacion: (Coordenadas) -> Unit): ControlUbi
 fun rememberUbicacionDispositivoDetallada(onUbicacion: (PosicionDispositivo) -> Unit): ControlUbicacion {
     val context = LocalContext.current
     val resources = androidx.compose.ui.platform.LocalResources.current
-    val manager = remember { context.getSystemService(LocationManager::class.java) }
+    val proveedor = LocalUbicacionDispositivo.current
     val scope = rememberCoroutineScope()
     val alUbicar by rememberUpdatedState(onUbicacion)
     var buscando by remember { mutableStateOf(false) }
@@ -61,7 +54,7 @@ fun rememberUbicacionDispositivoDetallada(onUbicacion: (PosicionDispositivo) -> 
             mensaje = resources.getString(R.string.core_ui_permiti_el_acceso_a_la_ubicacion_o_elegi_un_punto_en_el_mapa)
             return
         }
-        if (!LocationManagerCompat.isLocationEnabled(manager)) {
+        if (!proveedor.habilitada()) {
             mostrarActivarGps = true
             return
         }
@@ -70,7 +63,7 @@ fun rememberUbicacionDispositivoDetallada(onUbicacion: (PosicionDispositivo) -> 
         trabajo = scope.launch {
             try {
                 val preciso = permitido(Manifest.permission.ACCESS_FINE_LOCATION)
-                val location = obtenerUbicacionDisponible(manager, preciso, ContextCompat.getMainExecutor(context))
+                val location = proveedor.obtener(preciso)
                 if (location == null) mensaje = resources.getString(R.string.core_ui_el_dispositivo_todavia_no_pudo_determinar_tu_ubicacion_reintenta_o_elegi_un_punto_en_el_mapa)
                 else {
                     alUbicar(location)
@@ -86,7 +79,7 @@ fun rememberUbicacionDispositivoDetallada(onUbicacion: (PosicionDispositivo) -> 
         }
     }
     val configuracionGps = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        if (LocationManagerCompat.isLocationEnabled(manager)) localizar()
+        if (proveedor.habilitada()) localizar()
         else mensaje = resources.getString(R.string.core_ui_la_ubicacion_sigue_apagada_podes_activarla_o_elegir_un_punto_en_el_mapa)
     }
     val configuracionPermisos = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
@@ -119,37 +112,3 @@ fun rememberUbicacionDispositivoDetallada(onUbicacion: (PosicionDispositivo) -> 
         configuracionPermisos.launch(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
     })
 }
-
-@SuppressLint("MissingPermission")
-internal suspend fun obtenerUbicacionDisponible(
-    manager: LocationManager,
-    preciso: Boolean,
-    executor: java.util.concurrent.Executor
-): PosicionDispositivo? {
-    val proveedores = buildList {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) add(LocationManager.FUSED_PROVIDER)
-        add(LocationManager.NETWORK_PROVIDER)
-        if (preciso) add(LocationManager.GPS_PROVIDER)
-    }.filter { proveedor ->
-        LocationManagerCompat.hasProvider(manager, proveedor) && manager.isProviderEnabled(proveedor)
-    }
-    return buscarUbicacion(proveedores,
-        ultimaPosicion = { manager.getLastKnownLocation(it)?.aPosicion() },
-        obtenerActual = { obtenerPosicion(manager, it, executor)?.aPosicion() },
-        reloj = SystemClock::elapsedRealtime)
-}
-
-internal fun Location.aPosicion() = PosicionDispositivo(
-    Coordenadas(latitude, longitude), if (hasAccuracy()) accuracy else Float.MAX_VALUE,
-    elapsedRealtimeNanos / 1_000_000
-)
-
-@SuppressLint("MissingPermission")
-private suspend fun obtenerPosicion(manager: LocationManager, proveedor: String, executor: java.util.concurrent.Executor): Location? =
-    suspendCancellableCoroutine { continuation ->
-        val cancel = CancellationSignal()
-        continuation.invokeOnCancellation { cancel.cancel() }
-        LocationManagerCompat.getCurrentLocation(manager, proveedor, cancel, executor) { location ->
-            if (continuation.isActive) continuation.resume(location)
-        }
-    }

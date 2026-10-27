@@ -56,7 +56,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
-import ar.edu.unaj.am.myapplication.core.domain.model.Turno
+import ar.edu.unaj.am.myapplication.core.domain.model.*
 import ar.edu.unaj.am.myapplication.core.ui.components.ErrorContent
 import ar.edu.unaj.am.myapplication.core.ui.components.LoadingContent
 import ar.edu.unaj.am.myapplication.core.ui.components.asMessage
@@ -190,9 +190,9 @@ fun TurnosListScreen(
                 val turnosVisibles = remember(uiState.turnos, filtroEstado) {
                     uiState.turnos.filter { turno ->
                         when (filtroEstado) {
-                            "Pendiente" -> turno.estado.lowercase() in listOf("pendiente", "confirmado")
-                            "Cancelado" -> turno.estado.lowercase() in listOf("cancelado", "cancelada")
-                            "Completado" -> turno.estado.lowercase() in listOf("realizado", "completado")
+                            "Pendiente" -> turno.estadoNormalizado == EstadoTurno.PENDIENTE
+                            "Cancelado" -> turno.estadoNormalizado == EstadoTurno.CANCELADO
+                            "Completado" -> turno.estadoNormalizado == EstadoTurno.REALIZADO
                             else -> true
                         }
                     }
@@ -227,7 +227,7 @@ fun TurnosListScreen(
                             TurnoCard(turno = turno,
                                 onCancelar = onCancelar?.let { { cancelar = turno } },
                                 onModificar = onModificar?.let { action -> { action(turno) } },
-                                editable = turno.estado.lowercase() in listOf("confirmado", "pendiente") && (turno.inicioMillis ?: 0L) > ahoraMillis,
+                                editable = turno.estadoNormalizado == EstadoTurno.PENDIENTE && (turno.inicioMillis ?: 0L) > ahoraMillis,
                                 operando = completandoId != null,
                                 onComoLlegar = onComoLlegar?.let { abrir -> { abrir(turno) } },
                                 onRecordatorio = onRecordatorio?.let { action -> { action(turno) } },

@@ -2,12 +2,12 @@ package ar.edu.unaj.am.myapplication.core.data.remote
 
 import ar.edu.unaj.am.myapplication.core.domain.model.*
 import ar.edu.unaj.am.myapplication.core.domain.usecase.crearDiaAtencion
+import ar.edu.unaj.am.myapplication.core.domain.usecase.PoliticaReservas
 import com.google.android.gms.tasks.Task
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.*
 import java.time.*
-import java.time.temporal.TemporalAdjusters
 import java.util.concurrent.Executor
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
@@ -19,6 +19,7 @@ class FirestoreReservasApi(
     private val auth: FirebaseAuth,
     private val reloj: Clock = Clock.systemUTC()
 ) : ReservasApi {
+    private val politica = PoliticaReservas(reloj)
     override suspend fun ejecutar(operacion: String, datos: Map<String, Any?>): Map<String, Any?> {
         val uid = requireNotNull(auth.currentUser?.uid) { "Iniciá sesión." }
         return when (operacion) {
@@ -42,32 +43,25 @@ class FirestoreReservasApi(
     private fun fin(t: DocumentSnapshot) = requireNotNull(t.getTimestamp("Fin")) { "El turno no tiene fecha de fin." }.toDate().time
     private fun activo(t: DocumentSnapshot) = t.get("Estado").toString().lowercase() !in listOf("false", "cancelado", "cancelada")
     private fun editable(t: DocumentSnapshot) {
-        check(t.exists() && t.get("Estado").toString().lowercase() in listOf("true", "confirmado", "pendiente") &&
-            inicio(t) > reloj.millis()) { "Solo podés cambiar turnos activos que no comenzaron." }
+        requireDomain(t.exists(), ErrorReason.BOOKING_NOT_OWNED)
+        politica.validarEditable(t.get("Estado").toString(), inicio(t))
     }
     private fun ocupacion(doc: DocumentSnapshot) = OcupacionDia(inicio(doc),
         requireNotNull(doc.getString("Atencion")) { "El barbero debe publicar el día." },
         requireNotNull(doc.getString("Ocupacion")) { "El barbero debe publicar el día." })
     private fun habilitado(b: DocumentSnapshot): ZoneId {
-        check(b.exists() && b.getBoolean("Estado") == true) { "El barbero no está habilitado." }
+        requireDomain(b.exists() && b.getBoolean("Estado") == true,ErrorReason.BARBER_DISABLED)
         return ZoneId.of(requireNotNull(b.getString("ZonaHoraria")))
     }
     private fun duracion(s: DocumentSnapshot, barberoId: String): Int {
-        check(s.exists() && (s.get("Estado") ?: s.get("Activo")) == true && s.getString("BarberoId") == barberoId) {
-            "El servicio no está habilitado para este barbero."
-        }
-        return requireNotNull(s.getLong("Duracion")).toInt().also {
-            require(it in 5..240) { "La duración debe ser de 5 a 240 minutos." }
-        }
+        requireDomain(s.exists() && (s.get("Estado") ?: s.get("Activo")) == true && s.getString("BarberoId") == barberoId,ErrorReason.SERVICE_SELECTION)
+        return politica.duracion(requireNotNull(s.getLong("Duracion")).toInt())
     }
-    private fun lunes(zona: ZoneId, offset: Int) = LocalDate.now(reloj.withZone(zona))
-        .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).plusWeeks(offset.toLong()).also {
-            require(offset in 0..1) { "Elegí esta semana o la próxima." }
-        }
+    private fun lunes(zona: ZoneId, offset: Int) = politica.lunes(zona,offset)
     private fun vigente(tx: Transaction, doc: DocumentSnapshot, b: DocumentSnapshot) {
-        check(doc.exists() && doc.getString("ZonaHoraria") == b.getString("ZonaHoraria")) { "El barbero debe publicar esta semana." }
+        requireDomain(doc.exists() && doc.getString("ZonaHoraria") == b.getString("ZonaHoraria"),ErrorReason.SCHEDULE_REPUBLISH)
         val agenda = tx.get(b.reference.collection("agenda").document(requireNotNull(doc.getString("AgendaId"))))
-        check(doc.get("Agenda") == agenda.data) { "La agenda cambió. El barbero debe publicarla nuevamente." }
+        requireDomain(doc.get("Agenda") == agenda.data,ErrorReason.SCHEDULE_REPUBLISH)
     }
 
     private suspend fun publicar(uid: String, datos: Map<String, Any?>): Map<String, Any?> {
@@ -79,7 +73,7 @@ class FirestoreReservasApi(
         val b = barber(uid).get(Source.SERVER).esperar()
         val zona = habilitado(b)
         val fecha = LocalDate.parse(datos["inicioSemana"] as? String ?: error("Volvé a cargar la semana."))
-        check(fecha == lunes(zona, 0) || fecha == lunes(zona, 1)) { "La semana cambió. Volvé a cargar la agenda." }
+        politica.validarSemana(fecha,zona)
         val fuente = barber(uid).collection("agenda").document(fecha.toString())
         val mapa = datos["agenda"] as? Map<*, *> ?: error("Falta la agenda.")
         val nombres = listOf("Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado")
@@ -99,9 +93,8 @@ class FirestoreReservasApi(
             // La inicialización incluye reservas anteriores, aun si ahora quedan fuera de una franja.
             var inicial = nuevo.copy(atencion = "1".repeat(nuevo.atencion.length))
             for (t in propios) {
-                check(t.getString("DiaId") == null || t.getString("DiaId") == referencia.id) {
-                    "Hay reservas futuras en otra zona horaria. Cancelalas antes de cambiar la zona."
-                }
+                requireDomain(t.getString("DiaId") == null || t.getString("DiaId") == referencia.id,
+                    ErrorReason.SCHEDULE_ZONE_BOOKINGS)
                 inicial = inicial.ocupar(inicio(t), fin(t))
             }
             firestore.runTransaction { tx ->
@@ -118,8 +111,7 @@ class FirestoreReservasApi(
                 tx.set(referencia, campos)
             }.esperar()
             for (t in propios) {
-                val indices = nuevo.indices(inicio(t), fin(t))
-                if (indices.any { nuevo.atencion[it] != '1' } && t.get("Estado").toString().lowercase() in listOf("true", "pendiente", "confirmado"))
+                if (politica.cancelarAlPublicar(t.get("Estado").toString(),inicio(t),fin(t),nuevo))
                     cancelar(uid, t.id)
             }
             if (habilitado) franjas += rangos.size
@@ -136,7 +128,7 @@ class FirestoreReservasApi(
         val fecha = lunes(zona, (datos["semanaOffset"] as? Number)?.toInt() ?: 0)
         val propio = (datos["turnoId"] as? String)?.let {
             turnoRef(identificador(it)).get(Source.SERVER).esperar().also { t ->
-                check(t.getString("ClienteId") == uid) { "El turno no te pertenece." }; editable(t)
+                requireDomain(t.getString("ClienteId") == uid,ErrorReason.BOOKING_NOT_OWNED); editable(t)
             }
         }
         val horarios = (0L..5L).flatMap { offset ->
@@ -172,15 +164,14 @@ class FirestoreReservasApi(
                 check(!tx.get(barber(uid)).exists()) { "Solo un cliente puede reservar." }
                 val cliente = tx.get(firestore.collection("clientes").document(uid))
                 check(cliente.exists()) { "Completá tu perfil de cliente." }
-                if (editar) { check(anterior.getString("ClienteId") == uid) { "El turno no te pertenece." }; editable(anterior) }
+                if (editar) { requireDomain(anterior.getString("ClienteId") == uid,ErrorReason.BOOKING_NOT_OWNED); editable(anterior) }
                 val b = tx.get(barber(barberoId)); val zona = habilitado(b)
                 val minutos = duracion(tx.get(firestore.collection("servicios").document(servicioId)), barberoId)
                 val fin = inicio + minutos * 60000L
-                check((datos["finMillisEsperado"] as? Number)?.toLong() == fin) { "La duración cambió. Actualizá los horarios." }
+                requireDomain((datos["finMillisEsperado"] as? Number)?.toLong() == fin,ErrorReason.SERVICE_CHANGED)
                 check(inicio > reloj.millis() && inicio % 60000L == 0L) { "Elegí un horario futuro válido." }
-                val fecha = Instant.ofEpochMilli(inicio).atZone(zona).toLocalDate()
-                    .with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-                check(fecha == lunes(zona, 0) || fecha == lunes(zona, 1)) { "Elegí esta semana o la próxima." }
+                val fecha = politica.semanaDe(inicio,zona)
+                politica.validarSemana(fecha,zona)
                 val nuevoRef = diaRef(diaId(barberoId, inicio, zona))
                 val nuevo = tx.get(nuevoRef); vigente(tx, nuevo, b)
                 val anteriorId = if (editar) anterior.getString("DiaId") ?: diaId(requireNotNull(anterior.getString("BarberoId")),
@@ -213,7 +204,7 @@ class FirestoreReservasApi(
     private suspend fun cancelar(uid: String, id: String): Map<String, Any?> = firestore.runTransaction { tx ->
         val t = tx.get(turnoRef(id))
         val comoBarbero = t.getString("BarberoId") == uid
-        check(t.exists() && (comoBarbero || t.getString("ClienteId") == uid)) { "El turno no te pertenece." }
+        requireDomain(t.exists() && (comoBarbero || t.getString("ClienteId") == uid),ErrorReason.BOOKING_NOT_OWNED)
         if (t.get("Estado").toString().lowercase() == "cancelado") mapOf("cancelado" to true) else {
             editable(t)
             val barberoId = requireNotNull(t.getString("BarberoId"))
@@ -222,7 +213,7 @@ class FirestoreReservasApi(
             val zona = ZoneId.of(requireNotNull(b.getString("ZonaHoraria")))
             val referencia = diaRef(t.getString("DiaId") ?: diaId(barberoId, inicio(t), zona))
             val dia = tx.get(referencia)
-            check(dia.exists()) { "El barbero debe publicar la semana para actualizar este turno anterior." }
+            requireDomain(dia.exists(),ErrorReason.SCHEDULE_REPUBLISH)
             val libre = ocupacion(dia).liberar(inicio(t), fin(t))
             tx.update(t.reference, mapOf("Estado" to "cancelado", "CanceladoEn" to FieldValue.serverTimestamp(),
                 "CanceladoPor" to uid, "DiaId" to referencia.id, "DiaAnteriorId" to referencia.id))

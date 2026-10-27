@@ -1,16 +1,16 @@
 package ar.edu.unaj.am.myapplication.features.turnos.list
 
-import ar.edu.unaj.am.myapplication.core.domain.model.Turno
+import ar.edu.unaj.am.myapplication.core.domain.model.*
 import kotlin.math.abs
 
 internal enum class SeccionTurnos { PENDIENTES, CANCELADOS, COMPLETADOS, OTROS }
 
 internal fun seccionesTurnos(turnos: List<Turno>, ahoraMillis: Long): Map<SeccionTurnos, List<Turno>> {
     val grupos = turnos.groupBy {
-        when (it.estado.lowercase()) {
-            "pendiente", "confirmado", "true" -> SeccionTurnos.PENDIENTES
-            "cancelado", "cancelada", "false" -> SeccionTurnos.CANCELADOS
-            "realizado", "completado" -> SeccionTurnos.COMPLETADOS
+        when (it.estadoNormalizado) {
+            EstadoTurno.PENDIENTE -> SeccionTurnos.PENDIENTES
+            EstadoTurno.CANCELADO -> SeccionTurnos.CANCELADOS
+            EstadoTurno.REALIZADO -> SeccionTurnos.COMPLETADOS
             else -> SeccionTurnos.OTROS
         }
     }

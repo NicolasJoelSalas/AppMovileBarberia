@@ -42,6 +42,7 @@ class HomeViewModel @Inject constructor(
     private val publicar: PublicarTrabajoUseCase,
     private val eliminar: EliminarPublicacionUseCase,
     private val modificarDescripcion: ModificarDescripcionPublicacionUseCase,
+    private val capturas: CapturasTemporalesUseCase,
     private val savedState: SavedStateHandle = SavedStateHandle()
 ) : ViewModel() {
     private val state = MutableStateFlow(HomeUiState(
@@ -66,6 +67,19 @@ class HomeViewModel @Inject constructor(
         }
         reintentar()
     }
+
+    private var captura: Job? = null
+    fun prepararCaptura(abrir: (String) -> Unit) {
+        if (captura?.isActive == true || state.value.publicando || !state.value.editando) return
+        captura = viewModelScope.launch {
+            when (val result = capturas.crear()) {
+                is AppResult.Success -> if (state.value.editando && !state.value.publicando) abrir(result.data)
+                    else capturas.descartar(result.data)
+                is AppResult.Error -> state.update { it.copy(errorEdicion = result.error) }
+            }
+        }
+    }
+    fun descartarCaptura(uri: String) { viewModelScope.launch { capturas.descartar(uri) } }
 
     fun reintentar() {
         observacion?.cancel()

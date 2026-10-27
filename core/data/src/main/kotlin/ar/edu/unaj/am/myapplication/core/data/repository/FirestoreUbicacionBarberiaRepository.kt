@@ -61,7 +61,7 @@ class FirestoreUbicacionBarberiaRepository @Inject constructor(
             e is FirebaseFirestoreException && e.code == FirebaseFirestoreException.Code.UNAVAILABLE -> DomainError.Network
             e is FirebaseFirestoreException && e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED ->
                 DomainError.Known(ErrorReason.LOCATION_PERMISSION)
-            e is IllegalArgumentException || e is IllegalStateException -> DomainError.Unknown(e.message)
+            e is IllegalArgumentException || e is IllegalStateException -> DomainError.Known(ErrorReason.LOCATION_LOAD)
             else -> DomainError.Known(ErrorReason.LOCATION_LOAD)
         })
     }

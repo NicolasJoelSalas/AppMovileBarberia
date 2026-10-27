@@ -16,6 +16,7 @@ android {
 
 dependencies {
     implementation(libs.hilt.android)
+    implementation(libs.androidx.core.ktx)
     ksp(libs.hilt.compiler)
     implementation(project(":core:domain"))
     implementation(project(":core:network"))
@@ -27,6 +28,7 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:35.0.0"))
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-messaging")
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

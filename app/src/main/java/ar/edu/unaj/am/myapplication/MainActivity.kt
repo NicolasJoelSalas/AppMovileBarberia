@@ -49,7 +49,11 @@ import ar.edu.unaj.am.myapplication.ui.AuthenticatedSessionViewModel
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
 
+    @Inject lateinit var apariencia: ar.edu.unaj.am.myapplication.core.domain.repository.AparienciaRepository
+
     @Inject lateinit var sessionProvider: Lazy<GestorSesion>
+
+    @Inject lateinit var ubicacionDispositivo: ar.edu.unaj.am.myapplication.core.domain.repository.UbicacionDispositivoRepository
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -63,11 +67,9 @@ class MainActivity : AppCompatActivity() {
             LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
                 language = AppLanguage.fromTag(AppCompatDelegate.getApplicationLocales()[0]?.language)
             }
-            val preferences = remember { getSharedPreferences("appearance", MODE_PRIVATE) }
             val systemDarkTheme = isSystemInDarkTheme()
             var darkThemePreference by remember {
-                mutableStateOf(if (preferences.contains("dark_theme"))
-                    preferences.getBoolean("dark_theme", false) else null)
+                mutableStateOf(apariencia.temaOscuro)
             }
             val darkTheme = darkThemePreference ?: systemDarkTheme
             SideEffect {
@@ -85,12 +87,13 @@ class MainActivity : AppCompatActivity() {
                 .collectAsStateWithLifecycle()
 
             CompositionLocalProvider(
+                ar.edu.unaj.am.myapplication.core.ui.maps.LocalUbicacionDispositivo provides ubicacionDispositivo,
                 LocalLanguagePreference provides LanguagePreference(language) { selected ->
                     language = selected
                     AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(selected.tag))
                 },
                 LocalAppearance provides Appearance(darkTheme) { dark ->
-                preferences.edit().putBoolean("dark_theme", dark).apply()
+                apariencia.temaOscuro = dark
                 darkThemePreference = dark
             }) {
             MyApplicationTheme(darkTheme = darkTheme) {

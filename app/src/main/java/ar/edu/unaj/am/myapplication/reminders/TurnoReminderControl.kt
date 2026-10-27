@@ -71,13 +71,8 @@ internal fun rememberTurnoReminderControl(turnos: List<Turno>?): TurnoReminderCo
         if (turnos != null) scheduler.reconcile(turnos)
         activeIds = scheduler.activeIds()
     }
-    DisposableEffect(scheduler) {
-        val prefs = context.getSharedPreferences(TurnoReminderScheduler.PREFS, android.content.Context.MODE_PRIVATE)
-        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
-            activeIds = scheduler.activeIds()
-        }
-        prefs.registerOnSharedPreferenceChangeListener(listener)
-        onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+    LaunchedEffect(scheduler) {
+        scheduler.observarCambios().collect { activeIds = scheduler.activeIds() }
     }
     LaunchedEffect(turnos) {
         if (turnos != null) scheduler.reconcile(turnos)
