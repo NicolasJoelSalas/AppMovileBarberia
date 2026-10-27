@@ -108,7 +108,8 @@ service cloud.firestore {
         && despues.Estado == 'cancelado' && despues.CanceladoEn == request.time
         && h.BarberoId == request.auth.uid && h.Estado == 'ocupado' && h.TurnoId == id
         && nuevo.diff(h).affectedKeys().hasOnly(['Estado', 'TurnoId'])
-        && nuevo.Estado == 'bloqueado' && !('TurnoId' in nuevo);
+        && (nuevo.Estado == 'bloqueado' || nuevo.Estado == estadoLiberado(h))
+        && !('TurnoId' in nuevo);
     }
 
     match /turnos/{turnoId} {

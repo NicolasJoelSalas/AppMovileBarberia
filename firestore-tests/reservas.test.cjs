@@ -441,7 +441,6 @@ test('quitar franja: barbero cancela y bloquea el horario de forma atomica', asy
   await assertFails(cancelBooking('otro', 'bloqueado'));
   await assertFails(updateDoc(doc(db('barbero'), 'turnos/cambio'), {Estado:'cancelado', CanceladoEn:serverTimestamp()}));
   await assertFails(updateDoc(doc(db('barbero'), `horarios/${horarioId}`), {Estado:'bloqueado', TurnoId:deleteField()}));
-  await assertFails(cancelBooking('barbero', 'libre'));
   await assertSucceeds(cancelBooking('barbero', 'bloqueado'));
   assert.equal((await getDoc(doc(db('ana'), 'turnos/cambio'))).data().Estado, 'cancelado');
   const horario = (await getDoc(doc(db('barbero'), `horarios/${horarioId}`))).data();
@@ -463,6 +462,23 @@ test('cancelacion: cliente no puede atribuir la cancelacion al barbero', async (
   batch.update(doc(store, 'turnos/cambio'), {Estado:'cancelado', CanceladoEn:serverTimestamp(), CanceladoPor:'barbero'});
   batch.update(doc(store, `horarios/${horarioId}`), {Estado:'libre', TurnoId:deleteField()});
   await assertFails(batch.commit());
+});
+
+test('barbero cancela un turno individual y libera el horario vigente', async () => {
+  await setupChange();
+  await assertFails(cancelBooking('otro', 'libre'));
+  await assertSucceeds(cancelBooking('barbero', 'libre'));
+  const turno = (await getDoc(doc(db('ana'), 'turnos/cambio'))).data();
+  assert.equal(turno.Estado, 'cancelado');
+  assert.equal(turno.CanceladoPor, 'barbero');
+  assert.equal((await getDoc(doc(db('barbero'), `horarios/${horarioId}`))).data().Estado, 'libre');
+});
+
+test('barbero no puede liberar un horario de una agenda invalidada', async () => {
+  await setupChange();
+  await updateDoc(doc(db('barbero'), 'barberos/barbero/agenda/semanal'), {Lunes:{Estado:false,Franjas:[]}});
+  await assertFails(cancelBooking('barbero', 'libre'));
+  await assertSucceeds(cancelBooking('barbero', 'bloqueado'));
 });
 test('cancelar: requiere dueño y liberar el horario en la misma operación', async () => {
   await setupChange();

@@ -241,7 +241,8 @@ class FirestoreReservaRepository(
         val ref = firestore.collection("turnos").document(turnoId)
         firestore.runTransaction { tx ->
             val turno = tx.get(ref)
-            check(turno.getString("ClienteId") == user) { "El turno no te pertenece." }
+            val comoBarbero = turno.getString("BarberoId") == user
+            check(comoBarbero || turno.getString("ClienteId") == user) { "El turno no te pertenece." }
             if (turno.getString("Estado") != "cancelado") {
                 validarEditable(turno)
                 val horario = firestore.collection("horarios").document(requireNotNull(turno.getString("HorarioId")))
@@ -249,11 +250,14 @@ class FirestoreReservaRepository(
                 val barber = firestore.collection("barberos").document(requireNotNull(turno.getString("BarberoId")))
                 val agenda = tx.get(barber.collection("agenda").document(agendaId(slot)))
                 val barberDoc = tx.get(barber)
+                if (comoBarbero) check(barberDoc.getBoolean("Estado") == true) { "El barbero no está habilitado." }
                 check(slot.getString("TurnoId") == turnoId && slot.getString("Estado") == "ocupado")
                 tx.update(horario, mapOf("Estado" to if (slot.get("Agenda") == agenda.data &&
                     slot.getString("ZonaHoraria") == barberDoc.getString("ZonaHoraria")) "libre" else "bloqueado",
                     "TurnoId" to FieldValue.delete()))
-                tx.update(ref, mapOf("Estado" to "cancelado", "CanceladoEn" to FieldValue.serverTimestamp()))
+                val cambios = mutableMapOf<String, Any>("Estado" to "cancelado", "CanceladoEn" to FieldValue.serverTimestamp())
+                if (comoBarbero) cambios["CanceladoPor"] = user
+                tx.update(ref, cambios)
             }
         }.awaitReserva()
         Unit

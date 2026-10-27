@@ -183,6 +183,25 @@ class FirestoreReservaRepositoryTest {
         verify(tx).update(eq(refs.getValue("turnos/solicitud")), fields.capture())
         assertEquals("cancelado", (fields.value as Map<*, *>)["Estado"])
     }
+    @Test fun `barber cancellation records actor and frees slot`() = runTest {
+        editableBooking()
+        `when`(auth.currentUser!!.uid).thenReturn("barbero")
+        assertTrue(repo.cancelar("solicitud") is AppResult.Success)
+        @Suppress("UNCHECKED_CAST")
+        val fields = ArgumentCaptor.forClass(Map::class.java) as ArgumentCaptor<Map<String, Any>>
+        verify(tx).update(eq(refs.getValue("turnos/solicitud")), fields.capture())
+        assertEquals("cancelado", fields.value["Estado"])
+        assertEquals("barbero", fields.value["CanceladoPor"])
+        verify(tx).update(eq(refs.getValue("horarios/$slotId")), fields.capture())
+        assertEquals("libre", fields.value["Estado"])
+    }
+    @Test fun `disabled barber cannot cancel a booking`() = runTest {
+        editableBooking()
+        `when`(auth.currentUser!!.uid).thenReturn("barbero")
+        `when`(docs.getValue("barberos/barbero").getBoolean("Estado")).thenReturn(false)
+        assertTrue(repo.cancelar("solicitud") is AppResult.Error)
+        verify(tx, never()).update(any(DocumentReference::class.java), anyMap<String, Any>())
+    }
     @Test fun `cancellation rejects another client without writes`() = runTest {
         editableBooking()
         `when`(docs.getValue("turnos/solicitud").getString("ClienteId")).thenReturn("otro")

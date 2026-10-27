@@ -53,7 +53,7 @@ class TurnoListViewModel @AssistedInject constructor(
     private val mutableErrorCompletar = MutableStateFlow<DomainError?>(null)
     val errorCompletar = mutableErrorCompletar.asStateFlow()
 
-    val puedeCancelar: Boolean get() = comoCliente && cancelarTurno != null
+    val puedeCancelar: Boolean get() = cancelarTurno != null
     fun cancelar(turno: Turno) {
         val accion = cancelarTurno ?: return
         if (!puedeCancelar || mutableCompletandoId.value != null) return
