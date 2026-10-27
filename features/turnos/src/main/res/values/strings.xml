@@ -1,4 +1,8 @@
 <resources>
+    <string name="turnos_section_pending">Pendientes</string>
+    <string name="turnos_section_canceled">Cancelados</string>
+    <string name="turnos_section_completed">Completados</string>
+    <string name="turnos_section_other">Otros turnos</string>
     <string name="app_name">turnos</string>
     <string name="features_turnos_gestionar_semana">Gestionar semana</string>
     <string name="features_turnos_volver">Volver</string>

@@ -42,6 +42,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -193,8 +195,9 @@ fun TurnosListScreen(
                             "Completado" -> turno.estado.lowercase() in listOf("realizado", "completado")
                             else -> true
                         }
-                    }.sortedByDescending { it.inicioMillis ?: Long.MIN_VALUE }
+                    }
                 }
+                val secciones = seccionesTurnos(turnosVisibles, ahoraMillis)
                 if (turnosVisibles.isEmpty()) {
                     Box(modifier = contentModifier.padding(24.dp), contentAlignment = Alignment.Center) {
                         Text(if (uiState.turnos.isNotEmpty())
@@ -208,7 +211,19 @@ fun TurnosListScreen(
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(turnosVisibles, key = { it.id }) { turno ->
+                        secciones.forEach { (seccion, turnos) ->
+                            item(key = "seccion_$seccion", contentType = "encabezado") {
+                                Text(stringResource(when (seccion) {
+                                    SeccionTurnos.PENDIENTES -> R.string.turnos_section_pending
+                                    SeccionTurnos.CANCELADOS -> R.string.turnos_section_canceled
+                                    SeccionTurnos.COMPLETADOS -> R.string.turnos_section_completed
+                                    SeccionTurnos.OTROS -> R.string.turnos_section_other
+                                }), style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp).semantics { heading() })
+                            }
+                        items(turnos, key = { it.id }) { turno ->
                             TurnoCard(turno = turno,
                                 onCancelar = onCancelar?.let { { cancelar = turno } },
                                 onModificar = onModificar?.let { action -> { action(turno) } },
@@ -222,6 +237,7 @@ fun TurnosListScreen(
                                 habilitado = completandoId == null &&
                                     turno.inicioMillis?.let { it <= ahoraMillis } == true,
                                 completando = completandoId == turno.id)
+                        }
                         }
                     }
                 }

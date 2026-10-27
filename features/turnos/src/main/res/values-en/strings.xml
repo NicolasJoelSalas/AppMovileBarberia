@@ -1,4 +1,8 @@
 <resources>
+    <string name="turnos_section_pending">Pending</string>
+    <string name="turnos_section_canceled">Canceled</string>
+    <string name="turnos_section_completed">Completed</string>
+    <string name="turnos_section_other">Other appointments</string>
     <string name="features_turnos_gestionar_semana">Manage week</string>
     <string name="features_turnos_volver">Back</string>
     <string name="features_turnos_guardando_y_publicando">Saving and publishing…</string>
