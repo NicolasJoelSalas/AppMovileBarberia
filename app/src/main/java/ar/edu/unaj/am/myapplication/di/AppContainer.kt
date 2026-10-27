@@ -36,6 +36,12 @@ import ar.edu.unaj.am.myapplication.core.domain.usecase.ActualizarMiNombreUseCas
 
 
 class AppContainer(context: Context) {
+    private val dispositivoRepository = ar.edu.unaj.am.myapplication.core.data.repository.FirestoreDispositivoRepository()
+    val notificaciones = ar.edu.unaj.am.myapplication.features.notifications.RegistroNotificaciones(
+        context,
+        ar.edu.unaj.am.myapplication.core.domain.usecase.RegistrarDispositivoUseCase(dispositivoRepository),
+        ar.edu.unaj.am.myapplication.core.domain.usecase.DesvincularDispositivoUseCase(dispositivoRepository)
+    )
     private val servicioRepository = ar.edu.unaj.am.myapplication.core.data.repository.FirestoreServicioRepository()
     val obtenerMisServicios = ar.edu.unaj.am.myapplication.core.domain.usecase.ObtenerMisServiciosUseCase(servicioRepository)
     val guardarServicio = ar.edu.unaj.am.myapplication.core.domain.usecase.GuardarServicioUseCase(servicioRepository)
@@ -119,6 +125,14 @@ class AppContainer(context: Context) {
     fun clienteActualId(): String? = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
 
     suspend fun limpiarSesion(uid: String) {
+        try {
+            kotlinx.coroutines.withTimeout(8000) { notificaciones.cerrarSesion() }
+        } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+            android.util.Log.w("BarberiaFCM", "Desvinculación pendiente por falta de conexión")
+        } catch (e: kotlinx.coroutines.CancellationException) { throw e
+        } catch (e: Exception) {
+            android.util.Log.w("BarberiaFCM", "No se pudo desvincular el dispositivo", e)
+        }
         try {
             turnoRepository.limpiarSesion(uid)
         } finally {

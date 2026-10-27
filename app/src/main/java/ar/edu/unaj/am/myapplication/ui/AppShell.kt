@@ -16,6 +16,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
@@ -51,6 +52,31 @@ fun AppShell(
     }
     val reservasState by reservasViewModel.uiState.collectAsStateWithLifecycle()
     val esBarbero = reservasState.catalogo?.esBarbero == true
+    val notificationContext = androidx.compose.ui.platform.LocalContext.current
+    suspend fun sincronizarNotificaciones() {
+        try { container.notificaciones.sincronizar() }
+        catch (e: kotlinx.coroutines.CancellationException) { throw e }
+        catch (e: Exception) { android.util.Log.w("BarberiaFCM", "No se pudo sincronizar el dispositivo", e) }
+    }
+    val notificationScope = androidx.compose.runtime.rememberCoroutineScope()
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+        if (esBarbero) notificationScope.launch { sincronizarNotificaciones() }
+    }
+    LaunchedEffect(esBarbero) {
+        if (esBarbero) sincronizarNotificaciones()
+    }
+    if (esBarbero) {
+        ar.edu.unaj.am.myapplication.features.notifications.PermisoNotificacionesBarbero()
+    }
+    LaunchedEffect(esBarbero, notificationContext) {
+        val intent = (notificationContext as? android.app.Activity)?.intent
+        if (esBarbero && (intent?.getBooleanExtra("abrir_turnos_fcm", false) == true ||
+                intent?.getStringExtra("turnoId") != null)) {
+            navigationState.selectTab(TopLevelDestination.TURNOS)
+            intent.removeExtra("abrir_turnos_fcm")
+            intent.removeExtra("turnoId")
+        }
+    }
     var turnosParaAvisos by remember { mutableStateOf<List<Turno>?>(null) }
     var turnosPendientes by remember { mutableStateOf(0) }
     LaunchedEffect(reservasState.catalogo?.esBarbero) {

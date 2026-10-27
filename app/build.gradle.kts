@@ -51,6 +51,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":features:notifications"))
     implementation(libs.androidx.sqlite.bundled)
     // :app es el "composition root": el único módulo que conoce TODAS las capas
     // para poder conectarlas (inyección de dependencias manual en AppContainer).

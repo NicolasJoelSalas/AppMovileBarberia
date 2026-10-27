@@ -1,0 +1,4 @@
+<resources>
+    <string name="notifications_channel">Cambios en turnos</string>
+    <string name="notifications_title">Cambios en tu agenda</string>
+</resources>

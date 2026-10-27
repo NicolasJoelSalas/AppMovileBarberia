@@ -153,6 +153,15 @@ service cloud.firestore {
 
     // Cada cuenta puede consultar su propio documento, incluso si todavía no existe.
     match /barberos/{uid} {
+      match /dispositivos/{instalacionId} {
+        allow read, delete: if request.auth != null && request.auth.uid == uid;
+        allow create, update: if esBarberoHabilitado() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['token', 'actualizadoEn'])
+          && request.resource.data.keys().hasAll(['token', 'actualizadoEn'])
+          && request.resource.data.token is string
+          && request.resource.data.token.size() > 0 && request.resource.data.token.size() <= 4096
+          && request.resource.data.actualizadoEn == request.time;
+      }
       allow get: if request.auth != null
         && (request.auth.uid == uid || resource.data.Estado == true);
       allow list: if request.auth != null && resource.data.Estado == true;

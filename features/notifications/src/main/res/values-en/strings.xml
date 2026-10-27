@@ -1,0 +1,4 @@
+<resources>
+    <string name="notifications_channel">Appointment changes</string>
+    <string name="notifications_title">Changes to your schedule</string>
+</resources>

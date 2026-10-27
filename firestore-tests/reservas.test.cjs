@@ -39,6 +39,33 @@ async function publish() {
   await assertSucceeds(setDoc(doc(db('barbero'),`horarios/${horarioId}`),slot()));
 }
 
+test('FCM: solo el propietario administra sus dispositivos', async () => {
+  const path = 'barberos/barbero/dispositivos/celular';
+  const datos = () => ({token:'token-prueba', actualizadoEn:serverTimestamp()});
+  await assertSucceeds(setDoc(doc(db('barbero'), path), datos()));
+  await assertSucceeds(getDoc(doc(db('barbero'), path)));
+  for (const uid of ['otro', 'ana']) {
+    await assertFails(getDoc(doc(db(uid), path)));
+    await assertFails(setDoc(doc(db(uid), path), datos()));
+    await assertFails(deleteDoc(doc(db(uid), path)));
+  }
+  await assertFails(getDoc(doc(env.unauthenticatedContext().firestore(), path)));
+  await assertFails(setDoc(doc(db('ana'), 'barberos/ana/dispositivos/celular'), datos()));
+  await assertSucceeds(deleteDoc(doc(db('barbero'), path)));
+});
+
+test('FCM: valida tokens y permite desvincular un barbero deshabilitado', async () => {
+  const ref = doc(db('barbero'), 'barberos/barbero/dispositivos/celular');
+  await assertFails(setDoc(ref, {token:'', actualizadoEn:serverTimestamp()}));
+  await assertFails(setDoc(ref, {token:'x'.repeat(4097), actualizadoEn:serverTimestamp()}));
+  await assertFails(setDoc(ref, {token:'token', actualizadoEn:start}));
+  await assertFails(setDoc(ref, {token:'token', actualizadoEn:serverTimestamp(), uid:'otro'}));
+  await assertSucceeds(setDoc(ref, {token:'token', actualizadoEn:serverTimestamp()}));
+  await env.withSecurityRulesDisabled(ctx => updateDoc(doc(ctx.firestore(), 'barberos/barbero'), {Estado:false}));
+  await assertFails(setDoc(ref, {token:'nuevo', actualizadoEn:serverTimestamp()}));
+  await assertSucceeds(deleteDoc(ref));
+});
+
 test('ubicacion: el propietario guarda y el cliente consulta el punto de su barberia', async () => {
   const ref = doc(db('barbero'), 'barberos/barbero');
   await assertSucceeds(updateDoc(ref, {Ubicacion:new GeoPoint(-34.8, -58.3), UbicacionActualizadaEn:serverTimestamp()}));
