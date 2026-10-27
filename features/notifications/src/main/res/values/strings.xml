@@ -1,4 +1,7 @@
 <resources>
+    <string name="notifications_alta">Tenés una nueva reserva en tu agenda.</string>
+    <string name="notifications_baja">Un turno se canceló o dejó de estar asignado a tu agenda.</string>
+    <string name="notifications_modificacion">Se modificó un turno de tu agenda.</string>
     <string name="notifications_channel">Cambios en turnos</string>
     <string name="notifications_title">Cambios en tu agenda</string>
 </resources>

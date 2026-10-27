@@ -4,7 +4,9 @@ import android.app.Application
 import kotlinx.coroutines.launch
 import ar.edu.unaj.am.myapplication.di.AppContainer
 
-class ComposeAcademyApp : Application(), ar.edu.unaj.am.myapplication.features.notifications.NotificacionesDependencies {
+class ComposeAcademyApp : Application(), ar.edu.unaj.am.myapplication.features.notifications.NotificacionesDependencies,
+    ar.edu.unaj.am.myapplication.features.notifications.TurnosWorkerDependencies {
+    override val avisosTurnos get() = container.avisosTurnos
     private val notificationScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
     override fun puedeRecibirNotificaciones(uid: String): Boolean =
         container.clienteActualId() == uid && !container.notificaciones.sesionCerrada

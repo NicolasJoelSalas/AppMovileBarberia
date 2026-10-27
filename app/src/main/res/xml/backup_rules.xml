@@ -7,6 +7,8 @@
 -->
 <full-backup-content>
     <exclude domain="sharedpref" path="turno_reminders.xml" />
+    <exclude domain="sharedpref" path="avisos_turnos.xml" />
+    <exclude domain="sharedpref" path="fcm_installation.xml" />
     <!--
    <include domain="sharedpref" path="."/>
    <exclude domain="sharedpref" path="device.xml"/>

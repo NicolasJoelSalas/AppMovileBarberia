@@ -36,6 +36,11 @@ import ar.edu.unaj.am.myapplication.core.domain.usecase.ActualizarMiNombreUseCas
 
 
 class AppContainer(context: Context) {
+    private val novedadesRepository = ar.edu.unaj.am.myapplication.core.data.repository.FirestoreNovedadesTurnosRepository()
+    val avisosTurnos = ar.edu.unaj.am.myapplication.features.notifications.AvisosTurnos(context,
+        ar.edu.unaj.am.myapplication.core.domain.usecase.ConsultarNovedadesTurnosUseCase(novedadesRepository),
+        ar.edu.unaj.am.myapplication.core.domain.usecase.ObservarNovedadesTurnosUseCase(novedadesRepository),
+        usuarioActual = { clienteActualId() })
     private val dispositivoRepository = ar.edu.unaj.am.myapplication.core.data.repository.FirestoreDispositivoRepository()
     val notificaciones = ar.edu.unaj.am.myapplication.features.notifications.RegistroNotificaciones(
         context,
@@ -125,6 +130,7 @@ class AppContainer(context: Context) {
     fun clienteActualId(): String? = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.uid
 
     suspend fun limpiarSesion(uid: String) {
+        avisosTurnos.detener()
         try {
             kotlinx.coroutines.withTimeout(8000) { notificaciones.cerrarSesion() }
         } catch (e: kotlinx.coroutines.TimeoutCancellationException) {

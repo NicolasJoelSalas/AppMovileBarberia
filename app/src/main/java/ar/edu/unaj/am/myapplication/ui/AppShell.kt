@@ -63,7 +63,10 @@ fun AppShell(
         if (esBarbero) notificationScope.launch { sincronizarNotificaciones() }
     }
     LaunchedEffect(esBarbero) {
-        if (esBarbero) sincronizarNotificaciones()
+        if (esBarbero) {
+            container.clienteActualId()?.let { container.avisosTurnos.iniciar(it) }
+            sincronizarNotificaciones()
+        }
     }
     if (esBarbero) {
         ar.edu.unaj.am.myapplication.features.notifications.PermisoNotificacionesBarbero()

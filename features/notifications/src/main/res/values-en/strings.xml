@@ -1,4 +1,7 @@
 <resources>
+    <string name="notifications_alta">You have a new appointment.</string>
+    <string name="notifications_baja">An appointment was cancelled or removed from your schedule.</string>
+    <string name="notifications_modificacion">An appointment was updated.</string>
     <string name="notifications_channel">Appointment changes</string>
     <string name="notifications_title">Changes to your schedule</string>
 </resources>
