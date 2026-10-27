@@ -47,6 +47,16 @@ class PoliticaReservasTest {
         assertFalse(politica.cancelarAlPublicar("realizado", ahora+60000, ahora+120000, sinAtencion))
         assertFalse(politica.cancelarAlPublicar("pendiente", ahora+60000, ahora+120000, sinAtencion.copy(atencion="1".repeat(180))))
     }
+    @Test fun `las reservas requieren un minuto futuro completo y un nombre valido`() {
+        val ahora = instante.toEpochMilli()
+        politica.validarInicioReserva(ahora+60000)
+        error(ErrorReason.BOOKING_SELECTION) { politica.validarInicioReserva(ahora) }
+        error(ErrorReason.BOOKING_SELECTION) { politica.validarInicioReserva(ahora+1) }
+        assertTrue(nombreClienteReservaValido(" Cliente "))
+        assertTrue(nombreClienteReservaValido("a".repeat(120)))
+        assertFalse(nombreClienteReservaValido(" "))
+        assertFalse(nombreClienteReservaValido("a".repeat(121)))
+    }
     private fun error(reason: ErrorReason, bloque: () -> Unit) {
         try { bloque(); fail("Se esperaba $reason") }
         catch (e: DomainValidationException) { assertEquals(DomainError.Known(reason), e.error) }

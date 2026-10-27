@@ -18,8 +18,7 @@ class ConsultarSemanaUseCase @Inject constructor(private val repository: Reserva
 class ReservarTurnoUseCase @Inject constructor(private val repository: ReservaRepository) {
     suspend operator fun invoke(solicitud: SolicitudReserva): AppResult<String> =
         if (solicitud.barberoId.isBlank() || solicitud.servicioId.isBlank() ||
-            solicitud.solicitudId.isBlank() || solicitud.nombreCliente.isBlank() ||
-            solicitud.nombreCliente.trim().length > 120)
+            solicitud.solicitudId.isBlank() || !nombreClienteReservaValido(solicitud.nombreCliente))
             AppResult.Error(DomainError.Known(ErrorReason.BOOKING_FIELDS))
         else repository.reservar(solicitud.copy(nombreCliente = solicitud.nombreCliente.trim()))
 }
@@ -30,7 +29,9 @@ class CancelarTurnoUseCase @Inject constructor(private val repository: ReservaRe
 class ModificarTurnoUseCase @Inject constructor(private val repository: ReservaRepository) {
     suspend operator fun invoke(turnoId: String, solicitud: SolicitudReserva): AppResult<String> =
         if (turnoId.isBlank() || solicitud.barberoId.isBlank() || solicitud.servicioId.isBlank() ||
-            solicitud.nombreCliente.isBlank() || solicitud.nombreCliente.trim().length > 120)
+            !nombreClienteReservaValido(solicitud.nombreCliente))
             AppResult.Error(DomainError.Known(ErrorReason.BOOKING_FIELDS))
         else repository.modificar(turnoId, solicitud.copy(nombreCliente = solicitud.nombreCliente.trim()))
 }
+
+fun nombreClienteReservaValido(nombre: String): Boolean = nombre.isNotBlank() && nombre.trim().length <= 120

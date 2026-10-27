@@ -61,7 +61,6 @@ import ar.edu.unaj.am.myapplication.core.ui.components.ErrorContent
 import ar.edu.unaj.am.myapplication.core.ui.components.LoadingContent
 import ar.edu.unaj.am.myapplication.core.ui.components.asMessage
 import ar.edu.unaj.am.myapplication.features.turnos.components.TurnoCard
-import ar.edu.unaj.am.myapplication.core.domain.usecase.instanteRecordatorio
 
 @Composable
 fun TurnosListRoute(viewModel: TurnoListViewModel, onReservar: (() -> Unit)? = null,
@@ -89,7 +88,7 @@ fun TurnosListRoute(viewModel: TurnoListViewModel, onReservar: (() -> Unit)? = n
         onComoLlegar = onComoLlegar,
         avisoSincronizacion = avisoSincronizacion?.asMessage(),
         semanaOffset = semanaOffset, onSemanaChange = viewModel::seleccionarSemana,
-        ahoraMillis = ahoraMillis, completandoId = completandoId,
+        ahoraMillis = ahoraMillis, accionesTurnos = viewModel.accionesTurnos(ahoraMillis), completandoId = completandoId,
         errorCompletar = errorCompletar?.asMessage(),
         onRecordatorio = onRecordatorio, recordatoriosActivos = recordatoriosActivos,
         onModificar = onModificar, onCancelar = if (viewModel.puedeCancelar) viewModel::cancelar else null,
@@ -113,7 +112,8 @@ fun TurnosListScreen(
     onRecordatorio: ((Turno) -> Unit)? = null,
     recordatoriosActivos: Set<String> = emptySet(),
     onCancelar: ((Turno) -> Unit)? = null, onModificar: ((Turno) -> Unit)? = null,
-    avisoSincronizacion: String? = null
+    avisoSincronizacion: String? = null,
+    accionesTurnos: Map<String, AccionesTurno> = emptyMap()
 ) {
     var filtroEstado by rememberSaveable { mutableStateOf("Todos") }
     var cancelar by remember { androidx.compose.runtime.mutableStateOf<Turno?>(null) }
@@ -224,18 +224,16 @@ fun TurnosListScreen(
                                     modifier = Modifier.padding(top = 8.dp, bottom = 4.dp).semantics { heading() })
                             }
                         items(turnos, key = { it.id }) { turno ->
-                            TurnoCard(turno = turno,
+                            val acciones = accionesTurnos[turno.id] ?: AccionesTurno()
+                            TurnoCard(turno = turno, acciones = acciones,
                                 onCancelar = onCancelar?.let { { cancelar = turno } },
                                 onModificar = onModificar?.let { action -> { action(turno) } },
-                                editable = turno.estadoNormalizado == EstadoTurno.PENDIENTE && (turno.inicioMillis ?: 0L) > ahoraMillis,
                                 operando = completandoId != null,
                                 onComoLlegar = onComoLlegar?.let { abrir -> { abrir(turno) } },
                                 onRecordatorio = onRecordatorio?.let { action -> { action(turno) } },
                                 recordatorioActivo = turno.id in recordatoriosActivos,
-                                recordatorioHabilitado = instanteRecordatorio(turno, ahoraMillis) != null,
                                 onMarcarRealizado = onMarcarRealizado?.let { action -> { action(turno) } },
-                                habilitado = completandoId == null &&
-                                    turno.inicioMillis?.let { it <= ahoraMillis } == true,
+                                habilitado = completandoId == null && acciones.completable,
                                 completando = completandoId == turno.id)
                         }
                         }

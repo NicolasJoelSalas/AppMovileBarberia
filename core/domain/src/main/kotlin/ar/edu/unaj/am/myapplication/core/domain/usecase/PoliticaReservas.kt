@@ -12,12 +12,25 @@ class PoliticaReservas @Inject constructor(private val reloj: Clock) {
         requireDomain(minutos in 5..240, ErrorReason.SERVICE_FIELDS)
         return minutos
     }
+    fun esEditable(estado: String, inicio: Long?, ahoraMillis: Long = reloj.millis()): Boolean =
+        estadoTurno(estado) == EstadoTurno.PENDIENTE && inicio != null && inicio > ahoraMillis
+
+    fun esRealizable(estado: String, inicio: Long?, ahoraMillis: Long = reloj.millis()): Boolean =
+        motivoNoRealizable(estado, inicio, ahoraMillis) == null
+
     fun validarEditable(estado: String, inicio: Long) {
-        requireDomain(estadoTurno(estado) == EstadoTurno.PENDIENTE && inicio > reloj.millis(), ErrorReason.BOOKING_NOT_EDITABLE)
+        requireDomain(esEditable(estado, inicio), ErrorReason.BOOKING_NOT_EDITABLE)
     }
     fun validarRealizable(estado: String, inicio: Long?) {
-        requireDomain(estadoTurno(estado) == EstadoTurno.PENDIENTE, ErrorReason.APPOINTMENT_PENDING)
-        requireDomain(inicio != null && inicio <= reloj.millis(), ErrorReason.APPOINTMENT_NOT_STARTED)
+        motivoNoRealizable(estado, inicio, reloj.millis())?.let { requireDomain(false, it) }
+    }
+    private fun motivoNoRealizable(estado: String, inicio: Long?, ahoraMillis: Long): ErrorReason? = when {
+        estadoTurno(estado) != EstadoTurno.PENDIENTE -> ErrorReason.APPOINTMENT_PENDING
+        inicio == null || inicio > ahoraMillis -> ErrorReason.APPOINTMENT_NOT_STARTED
+        else -> null
+    }
+    fun validarInicioReserva(inicio: Long) {
+        requireDomain(inicio > reloj.millis() && inicio % 60000L == 0L, ErrorReason.BOOKING_SELECTION)
     }
     fun lunes(zona: ZoneId, offset: Int): LocalDate {
         requireDomain(offset in 0..1, ErrorReason.WEEK_SELECTION)

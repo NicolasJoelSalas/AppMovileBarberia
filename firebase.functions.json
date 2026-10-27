@@ -1,8 +1,0 @@
-{
-  "functions": [{
-    "source": "functions",
-    "codebase": "default",
-    "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run build"],
-    "ignore": ["node_modules", "lib/**/*.test.js", "lib/**/*.test.js.map", "*-debug.log"]
-  }]
-}

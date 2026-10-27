@@ -191,7 +191,8 @@ class FirestoreTurnoRepository @Inject constructor(
             check(perfil.getBoolean("Estado") == true && doc.getString("BarberoId") == uid) {
                 "Solo podés completar tus propios turnos como barbero habilitado."
             }
-            if (doc.get("Estado") == "realizado") return@runTransaction Unit
+            if (ar.edu.unaj.am.myapplication.core.domain.model.estadoTurno(doc.get("Estado").toString()) ==
+                ar.edu.unaj.am.myapplication.core.domain.model.EstadoTurno.REALIZADO) return@runTransaction Unit
             ar.edu.unaj.am.myapplication.core.domain.usecase.PoliticaReservas(reloj).validarRealizable(
                 doc.get("Estado").toString(), doc.getTimestamp("Inicio")?.toDate()?.time
             )

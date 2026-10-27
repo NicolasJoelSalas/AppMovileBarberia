@@ -84,4 +84,23 @@ class TurnoListViewModelTest {
         vm.seleccionarSemana(0)
         assertEquals(listOf("actual"), ids())
     }
+    @Test fun `las acciones se recalculan al pasar la hora y al recibir cambios remotos`() = runTest {
+        val inicio = Instant.parse("2026-10-08T13:00:00Z").toEpochMilli()
+        val turno = Turno("t1","cliente","barbero","corte",inicio,null,"Confirmado")
+        val source = MutableStateFlow<AppResult<List<Turno>>>(AppResult.Success(listOf(turno)))
+        val repo = object : TurnoRepository {
+            override fun observeTurnos(comoCliente: Boolean) = source
+            override suspend fun marcarRealizado(turnoId: String) = AppResult.Success(Unit)
+        }
+        val vm = TurnoListViewModel(ObserveTurnosUseCase(repo),comoCliente=false,
+            filtrarSemana=FiltrarTurnosPorSemanaUseCase(Clock.fixed(Instant.ofEpochMilli(inicio),ZoneId.of("America/Argentina/Buenos_Aires"))))
+        assertTrue(vm.accionesTurnos(inicio-1).getValue("t1").editable)
+        assertFalse(vm.accionesTurnos(inicio-1).getValue("t1").completable)
+        assertFalse(vm.accionesTurnos(inicio).getValue("t1").editable)
+        assertTrue(vm.accionesTurnos(inicio).getValue("t1").completable)
+        source.value=AppResult.Error(ar.edu.unaj.am.myapplication.core.domain.model.DomainError.Network)
+        assertTrue(vm.accionesTurnos(inicio).getValue("t1").completable)
+        source.value=AppResult.Success(listOf(turno.copy(estado="Cancelada")))
+        assertFalse(vm.accionesTurnos(inicio).getValue("t1").completable)
+    }
 }

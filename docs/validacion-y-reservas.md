@@ -107,6 +107,6 @@ Se retiraron el generador fijo de 40 minutos, la dependencia de Cloud Functions 
 los módulos inactivos del template y sus pruebas/recursos de ejemplo. Se conservan
 las migraciones y los datos históricos necesarios para la aplicación.
 
-La carpeta `functions` y `firebase.functions.json` conservan el backend opcional de
-notificaciones anterior. No se necesitan, no se despliegan y no son dependencias
-de las reservas con Spark.
+Se eliminó el backend opcional de notificaciones anterior, que no estaba desplegado
+ni era una dependencia de las reservas con Spark. Los avisos actuales se gestionan
+desde la aplicación mediante sincronización y WorkManager.

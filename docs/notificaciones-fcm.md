@@ -35,9 +35,8 @@ No se necesita publicar ninguna función ni mantener una computadora encendida. 
 
 ## Plan de Firebase
 
-Los avisos locales y el registro de tokens no requieren Blaze. Se conserva el backend
-opcional de notificaciones en `functions`, pero no forma parte del flujo actual
-ni se debe desplegar para utilizar las reservas con Spark.
+Los avisos locales y el registro de tokens no requieren Blaze. Se eliminó el backend
+opcional de notificaciones, que no estaba desplegado ni formaba parte del flujo actual.
 Las reservas también utilizan transacciones directas de Firestore; ver
 [reservas sin Blaze](validacion-y-reservas.md).
 

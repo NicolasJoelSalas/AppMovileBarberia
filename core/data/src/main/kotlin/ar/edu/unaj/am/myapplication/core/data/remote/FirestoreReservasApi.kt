@@ -3,6 +3,7 @@ package ar.edu.unaj.am.myapplication.core.data.remote
 import ar.edu.unaj.am.myapplication.core.domain.model.*
 import ar.edu.unaj.am.myapplication.core.domain.usecase.crearDiaAtencion
 import ar.edu.unaj.am.myapplication.core.domain.usecase.PoliticaReservas
+import ar.edu.unaj.am.myapplication.core.domain.usecase.nombreClienteReservaValido
 import com.google.android.gms.tasks.Task
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
@@ -41,7 +42,7 @@ class FirestoreReservasApi(
         "${barbero}_${Instant.ofEpochMilli(inicio).atZone(zona).toLocalDate().atStartOfDay(zona).toInstant().toEpochMilli()}"
     private fun inicio(t: DocumentSnapshot) = requireNotNull(t.getTimestamp("Inicio")) { "El turno no tiene fecha de inicio." }.toDate().time
     private fun fin(t: DocumentSnapshot) = requireNotNull(t.getTimestamp("Fin")) { "El turno no tiene fecha de fin." }.toDate().time
-    private fun activo(t: DocumentSnapshot) = t.get("Estado").toString().lowercase() !in listOf("false", "cancelado", "cancelada")
+    private fun activo(t: DocumentSnapshot) = estadoTurno(t.get("Estado").toString()) != EstadoTurno.CANCELADO
     private fun editable(t: DocumentSnapshot) {
         requireDomain(t.exists(), ErrorReason.BOOKING_NOT_OWNED)
         politica.validarEditable(t.get("Estado").toString(), inicio(t))
@@ -169,7 +170,7 @@ class FirestoreReservasApi(
                 val minutos = duracion(tx.get(firestore.collection("servicios").document(servicioId)), barberoId)
                 val fin = inicio + minutos * 60000L
                 requireDomain((datos["finMillisEsperado"] as? Number)?.toLong() == fin,ErrorReason.SERVICE_CHANGED)
-                check(inicio > reloj.millis() && inicio % 60000L == 0L) { "Elegí un horario futuro válido." }
+                politica.validarInicioReserva(inicio)
                 val fecha = politica.semanaDe(inicio,zona)
                 politica.validarSemana(fecha,zona)
                 val nuevoRef = diaRef(diaId(barberoId, inicio, zona))
@@ -178,7 +179,7 @@ class FirestoreReservasApi(
                     inicio(anterior), habilitado(tx.get(barber(requireNotNull(anterior.getString("BarberoId")))))) else null
                 val previo = if (anteriorId != null && anteriorId != nuevoRef.id) tx.get(diaRef(anteriorId)) else null
                 val nombre = (datos["nombreCliente"] as? String).orEmpty().trim()
-                require(nombre.isNotEmpty() && nombre.length <= 120) { "Completá tu nombre." }
+                requireDomain(nombreClienteReservaValido(nombre), ErrorReason.BOOKING_FIELDS)
                 var mapa = ocupacion(nuevo)
                 if (anteriorId == nuevoRef.id) mapa = mapa.liberar(inicio(anterior), fin(anterior))
                 val ocupado = mapa.ocupar(inicio, fin)
@@ -205,7 +206,7 @@ class FirestoreReservasApi(
         val t = tx.get(turnoRef(id))
         val comoBarbero = t.getString("BarberoId") == uid
         requireDomain(t.exists() && (comoBarbero || t.getString("ClienteId") == uid),ErrorReason.BOOKING_NOT_OWNED)
-        if (t.get("Estado").toString().lowercase() == "cancelado") mapOf("cancelado" to true) else {
+        if (estadoTurno(t.get("Estado").toString()) == EstadoTurno.CANCELADO) mapOf("cancelado" to true) else {
             editable(t)
             val barberoId = requireNotNull(t.getString("BarberoId"))
             val b = tx.get(barber(barberoId))

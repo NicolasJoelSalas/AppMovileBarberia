@@ -10,6 +10,8 @@ import androidx.lifecycle.viewModelScope
 import ar.edu.unaj.am.myapplication.core.domain.model.AppResult
 import ar.edu.unaj.am.myapplication.core.domain.model.DomainError
 import ar.edu.unaj.am.myapplication.core.domain.model.Turno
+import ar.edu.unaj.am.myapplication.core.domain.model.AccionesTurno
+import ar.edu.unaj.am.myapplication.core.domain.usecase.EvaluarAccionesTurnoUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.ObserveTurnosUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.MarcarTurnoRealizadoUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.FiltrarTurnosPorSemanaUseCase
@@ -30,7 +32,8 @@ class TurnoListViewModel @AssistedInject constructor(
     @Assisted private val comoCliente: Boolean = false,
     private val filtrarSemana: FiltrarTurnosPorSemanaUseCase = FiltrarTurnosPorSemanaUseCase(),
     private val completarTurno: MarcarTurnoRealizadoUseCase? = null,
-    private val cancelarTurno: ar.edu.unaj.am.myapplication.core.domain.usecase.CancelarTurnoUseCase? = null
+    private val cancelarTurno: ar.edu.unaj.am.myapplication.core.domain.usecase.CancelarTurnoUseCase? = null,
+    private val evaluarAcciones: EvaluarAccionesTurnoUseCase = EvaluarAccionesTurnoUseCase()
 ) : ViewModel() {
     @AssistedFactory
     interface Factory {
@@ -88,6 +91,10 @@ class TurnoListViewModel @AssistedInject constructor(
             } finally { mutableCompletandoId.value = null }
         }
     }
+
+    fun accionesTurnos(ahoraMillis: Long): Map<String, AccionesTurno> =
+        (mutableUiState.value as? TurnosListUiState.Success)?.turnos.orEmpty()
+            .associate { it.id to evaluarAcciones(it, ahoraMillis) }
 
     fun seleccionarSemana(offset: Int) {
         if (offset !in 0..1) return

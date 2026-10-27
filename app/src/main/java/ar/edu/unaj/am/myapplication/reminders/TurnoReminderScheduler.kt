@@ -16,10 +16,8 @@ import android.net.Uri
 import android.os.Build
 import ar.edu.unaj.am.myapplication.core.domain.model.Turno
 import ar.edu.unaj.am.myapplication.core.domain.usecase.instantesRecordatorios
-import ar.edu.unaj.am.myapplication.core.domain.usecase.anticipacionesRecordatorio
+import ar.edu.unaj.am.myapplication.core.domain.model.anticipacionesRecordatorio
 import ar.edu.unaj.am.myapplication.core.domain.model.RecordatorioTurnoLocal as TurnoReminder
-import ar.edu.unaj.am.myapplication.core.domain.model.EstadoTurno
-import ar.edu.unaj.am.myapplication.core.domain.model.estadoNormalizado
 import dagger.hilt.android.EntryPointAccessors
 
 internal class TurnoReminderScheduler(private val context: Context) {
@@ -74,10 +72,11 @@ internal class TurnoReminderScheduler(private val context: Context) {
         val uid = owner ?: return false
         val now = System.currentTimeMillis()
         val inicio = turno.inicioMillis ?: return false
-        if (uid != turno.clienteId || instantesRecordatorios(turno, now).isEmpty()) return false
+        val instantes = instantesRecordatorios(turno, now)
+        if (uid != turno.clienteId || instantes.isEmpty()) return false
         remove(turno.id)
         val reminder = TurnoReminder(turno.id, uid, inicio,
-            anticipacionesRecordatorio.filter { inicio - it > now })
+            instantes.map { inicio - it })
         return save(reminder) && arm(reminder)
     }
 
@@ -119,8 +118,8 @@ internal class TurnoReminderScheduler(private val context: Context) {
         turnos.forEach { turno ->
             val saved = existing[turno.id]
             val inicio = turno.inicioMillis
-            if (turno.clienteId != owner || inicio == null || inicio <= System.currentTimeMillis() ||
-                turno.estadoNormalizado != EstadoTurno.PENDIENTE) remove(turno.id)
+            if (turno.clienteId != owner || inicio == null ||
+                !dependencies.politicaReservas().esEditable(turno.estado, inicio)) remove(turno.id)
             else if (saved?.disabled == true) {
                 if (saved.inicio != inicio) save(saved.copy(inicio = inicio))
             } else if (saved == null || saved.inicio != turno.inicioMillis || saved.version < 2) schedule(turno)

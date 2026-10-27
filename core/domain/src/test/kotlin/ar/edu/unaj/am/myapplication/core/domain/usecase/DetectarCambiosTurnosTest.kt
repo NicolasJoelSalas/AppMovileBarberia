@@ -43,4 +43,32 @@ class DetectarCambiosTurnosTest {
         assertEquals("modificacion", detectarCambiosTurnos(base, listOf(turno.copy(referenciaCorteUrl = "https://imagen"))).single().tipo)
         assertEquals("modificacion", detectarCambiosTurnos(base, listOf(turno.copy(servicioId = "otro"))).single().tipo)
     }
+    @Test fun `los alias de finalizados nunca generan avisos de alta ni modificacion`() {
+        for (estado in listOf("realizado","Realizado","completado","Completado")) {
+            val finalizado = turno.copy(estado=estado)
+            assertTrue(detectarCambiosTurnos(base,listOf(finalizado)).isEmpty())
+            assertTrue(detectarCambiosTurnos(emptyMap(),listOf(finalizado)).isEmpty())
+        }
+    }
+    @Test fun `las firmas antiguas se normalizan sin notificar cambios de representacion`() {
+        for (anterior in listOf("confirmado","Confirmado","pendiente","true")) {
+            val antigua = firmaTurno(turno).toMutableList().apply { this[5]=anterior }
+            for (nuevo in listOf("confirmado","Pendiente","true")) {
+                assertTrue(detectarCambiosTurnos(mapOf(turno.id to antigua),listOf(turno.copy(estado=nuevo))).isEmpty())
+            }
+            assertEquals("modificacion",detectarCambiosTurnos(mapOf(turno.id to antigua),
+                listOf(turno.copy(inicioMillis=3000L))).single().tipo)
+        }
+    }
+    @Test fun `los alias de cancelacion respetan al autor y no repiten el aviso al cliente`() {
+        val antigua = firmaTurno(turno).toMutableList().apply { this[5]="true" }
+        for (estado in listOf("cancelado","Cancelada","false")) {
+            val cancelado = turno.copy(estado=estado,canceladoPor="barbero")
+            assertEquals("cancelacion_cliente",detectarCancelacionesCliente(mapOf(turno.id to antigua),listOf(cancelado)).single().tipo)
+            assertTrue(detectarCambiosTurnos(base,listOf(cancelado)).isEmpty())
+            assertEquals("baja",detectarCambiosTurnos(base,listOf(cancelado.copy(canceladoPor="cliente"))).single().tipo)
+            val firmaCancelada = firmaTurno(cancelado).toMutableList().apply { this[5]="false" }
+            assertTrue(detectarCancelacionesCliente(mapOf(turno.id to firmaCancelada),listOf(cancelado)).isEmpty())
+        }
+    }
 }

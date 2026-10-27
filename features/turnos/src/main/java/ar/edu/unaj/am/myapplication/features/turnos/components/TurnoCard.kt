@@ -32,12 +32,12 @@ private val fechaFormatter: DateTimeFormatter
     @androidx.compose.runtime.Composable get() = DateTimeFormatter.ofPattern("EEEE d MMMM", androidx.compose.ui.platform.LocalConfiguration.current.locales[0])
 
 @Composable
-fun TurnoCard(turno: Turno, modifier: Modifier = Modifier,
+fun TurnoCard(turno: Turno, modifier: Modifier = Modifier, acciones: AccionesTurno = AccionesTurno(),
     onMarcarRealizado: (() -> Unit)? = null, habilitado: Boolean = false,
     completando: Boolean = false, onRecordatorio: (() -> Unit)? = null,
-    recordatorioActivo: Boolean = false, recordatorioHabilitado: Boolean = false,
+    recordatorioActivo: Boolean = false,
     onComoLlegar: (() -> Unit)? = null, onCancelar: (() -> Unit)? = null,
-    onModificar: (() -> Unit)? = null, editable: Boolean = false, operando: Boolean = false) {
+    onModificar: (() -> Unit)? = null, operando: Boolean = false) {
     val zonaDispositivo = ZoneId.systemDefault()
     val inicio = turno.inicioMillis?.let { Instant.ofEpochMilli(it).atZone(zonaDispositivo) }
     val fin = turno.finMillis?.let { Instant.ofEpochMilli(it).atZone(zonaDispositivo) }
@@ -72,7 +72,7 @@ fun TurnoCard(turno: Turno, modifier: Modifier = Modifier,
                 Text(stringResource(R.string.turnos_reference_title), style = MaterialTheme.typography.titleSmall)
                 ar.edu.unaj.am.myapplication.features.turnos.list.ReferenciaCorteImagen(it)
             }
-            onComoLlegar?.takeIf { !realizado && turno.estadoNormalizado != EstadoTurno.CANCELADO }?.let { abrirRuta ->
+            onComoLlegar?.takeIf { acciones.permiteConsultarRuta }?.let { abrirRuta ->
                 OutlinedButton(onClick = abrirRuta,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                     Icon(Icons.Outlined.Directions, contentDescription = null,
@@ -81,10 +81,9 @@ fun TurnoCard(turno: Turno, modifier: Modifier = Modifier,
                     Text(stringResource(R.string.features_turnos_como_llegar))
                 }
             }
-            if (onRecordatorio != null && !realizado &&
-                turno.estadoNormalizado == EstadoTurno.PENDIENTE) {
+            if (onRecordatorio != null && acciones.admiteRecordatorios) {
                 OutlinedButton(onClick = onRecordatorio,
-                    enabled = recordatorioHabilitado || recordatorioActivo,
+                    enabled = acciones.recordatorioHabilitado || recordatorioActivo,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                     Icon(Icons.Outlined.NotificationsActive, contentDescription = null,
                         modifier = Modifier.size(18.dp))
@@ -94,11 +93,11 @@ fun TurnoCard(turno: Turno, modifier: Modifier = Modifier,
                 Text(when {
                     recordatorioActivo -> stringResource(R.string.features_turnos_avisos_automaticos_un_dia_y_una_hora_antes_hora_local_solo_se_envian_los_que_aun_no_pasaron)
                     turno.inicioMillis == null -> stringResource(R.string.features_turnos_el_turno_necesita_una_fecha_y_hora_de_inicio)
-                    !recordatorioHabilitado -> stringResource(R.string.features_turnos_la_hora_del_recordatorio_ya_paso)
+                    !acciones.recordatorioHabilitado -> stringResource(R.string.features_turnos_la_hora_del_recordatorio_ya_paso)
                     else -> stringResource(R.string.features_turnos_avisos_un_dia_antes_y_una_hora_antes_habilita_los_permisos_para_recibirlos)
                 }, style = MaterialTheme.typography.bodySmall, color = colors.onSurfaceVariant)
             }
-            if (editable) {
+            if (acciones.editable) {
                 onModificar?.let { OutlinedButton(onClick = it, enabled = !operando, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.features_turnos_modificar_turno)) } }
                 onCancelar?.let { OutlinedButton(onClick = it, enabled = !operando,
                     border = androidx.compose.foundation.BorderStroke(1.dp,
@@ -113,7 +112,7 @@ fun TurnoCard(turno: Turno, modifier: Modifier = Modifier,
                     Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = colors.primary)
                     Text(stringResource(R.string.features_turnos_realizado), color = colors.primary, fontWeight = FontWeight.SemiBold)
                 }
-            } else if (onMarcarRealizado != null && turno.estadoNormalizado == EstadoTurno.PENDIENTE) {
+            } else if (onMarcarRealizado != null && acciones.admiteFinalizacion) {
                 Button(onClick = onMarcarRealizado, enabled = habilitado,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
                     if (completando) {

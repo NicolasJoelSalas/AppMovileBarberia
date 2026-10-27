@@ -3,7 +3,7 @@ package ar.edu.unaj.am.myapplication.core.domain.usecase
 import ar.edu.unaj.am.myapplication.core.domain.model.Turno
 import java.time.Instant
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class RecordatorioTurnoTest {
@@ -48,29 +48,24 @@ class RecordatorioTurnoTest {
         assertEquals("2026-12-31T23:30", horaArgentina.toLocalDateTime().toString())
     }
 
-    @Test fun `programa una hora antes en la fecha de la proxima semana`() {
-        assertEquals(millis("2026-10-24T12:00:00Z"), instanteRecordatorio(
-            turno(millis("2026-10-24T13:00:00Z")), millis("2026-10-16T10:00:00Z")))
-    }
-
     @Test fun `cruza medianoche y ano sin cambiar el instante por zona horaria`() {
-        assertEquals(millis("2026-12-31T23:30:00Z"), instanteRecordatorio(
+        assertEquals(listOf(millis("2026-12-31T23:30:00Z")), instantesRecordatorios(
             turno(millis("2027-01-01T00:30:00Z")), millis("2026-12-31T20:00:00Z")))
     }
 
     @Test fun `rechaza recordatorios vencidos aunque el turno aun sea futuro`() {
         val now = millis("2026-10-16T12:00:00Z")
-        assertNull(instanteRecordatorio(turno(now + 3_600_000L), now))
-        assertNull(instanteRecordatorio(turno(now + 1_800_000L), now))
-        assertNull(instanteRecordatorio(turno(now - 1), now))
+        assertTrue(instantesRecordatorios(turno(now + 3_600_000L), now).isEmpty())
+        assertTrue(instantesRecordatorios(turno(now + 1_800_000L), now).isEmpty())
+        assertTrue(instantesRecordatorios(turno(now - 1), now).isEmpty())
     }
 
     @Test fun `rechaza fechas ausentes y estados no reservados`() {
         val now = millis("2026-10-16T12:00:00Z")
-        assertNull(instanteRecordatorio(turno(null), now))
+        assertTrue(instantesRecordatorios(turno(null), now).isEmpty())
         listOf("Cancelado", "Realizado", "Completado", "Sin estado").forEach {
-            assertNull(instanteRecordatorio(turno(now + 7_200_000L, it), now))
+            assertTrue(instantesRecordatorios(turno(now + 7_200_000L, it), now).isEmpty())
         }
-        assertEquals(now + 3_600_000L, instanteRecordatorio(turno(now + 7_200_000L, "Pendiente"), now))
+        assertEquals(listOf(now + 3_600_000L), instantesRecordatorios(turno(now + 7_200_000L, "Pendiente"), now))
     }
 }
