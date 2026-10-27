@@ -429,7 +429,8 @@ test('horarios antiguos sin referencia semanal requieren republicación', async 
 
 async function cancelBooking(uid = 'ana', released = 'libre') {
   const store = db(uid), batch = writeBatch(store);
-  batch.update(doc(store, 'turnos/cambio'), {Estado:'cancelado', CanceladoEn:serverTimestamp()});
+  batch.update(doc(store, 'turnos/cambio'), {Estado:'cancelado', CanceladoEn:serverTimestamp(),
+    ...(['barbero', 'otro'].includes(uid) ? {CanceladoPor:uid} : {})});
   batch.update(doc(store, `horarios/${horarioId}`), {Estado:released, TurnoId:deleteField()});
   return batch.commit();
 }
@@ -454,6 +455,14 @@ test('quitar franja: no cancela turnos que ya comenzaron', async () => {
     Inicio:Timestamp.fromMillis(Date.now() - 60000)
   }));
   await assertFails(cancelBooking('barbero', 'bloqueado'));
+});
+
+test('cancelacion: cliente no puede atribuir la cancelacion al barbero', async () => {
+  await setupChange();
+  const store = db('ana'), batch = writeBatch(store);
+  batch.update(doc(store, 'turnos/cambio'), {Estado:'cancelado', CanceladoEn:serverTimestamp(), CanceladoPor:'barbero'});
+  batch.update(doc(store, `horarios/${horarioId}`), {Estado:'libre', TurnoId:deleteField()});
+  await assertFails(batch.commit());
 });
 test('cancelar: requiere dueño y liberar el horario en la misma operación', async () => {
   await setupChange();

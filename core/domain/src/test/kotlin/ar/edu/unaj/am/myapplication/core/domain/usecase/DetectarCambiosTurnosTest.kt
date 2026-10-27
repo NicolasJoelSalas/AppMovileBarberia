@@ -8,6 +8,15 @@ import org.junit.Test
 class DetectarCambiosTurnosTest {
     private val turno = Turno("t1", "cliente", "barbero", "servicio", 1000L, 2000L, "confirmado")
     private val base = mapOf(turno.id to firmaTurno(turno))
+    @Test fun `cliente recibe solo cancelaciones nuevas del barbero`() {
+        val cancelado = turno.copy(estado = "Cancelado", canceladoPor = "barbero")
+        assertEquals("cancelacion_cliente", detectarCancelacionesCliente(base, listOf(cancelado)).single().tipo)
+        assertTrue(detectarCancelacionesCliente(emptyMap(), listOf(cancelado)).isEmpty())
+        assertTrue(detectarCancelacionesCliente(mapOf(turno.id to firmaTurno(cancelado)), listOf(cancelado)).isEmpty())
+        assertTrue(detectarCancelacionesCliente(base, listOf(cancelado.copy(canceladoPor = "cliente"))).isEmpty())
+        assertTrue(detectarCancelacionesCliente(base, listOf(turno.copy(inicioMillis = 3000L))).isEmpty())
+        assertTrue(detectarCancelacionesCliente(base, emptyList()).isEmpty())
+    }
     @Test fun `detecta alta modificacion cancelacion y desaparicion`() {
         assertEquals("alta", detectarCambiosTurnos(emptyMap(), listOf(turno)).single().tipo)
         assertEquals("modificacion", detectarCambiosTurnos(base, listOf(turno.copy(inicioMillis = 3000L))).single().tipo)

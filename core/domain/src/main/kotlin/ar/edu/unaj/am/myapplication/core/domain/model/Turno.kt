@@ -11,5 +11,6 @@ data class Turno(
     val clienteNombre: String = "",
     val servicioNombre: String = "",
     val precioCobradoCentavos: Long? = null,
-    val referenciaCorteUrl: String? = null
+    val referenciaCorteUrl: String? = null,
+    val canceladoPor: String? = null
 )

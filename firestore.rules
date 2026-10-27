@@ -103,7 +103,8 @@ service cloud.firestore {
       return esBarberoHabilitado() && antes.BarberoId == request.auth.uid
         && antes.Estado in ['confirmado', 'Confirmado', 'pendiente', 'Pendiente']
         && antes.Inicio > request.time
-        && despues.diff(antes).affectedKeys().hasOnly(['Estado', 'CanceladoEn'])
+        && despues.diff(antes).affectedKeys().hasOnly(['Estado', 'CanceladoEn', 'CanceladoPor'])
+        && despues.CanceladoPor == request.auth.uid
         && despues.Estado == 'cancelado' && despues.CanceladoEn == request.time
         && h.BarberoId == request.auth.uid && h.Estado == 'ocupado' && h.TurnoId == id
         && nuevo.diff(h).affectedKeys().hasOnly(['Estado', 'TurnoId'])

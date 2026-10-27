@@ -19,6 +19,7 @@ import ar.edu.unaj.am.myapplication.core.domain.model.Turno
 import ar.edu.unaj.am.myapplication.core.domain.usecase.ConsultarNovedadesTurnosUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.ObservarNovedadesTurnosUseCase
 import ar.edu.unaj.am.myapplication.core.domain.usecase.detectarCambiosTurnos
+import ar.edu.unaj.am.myapplication.core.domain.usecase.detectarCancelacionesCliente
 import ar.edu.unaj.am.myapplication.core.domain.usecase.firmaTurno
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -49,10 +50,10 @@ class AvisosTurnos(
 
     fun sesionValida(uid: String) = !saliendo && usuarioActual() == uid && preferences.getString("uid", null) == uid
 
-    /** Se llama cuando la app confirmó el rol de barbero. El trabajo persiste tras cerrar el proceso. */
-    fun iniciar(uid: String) {
+    /** El rol confirmado se conserva para las consultas en segundo plano. */
+    fun iniciar(uid: String, comoCliente: Boolean = false) {
         saliendo = false
-        preferences.edit().putString("uid", uid).apply()
+        preferences.edit().putString("uid", uid).putBoolean("comoCliente", comoCliente).apply()
         val request = PeriodicWorkRequestBuilder<TurnosWorker>(15, TimeUnit.MINUTES)
             .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
             .setInputData(workDataOf("uid" to uid)).addTag("avisos_turnos").build()
@@ -63,7 +64,7 @@ class AvisosTurnos(
         observacion = scope.launch {
             while (sesionValida(uid)) {
                 try {
-                    observarTurnos(uid).collect { turnos -> mutex.withLock { procesar(uid, turnos) } }
+                    observarTurnos(uid, comoCliente).collect { turnos -> mutex.withLock { procesar(uid, turnos) } }
                     return@launch
                 } catch (e: CancellationException) { throw e
                 } catch (e: Exception) {
@@ -75,7 +76,7 @@ class AvisosTurnos(
     }
 
     suspend fun consultar(uid: String) = mutex.withLock {
-        if (sesionValida(uid)) procesar(uid, consultarTurnos(uid))
+        if (sesionValida(uid)) procesar(uid, consultarTurnos(uid, preferences.getBoolean("comoCliente", false)))
     }
 
     fun detener() {
@@ -99,7 +100,8 @@ class AvisosTurnos(
                 val valores = json.getJSONArray(id)
                 (0 until valores.length()).map { index -> if (valores.isNull(index)) null else valores.getString(index) }
             }
-            val cambios = detectarCambiosTurnos(firmas, turnos)
+            val cambios = if (preferences.getBoolean("comoCliente", false)) detectarCancelacionesCliente(firmas, turnos)
+                else detectarCambiosTurnos(firmas, turnos)
             // Sin permiso se conserva la última versión: no acumular avisos antiguos al habilitarlo.
             if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
                 cambios.forEach { cambio ->
@@ -119,13 +121,15 @@ class AvisosTurnos(
         val id = turnoId.hashCode()
         val pending = PendingIntent.getActivity(context, id, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val texto = when (tipo) {
+            "cancelacion_cliente" -> R.string.notifications_cancelacion_cliente
             "alta" -> R.string.notifications_alta
             "baja" -> R.string.notifications_baja
             else -> R.string.notifications_modificacion
         }
         NotificationManagerCompat.from(context).notify("turnos_locales", id,
             NotificationCompat.Builder(context, "cambios_turnos").setSmallIcon(R.drawable.ic_turno_notification)
-                .setContentTitle(context.getString(R.string.notifications_title)).setContentText(context.getString(texto))
+                .setContentTitle(context.getString(if (tipo == "cancelacion_cliente") R.string.notifications_cliente_title
+                    else R.string.notifications_title)).setContentText(context.getString(texto))
                 .setContentIntent(pending).setAutoCancel(true).build())
     }
 }

@@ -58,18 +58,19 @@ fun AppShell(
     androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
         if (esBarbero) notificationScope.launch { sincronizarNotificaciones() }
     }
-    LaunchedEffect(esBarbero) {
+    LaunchedEffect(reservasState.catalogo?.esBarbero) {
+        val rol = reservasState.catalogo?.esBarbero ?: return@LaunchedEffect
+        shellViewModel.clienteActualId()?.let { shellViewModel.avisosTurnos.iniciar(it, comoCliente = !rol) }
         if (esBarbero) {
-            shellViewModel.clienteActualId()?.let { shellViewModel.avisosTurnos.iniciar(it) }
             sincronizarNotificaciones()
         }
     }
-    if (esBarbero) {
+    if (reservasState.catalogo != null) {
         ar.edu.unaj.am.myapplication.features.notifications.PermisoNotificacionesBarbero()
     }
-    LaunchedEffect(esBarbero, notificationContext) {
+    LaunchedEffect(reservasState.catalogo?.esBarbero, notificationContext) {
         val intent = (notificationContext as? android.app.Activity)?.intent
-        if (esBarbero && (intent?.getBooleanExtra("abrir_turnos_fcm", false) == true ||
+        if (reservasState.catalogo != null && (intent?.getBooleanExtra("abrir_turnos_fcm", false) == true ||
                 intent?.getStringExtra("turnoId") != null)) {
             navigationState.selectTab(TopLevelDestination.TURNOS)
             intent.removeExtra("abrir_turnos_fcm")

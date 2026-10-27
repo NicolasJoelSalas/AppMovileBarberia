@@ -174,7 +174,8 @@ class FirestoreReservaRepository(
                     val turno = tx.get(turnoRef)
                     check(turno.getString("HorarioId") == actual.id && turno.getString("BarberoId") == uid)
                     check(turno.getString("Estado")?.lowercase() in listOf("confirmado", "pendiente"))
-                    tx.update(turnoRef, mapOf("Estado" to "cancelado", "CanceladoEn" to FieldValue.serverTimestamp()))
+                    tx.update(turnoRef, mapOf("Estado" to "cancelado", "CanceladoEn" to FieldValue.serverTimestamp(),
+                        "CanceladoPor" to uid))
                     tx.update(doc.reference, mapOf("Estado" to "bloqueado", "TurnoId" to FieldValue.delete()))
                 } else if (actual.getString("Estado") == "libre") {
                     tx.update(doc.reference, "Estado", "bloqueado")

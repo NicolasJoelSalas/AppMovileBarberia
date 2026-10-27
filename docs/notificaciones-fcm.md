@@ -1,5 +1,13 @@
 # Avisos gratuitos de turnos y recepción FCM
 
+## Cancelaciones para clientes
+
+Al ingresar como cliente también se activa la escucha y la consulta periódica de sus propios turnos, filtrados por `ClienteId`. Si un turno confirmado o pendiente pasa a cancelado y `CanceladoPor` coincide con `BarberoId`, se muestra “El barbero canceló tu turno”. Tocar el aviso abre la lista de turnos del cliente. No se avisa por cancelaciones hechas por el propio cliente, cambios de horario ni turnos ya cancelados en la primera sincronización.
+
+Al quitar franjas, el barbero guarda `CanceladoPor` junto con la cancelación y el bloqueo del horario en la misma transacción. Las reglas impiden que un cliente atribuya una cancelación al barbero. Instalar la compilación actualizada y publicar `firestore.rules` para habilitar este flujo. Ambos usuarios deben utilizar la nueva versión y el cliente debe permitir las notificaciones.
+
+Estos avisos usan el sistema local existente: llegan con la sincronización mientras el proceso está vivo; con el proceso cerrado dependen de WorkManager (intervalo mínimo de 15 minutos, sujeto a demoras de Android). No se necesita desplegar Cloud Functions. La primera lectura establece la base para detectar cambios posteriores.
+
 ## Funcionamiento actual sin Blaze
 
 Los cambios de turnos generan **notificaciones locales**, sin solicitar envíos FCM desde Android. FCM sigue integrado como receptor: necesita un emisor autorizado externo para recibir push; no detecta cambios de Firestore por sí mismo. No se incluyen credenciales Admin en la app.

@@ -21,11 +21,12 @@ class FirestoreNovedadesTurnosRepository @Inject constructor(
     private val firestore: FirebaseFirestore,
     private val auth: FirebaseAuth
 ) : NovedadesTurnosRepository {
-    private fun query(uid: String) = firestore.collection("turnos").whereEqualTo("BarberoId", uid)
-    override suspend fun consultar(uid: String): List<Turno> {
+    private fun query(uid: String, comoCliente: Boolean) = firestore.collection("turnos")
+        .whereEqualTo(if (comoCliente) "ClienteId" else "BarberoId", uid)
+    override suspend fun consultar(uid: String, comoCliente: Boolean): List<Turno> {
         check(auth.currentUser?.uid == uid) { "La sesión cambió" }
         val snapshot = suspendCancellableCoroutine<QuerySnapshot> { continuation ->
-            query(uid).get(Source.SERVER)
+            query(uid, comoCliente).get(Source.SERVER)
                 .addOnSuccessListener { if (continuation.isActive) continuation.resume(it) }
                 .addOnFailureListener { if (continuation.isActive) continuation.resumeWithException(it) }
         }
@@ -34,9 +35,9 @@ class FirestoreNovedadesTurnosRepository @Inject constructor(
         return mapear(snapshot)
     }
 
-    override fun observar(uid: String) = callbackFlow<List<Turno>> {
+    override fun observar(uid: String, comoCliente: Boolean) = callbackFlow<List<Turno>> {
         check(auth.currentUser?.uid == uid) { "La sesión cambió" }
-        val listener = query(uid).addSnapshotListener(MetadataChanges.INCLUDE) { snapshot, error ->
+        val listener = query(uid, comoCliente).addSnapshotListener(MetadataChanges.INCLUDE) { snapshot, error ->
             when {
                 error != null -> close(error)
                 auth.currentUser?.uid != uid -> close()
@@ -56,6 +57,6 @@ class FirestoreNovedadesTurnosRepository @Inject constructor(
                 is Boolean -> if (estado) "confirmado" else "cancelado"
                 is String -> estado
                 else -> error("Estado de turno inválido")
-            }, referenciaCorteUrl = doc.getString("ReferenciaCorteUrl"))
+            }, referenciaCorteUrl = doc.getString("ReferenciaCorteUrl"), canceladoPor = doc.getString("CanceladoPor"))
     }
 }

@@ -4,6 +4,13 @@ import ar.edu.unaj.am.myapplication.core.domain.model.Turno
 
 data class CambioTurnoLocal(val turnoId: String, val tipo: String)
 
+fun detectarCancelacionesCliente(antes: Map<String, List<String?>>, despues: List<Turno>): List<CambioTurnoLocal> =
+    despues.filter { turno ->
+        val anterior = antes[turno.id]
+        anterior != null && anterior.getOrNull(5) in listOf("confirmado", "pendiente") &&
+            turno.estado.equals("cancelado", true) && turno.canceladoPor == turno.barberoId
+    }.map { CambioTurnoLocal(it.id, "cancelacion_cliente") }
+
 /** Excluye nombres auxiliares y datos contables que no forman parte de la reserva. */
 fun firmaTurno(turno: Turno): List<String?> = listOf(
     turno.clienteId, turno.barberoId, turno.servicioId, turno.inicioMillis?.toString(),

@@ -5,6 +5,6 @@ import kotlinx.coroutines.flow.Flow
 
 /** Solo emite lecturas confirmadas por el servidor, nunca una caché parcial. */
 interface NovedadesTurnosRepository {
-    suspend fun consultar(uid: String): List<Turno>
-    fun observar(uid: String): Flow<List<Turno>>
+    suspend fun consultar(uid: String, comoCliente: Boolean = false): List<Turno>
+    fun observar(uid: String, comoCliente: Boolean = false): Flow<List<Turno>>
 }
