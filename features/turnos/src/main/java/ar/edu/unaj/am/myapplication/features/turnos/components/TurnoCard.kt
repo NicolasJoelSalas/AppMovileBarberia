@@ -100,7 +100,11 @@ fun TurnoCard(turno: Turno, modifier: Modifier = Modifier,
             }
             if (editable) {
                 onModificar?.let { OutlinedButton(onClick = it, enabled = !operando, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.features_turnos_modificar_turno)) } }
-                onCancelar?.let { TextButton(onClick = it, enabled = !operando, modifier = Modifier.fillMaxWidth()) { Text(if (operando) stringResource(R.string.features_turnos_guardando) else stringResource(R.string.features_turnos_cancelar_turno)) } }
+                onCancelar?.let { OutlinedButton(onClick = it, enabled = !operando,
+                    border = androidx.compose.foundation.BorderStroke(1.dp,
+                        if (operando) colors.error.copy(alpha = 0.38f) else colors.error),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = colors.error),
+                    modifier = Modifier.fillMaxWidth()) { Text(if (operando) stringResource(R.string.features_turnos_guardando) else stringResource(R.string.features_turnos_cancelar_turno)) } }
             }
             if (turno.estado.lowercase() == "cancelado") Text(stringResource(R.string.features_turnos_cancelado), color = colors.error)
             if (realizado) {
