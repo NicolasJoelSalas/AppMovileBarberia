@@ -2,6 +2,16 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { cambiosTurno, leerTurno } from "./cambios-turno";
 const turno = { BarberoId: "barbero-a", Estado: "confirmado", HorarioId: "h1" };
+test("no avisa al barbero por realizar turnos ni por sus propias cancelaciones", () => {
+  for (const despues of [
+    { ...turno, Estado: "Realizado" },
+    { ...turno, Estado: "cancelado", CanceladoPor: turno.BarberoId }
+  ]) {
+    assert.deepEqual(cambiosTurno(turno, despues), []);
+    assert.deepEqual(cambiosTurno(null, despues), []);
+  }
+  assert.equal(cambiosTurno(turno, { ...turno, Estado: "cancelado", CanceladoPor: "cliente" })[0].tipo, "baja");
+});
 test("alta, cancelación y borrado físico", () => {
   assert.equal(cambiosTurno(null, turno)[0].tipo, "alta");
   assert.equal(cambiosTurno(turno, { ...turno, Estado: "cancelado" })[0].tipo, "baja");

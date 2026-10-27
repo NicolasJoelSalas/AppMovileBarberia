@@ -22,6 +22,8 @@ fun detectarCambiosTurnos(antes: Map<String, List<String?>>, despues: List<Turno
     return despues.mapNotNull { turno ->
         val anterior = antes[turno.id]
         when {
+            turno.estado.equals("realizado", true) -> null
+            turno.estado.equals("cancelado", true) && turno.canceladoPor == turno.barberoId -> null
             anterior == null -> CambioTurnoLocal(turno.id, "alta")
             anterior == firmaTurno(turno) -> null
             turno.estado.equals("cancelado", true) -> CambioTurnoLocal(turno.id, "baja")

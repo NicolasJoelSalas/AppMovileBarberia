@@ -41,6 +41,8 @@ export function cambiosTurno(antes: TurnoDocumento | null, despues: TurnoDocumen
   if (antes && despues && campos.every(campo => isDeepStrictEqual(antes[campo], despues[campo]))) return [];
   const anterior = antes?.BarberoId;
   const actual = despues?.BarberoId;
+  if (despues && (estado(despues) === "realizado" ||
+      (actual && estado(despues) === "cancelado" && despues.CanceladoPor === actual))) return [];
   if (!antes) return actual ? [{ uid: actual, tipo: "alta", texto: "Tenés una nueva reserva en tu agenda." }] : [];
   if (!despues) return anterior ? [{ uid: anterior, tipo: "baja", texto: "Se eliminó un turno de tu agenda." }] : [];
   if (anterior !== actual) return [
