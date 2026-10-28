@@ -2,7 +2,7 @@
   "name": "barberia-firestore-tests",
   "private": true,
   "scripts": {
-    "test": "firebase emulators:exec --config ../firebase.json --project demo-barberia --only firestore \"node --test --test-concurrency=1 disponibilidad.test.cjs reservas.test.cjs\""
+    "test": "firebase emulators:exec --config ../firebase.json --project demo-barberia --only firestore \"node run-tests.cjs\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^5.0.0",

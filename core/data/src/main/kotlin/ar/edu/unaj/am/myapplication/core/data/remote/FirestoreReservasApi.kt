@@ -60,7 +60,8 @@ class FirestoreReservasApi(
     }
     private fun lunes(zona: ZoneId, offset: Int) = politica.lunes(zona,offset)
     private fun vigente(tx: Transaction, doc: DocumentSnapshot, b: DocumentSnapshot) {
-        requireDomain(doc.exists() && doc.getString("ZonaHoraria") == b.getString("ZonaHoraria"),ErrorReason.SCHEDULE_REPUBLISH)
+        requireDomain(doc.exists() && doc.getBoolean("PublicacionPendiente") != true &&
+            doc.getString("ZonaHoraria") == b.getString("ZonaHoraria"),ErrorReason.SCHEDULE_REPUBLISH)
         val agenda = tx.get(b.reference.collection("agenda").document(requireNotNull(doc.getString("AgendaId"))))
         requireDomain(doc.get("Agenda") == agenda.data,ErrorReason.SCHEDULE_REPUBLISH)
     }
@@ -81,6 +82,7 @@ class FirestoreReservasApi(
         val turnos = firestore.collection("turnos").whereEqualTo("BarberoId", uid).get(Source.SERVER).esperar().documents
             .filter { activo(it) && fin(it) > reloj.millis() }
         var franjas = 0
+        val dias = mutableListOf<Pair<DocumentReference, OcupacionDia>>()
         for ((offset, nombre) in nombres.withIndex()) {
             val configuracion = mapa[nombre] as? Map<*, *> ?: error("Configurá $nombre.")
             val rangos = (configuracion["Franjas"] as? List<*>)?.map { value ->
@@ -90,6 +92,7 @@ class FirestoreReservasApi(
             val habilitado = configuracion["Estado"] as? Boolean ?: error("Configurá $nombre.")
             val nuevo = crearDiaAtencion(fecha.plusDays(offset.toLong()), zona, DiaAtencion(habilitado, rangos))
             val referencia = diaRef("${uid}_${nuevo.inicioMillis}")
+            dias += referencia to nuevo
             val propios = turnos.filter { inicio(it) >= nuevo.inicioMillis && inicio(it) < nuevo.inicioMillis + nuevo.atencion.length * 60000L }
             // La inicialización incluye reservas anteriores, aun si ahora quedan fuera de una franja.
             var inicial = nuevo.copy(atencion = "1".repeat(nuevo.atencion.length))
@@ -108,15 +111,38 @@ class FirestoreReservasApi(
                     "Fin" to Timestamp(java.util.Date(nuevo.inicioMillis + nuevo.atencion.length * 60000L)),
                     "Atencion" to nuevo.atencion,
                     "Ocupacion" to if (actual.exists()) ocupacion(actual).ocupacion else inicial.ocupacion,
-                    "Agenda" to mapa, "AgendaId" to fecha.toString(), "ZonaHoraria" to zona.id)
+                    "Agenda" to mapa, "AgendaId" to fecha.toString(), "ZonaHoraria" to zona.id,
+                    "PublicacionPendiente" to true)
                 tx.set(referencia, campos)
             }.esperar()
-            for (t in propios) {
-                if (politica.cancelarAlPublicar(t.get("Estado").toString(),inicio(t),fin(t),nuevo))
-                    cancelar(uid, t.id)
-            }
             if (habilitado) franjas += rangos.size
         }
+        // Todos los días quedan bloqueados hasta terminar las cancelaciones. Un reintento
+        // reconstruye el trabajo desde Firestore, incluso después de reiniciar el proceso.
+        for ((referencia, nuevo) in dias) {
+            val propios = turnos.filter { inicio(it) >= nuevo.inicioMillis &&
+                inicio(it) < nuevo.inicioMillis + nuevo.atencion.length * 60000L }
+            for (t in propios) {
+                if (politica.cancelarAlPublicar(t.get("Estado").toString(),inicio(t),fin(t),nuevo))
+                    cancelar(uid, t.id, referencia.id, mapa)
+            }
+        }
+        // La semana se habilita en una sola transacción, sin sobrescribir ocupaciones
+        // que hayan cambiado por cancelaciones concurrentes.
+        firestore.runTransaction { tx ->
+            val barbero = tx.get(barber(uid)); habilitado(barbero)
+            check(barbero.getString("ZonaHoraria") == zona.id && tx.get(fuente).data == mapa) {
+                "La agenda cambió. Volvé a cargarla."
+            }
+            val actuales = dias.map { (ref, _) -> tx.get(ref) }
+            check(actuales.all { it.get("Agenda") == mapa && it.getBoolean("PublicacionPendiente") == true }) {
+                "La publicación cambió. Volvé a intentarlo."
+            }
+            actuales.forEach { dia ->
+                tx.set(dia.reference, requireNotNull(dia.data).filterKeys { it != "UltimoTurnoId" } +
+                    ("PublicacionPendiente" to false))
+            }
+        }.esperar()
         return mapOf("franjasPublicadas" to franjas)
     }
 
@@ -202,8 +228,24 @@ class FirestoreReservasApi(
         }.esperar()
     }
 
-    private suspend fun cancelar(uid: String, id: String): Map<String, Any?> = firestore.runTransaction { tx ->
+    private suspend fun cancelar(uid: String, id: String, diaPublicacion: String? = null,
+        agendaPublicacion: Map<*, *>? = null): Map<String, Any?> = firestore.runTransaction { tx ->
         val t = tx.get(turnoRef(id))
+        if (diaPublicacion != null) {
+            val dia = tx.get(diaRef(diaPublicacion))
+            val b = tx.get(barber(uid)); habilitado(b)
+            val fuente = tx.get(b.reference.collection("agenda").document(requireNotNull(dia.getString("AgendaId"))))
+            check(dia.getBoolean("PublicacionPendiente") == true && dia.get("Agenda") == agendaPublicacion &&
+                fuente.data == agendaPublicacion && dia.getString("ZonaHoraria") == b.getString("ZonaHoraria")) {
+                "La agenda cambió. Volvé a cargarla."
+            }
+            val mapa = ocupacion(dia)
+            // La consulta inicial puede quedar vieja por una cancelación o modificación.
+            if (!t.exists() || t.getString("BarberoId") != uid ||
+                inicio(t) < mapa.inicioMillis || inicio(t) >= mapa.inicioMillis + mapa.atencion.length * 60000L ||
+                !politica.cancelarAlPublicar(t.get("Estado").toString(), inicio(t), fin(t), mapa))
+                return@runTransaction mapOf("cancelado" to false)
+        }
         val comoBarbero = t.getString("BarberoId") == uid
         requireDomain(t.exists() && (comoBarbero || t.getString("ClienteId") == uid),ErrorReason.BOOKING_NOT_OWNED)
         if (estadoTurno(t.get("Estado").toString()) == EstadoTurno.CANCELADO) mapOf("cancelado" to true) else {

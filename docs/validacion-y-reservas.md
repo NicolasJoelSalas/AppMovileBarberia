@@ -50,8 +50,19 @@ turnos existentes desde el servidor y se incluyen en las máscaras del día.
 Las publicaciones siguientes conservan la ocupación y actualizan la atención.
 Las reservas excluidas se cancelan mediante las mismas transacciones protegidas.
 
-Si una publicación falla parcialmente, se puede reintentar: no borra las ocupaciones
-existentes. Una semana no publicada informa que el barbero debe publicarla.
+La publicación marca los seis documentos diarios con `PublicacionPendiente=true`.
+Mientras un día tiene esa marca, las reglas y el adaptador rechazan nuevas reservas
+y modificaciones sobre él; las cancelaciones siguen disponibles. Después de resolver
+los turnos excluidos, una sola transacción habilita los seis días conservando sus
+ocupaciones actuales. No se anuncia éxito hasta confirmar esa transacción.
+
+Si falla la preparación, una cancelación o la confirmación final, el barbero debe
+reintentar **Guardar y publicar semana**. El reintento consulta el servidor y conserva
+las ocupaciones y cancelaciones ya confirmadas, incluso al reiniciar la aplicación.
+Antes de cancelar se vuelve a leer el turno y la agenda: una edición o cancelación
+concurrente no se resuelve usando la consulta anterior. Las cancelaciones confirmadas
+no se revierten si se interrumpe el resto de la publicación.
+Una semana no publicada informa que el barbero debe publicarla.
 Los turnos anteriores sin `DiaId` se mantienen; después de publicar su semana
 pueden modificarse o cancelarse con el flujo nuevo. Las apps anteriores deberán
 actualizarse para reservar con un barbero migrado.
@@ -91,11 +102,19 @@ En `firestore-tests`, instalar dependencias con `pnpm install --frozen-lockfile`
 usar el emulador local:
 
 ```powershell
-node node_modules/firebase-tools/lib/bin/firebase.js emulators:exec --config ../firebase.json --project demo-barberia --only firestore "node --test --test-concurrency=1 disponibilidad.test.cjs reservas.test.cjs"
+node node_modules/firebase-tools/lib/bin/firebase.js emulators:exec --config ../firebase.json --project demo-barberia --only firestore "node run-tests.cjs"
 ```
 
 Esto prueba concurrencia real y autorización con el SDK de cliente, sin un servidor
 privilegiado. Se usa exclusivamente el proyecto de demostración `demo-barberia`.
+El ejecutor falla también si un rechazo se debe al límite de evaluación de reglas
+o a un error interno del emulador, aunque `assertFails` lo haya aceptado.
+Se prueban publicaciones pendientes, su habilitación de seis días en una transacción
+y duraciones de 5, 41 y 240 minutos, además de las reservas y ataques existentes.
+
+Ejecutar las pruebas Android de `app` y `core:ui` por separado para evitar dos
+instrumentaciones simultáneas sobre el mismo emulador. Revisar el número de casos
+en los reportes: una tarea que termina correctamente con cero casos no verifica la app.
 
 `AlmacenamientoOfflineTest` comprueba Room real, reapertura, aislamiento, ViewModel y
 pantalla para cliente y barbero, inyectando una falla de sincronización. No cambia

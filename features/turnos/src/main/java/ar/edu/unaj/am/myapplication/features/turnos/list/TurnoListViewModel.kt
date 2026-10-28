@@ -66,7 +66,7 @@ class TurnoListViewModel @AssistedInject constructor(
             try {
                 when (val result = accion(turno.id)) {
                     is AppResult.Error -> mutableErrorCompletar.value = result.error
-                    is AppResult.Success -> Unit
+                    is AppResult.Success -> actualizarEstado(turno.id, "cancelado")
                 }
             } finally { mutableCompletandoId.value = null }
         }
@@ -80,16 +80,18 @@ class TurnoListViewModel @AssistedInject constructor(
             try {
                 when (val result = completar(turno)) {
                     is AppResult.Success -> {
-                        todosLosTurnos = todosLosTurnos.map {
-                            if (it.id == turno.id) it.copy(estado = "realizado") else it
-                        }
-                        mutableTurnosParaRecordatorios.value = todosLosTurnos
-                        actualizarSemana()
+                        actualizarEstado(turno.id, "realizado")
                     }
                     is AppResult.Error -> mutableErrorCompletar.value = result.error
                 }
             } finally { mutableCompletandoId.value = null }
         }
+    }
+
+    private fun actualizarEstado(id: String, estado: String) {
+        todosLosTurnos = todosLosTurnos.map { if (it.id == id) it.copy(estado = estado) else it }
+        mutableTurnosParaRecordatorios.value = todosLosTurnos
+        actualizarSemana()
     }
 
     fun accionesTurnos(ahoraMillis: Long): Map<String, AccionesTurno> =

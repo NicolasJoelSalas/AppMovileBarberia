@@ -436,6 +436,18 @@ async function cancelBooking(uid = 'ana', released = 'libre') {
 }
 async function setupChange() { await publish(); await reserve('ana', 'cambio'); }
 
+test('horarios antiguos: no reutiliza un turno cancelado ni libera otro turno sin cambiar su comprobante',async()=>{
+  await setupChange();
+  await assertSucceeds(cancelBooking());
+  await assertFails(updateDoc(doc(db('ana'),`horarios/${horarioId}`),{Estado:'ocupado',TurnoId:'cambio'}));
+  await assertSucceeds(reserve('juan','posterior'));
+  for(const uid of ['ana','juan','barbero']){
+    await assertFails(updateDoc(doc(db(uid),`horarios/${horarioId}`),{Estado:'libre',TurnoId:deleteField()}));
+  }
+  assert.equal((await getDoc(doc(db('barbero'),`horarios/${horarioId}`))).data().TurnoId,'posterior');
+  assert.equal((await getDoc(doc(db('juan'),'turnos/posterior'))).data().Estado,'confirmado');
+});
+
 test('quitar franja: barbero cancela y bloquea el horario de forma atomica', async () => {
   await setupChange();
   await assertFails(cancelBooking('otro', 'bloqueado'));

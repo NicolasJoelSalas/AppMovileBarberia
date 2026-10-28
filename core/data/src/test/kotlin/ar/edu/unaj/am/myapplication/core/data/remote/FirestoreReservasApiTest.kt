@@ -26,6 +26,8 @@ class FirestoreReservasApiTest {
     private val pendientes = mutableListOf<Pair<String, Map<String, Any?>>>()
     private var usuario = "ana"
     private var escrituras = 0
+    private var antesDeTransaccion: (() -> Unit)? = null
+    private var fallarEscritura: ((String, Map<String, Any?>) -> Boolean)? = null
     private val fecha = LocalDate.parse("2026-11-02")
     private val zona = ZoneId.of("UTC")
     private val reloj = Clock.fixed(Instant.parse("2026-11-02T08:00:00Z"), zona)
@@ -67,7 +69,11 @@ class FirestoreReservasApiTest {
         `when`(firestore.runTransaction(any<Transaction.Function<Any>>())).thenAnswer {
             pendientes.clear()
             try {
+                antesDeTransaccion?.invoke()
                 val value = it.getArgument<Transaction.Function<Any>>(0).apply(tx)
+                check(pendientes.none { (ruta, campos) -> fallarEscritura?.invoke(ruta, campos) == true }) {
+                    "Conexión interrumpida antes de confirmar."
+                }
                 for ((ruta, campos) in pendientes) {
                     documentos[ruta] = campos.mapValues { (_, v) -> if (v is FieldValue) Timestamp(java.util.Date(reloj.millis())) else v }
                     escrituras++
@@ -181,5 +187,143 @@ class FirestoreReservasApiTest {
         api.ejecutar("publicarAgenda",mapOf("inicioSemana" to "2026-11-02","agenda" to nueva))
         assertEquals("cancelado",documentos.getValue("turnos/anterior")["Estado"])
         assertEquals("0".repeat(1440),documentos.getValue("disponibilidad/${diaId()}")["Ocupacion"])
+    }
+
+    @Test fun `interrupted publication blocks reservations and a fresh adapter resumes without losing bookings`() = runTest {
+        api.ejecutar("reservarTurno", solicitud())
+        api.ejecutar("reservarTurno", solicitud(inicio = hora(10)) + ("solicitudId" to "conservado"))
+        val nueva = agenda + ("Lunes" to mapOf("Estado" to true,
+            "Franjas" to listOf(mapOf("Inicio" to "10:00", "Fin" to "13:00"))))
+        documentos["barberos/barbero/agenda/2026-11-02"] = nueva
+        usuario = "barbero"
+        fallarEscritura = { ruta, campos -> ruta == "turnos/solicitud" && campos["Estado"] == "cancelado" }
+        try {
+            api.ejecutar("publicarAgenda", mapOf("inicioSemana" to "2026-11-02", "agenda" to nueva))
+            fail("Debe informar la interrupción")
+        } catch (_: IllegalStateException) { }
+        assertTrue(documentos.filterKeys { it.startsWith("disponibilidad/") }.values.all { it["PublicacionPendiente"] == true })
+        usuario = "ana"
+        try {
+            api.ejecutar("reservarTurno", solicitud(inicio = hora(11)) + ("solicitudId" to "bloqueado"))
+            fail("No debe reservar durante una publicación incompleta")
+        } catch (_: DomainValidationException) { }
+        assertFalse(documentos.containsKey("turnos/bloqueado"))
+        fallarEscritura = null
+        usuario = "barbero"
+        FirestoreReservasApi(firestore, auth, reloj).ejecutar("publicarAgenda",
+            mapOf("inicioSemana" to "2026-11-02", "agenda" to nueva))
+        assertEquals("cancelado", documentos.getValue("turnos/solicitud")["Estado"])
+        assertEquals("confirmado", documentos.getValue("turnos/conservado")["Estado"])
+        val dia = documentos.getValue("disponibilidad/${diaId()}")
+        assertEquals("0".repeat(60), (dia["Ocupacion"] as String).substring(540, 600))
+        assertEquals("1".repeat(60), (dia["Ocupacion"] as String).substring(600, 660))
+        assertTrue(documentos.filterKeys { it.startsWith("disponibilidad/") }.values.all { it["PublicacionPendiente"] == false })
+        usuario = "ana"
+        api.ejecutar("reservarTurno", solicitud(inicio = hora(11)) + ("solicitudId" to "recuperado"))
+        assertEquals("confirmado", documentos.getValue("turnos/recuperado")["Estado"])
+    }
+
+    @Test fun `failure enabling the week never enables only some days and retry preserves cancellations`() = runTest {
+        api.ejecutar("reservarTurno", solicitud())
+        usuario = "barbero"
+        val nueva = agenda + ("Lunes" to mapOf("Estado" to false, "Franjas" to emptyList<Any>()))
+        documentos["barberos/barbero/agenda/2026-11-02"] = nueva
+        fallarEscritura = { ruta, campos -> ruta.startsWith("disponibilidad/") && campos["PublicacionPendiente"] == false }
+        try {
+            api.ejecutar("publicarAgenda", mapOf("inicioSemana" to "2026-11-02", "agenda" to nueva))
+            fail("Debe fallar la confirmación final")
+        } catch (_: IllegalStateException) { }
+        assertEquals("cancelado", documentos.getValue("turnos/solicitud")["Estado"])
+        assertTrue(documentos.filterKeys { it.startsWith("disponibilidad/") }.values.all { it["PublicacionPendiente"] == true })
+        fallarEscritura = null
+        api.ejecutar("publicarAgenda", mapOf("inicioSemana" to "2026-11-02", "agenda" to nueva))
+        assertTrue(documentos.filterKeys { it.startsWith("disponibilidad/") }.values.all { it["PublicacionPendiente"] == false })
+        assertEquals("0".repeat(1440), documentos.getValue("disponibilidad/${diaId()}")["Ocupacion"])
+    }
+
+    @Test fun `publication rechecks a booking cancelled after the initial query`() = runTest {
+        api.ejecutar("reservarTurno", solicitud())
+        val nueva = agenda + ("Lunes" to mapOf("Estado" to false, "Franjas" to emptyList<Any>()))
+        documentos["barberos/barbero/agenda/2026-11-02"] = nueva
+        usuario = "barbero"
+        antesDeTransaccion = {
+            if (documentos.filterKeys { it.startsWith("disponibilidad/") }.values.all { it["PublicacionPendiente"] == true }) {
+                antesDeTransaccion = null
+                documentos["turnos/solicitud"] = documentos.getValue("turnos/solicitud") + ("Estado" to "cancelado")
+                val ruta = "disponibilidad/${diaId()}"
+                documentos[ruta] = documentos.getValue(ruta) + ("Ocupacion" to "0".repeat(1440))
+            }
+        }
+        api.ejecutar("publicarAgenda", mapOf("inicioSemana" to "2026-11-02", "agenda" to nueva))
+        assertEquals("cancelado", documentos.getValue("turnos/solicitud")["Estado"])
+        assertEquals("0".repeat(1440), documentos.getValue("disponibilidad/${diaId()}")["Ocupacion"])
+    }
+
+    @Test fun `failure preparing a day is recoverable after recreating the adapter`() = runTest {
+        usuario = "barbero"
+        val nueva = agenda + ("Miercoles" to mapOf("Estado" to false, "Franjas" to emptyList<Any>()))
+        documentos["barberos/barbero/agenda/2026-11-02"] = nueva
+        val martes = "disponibilidad/barbero_${hora(0) + 86400000}"
+        fallarEscritura = { ruta, _ -> ruta == martes }
+        try {
+            api.ejecutar("publicarAgenda", mapOf("inicioSemana" to "2026-11-02", "agenda" to nueva))
+            fail("Debe informar qué publicación no pudo completar")
+        } catch (_: IllegalStateException) { }
+        assertEquals(true, documentos.getValue("disponibilidad/${diaId()}")["PublicacionPendiente"])
+        usuario = "ana"
+        try {
+            api.ejecutar("consultarSemana", mapOf("barberoId" to "barbero", "servicioId" to "corte"))
+            fail("No debe ofrecer una semana parcialmente publicada")
+        } catch (_: DomainValidationException) { }
+        fallarEscritura = null
+        usuario = "barbero"
+        FirestoreReservasApi(firestore, auth, reloj).ejecutar("publicarAgenda",
+            mapOf("inicioSemana" to "2026-11-02", "agenda" to nueva))
+        assertTrue(documentos.filterKeys { it.startsWith("disponibilidad/") }.values.all {
+            it["PublicacionPendiente"] == false && it["Agenda"] == nueva
+        })
+    }
+
+    @Test fun `a changed agenda aborts pending cancellations instead of applying an obsolete publication`() = runTest {
+        api.ejecutar("reservarTurno", solicitud())
+        val nueva = agenda + ("Lunes" to mapOf("Estado" to false, "Franjas" to emptyList<Any>()))
+        val ruta = "barberos/barbero/agenda/2026-11-02"
+        documentos[ruta] = nueva
+        usuario = "barbero"
+        antesDeTransaccion = {
+            if (documentos.filterKeys { it.startsWith("disponibilidad/") }.values.all { it["PublicacionPendiente"] == true }) {
+                antesDeTransaccion = null
+                documentos[ruta] = agenda
+            }
+        }
+        try {
+            api.ejecutar("publicarAgenda", mapOf("inicioSemana" to "2026-11-02", "agenda" to nueva))
+            fail("La publicación anterior dejó de ser vigente")
+        } catch (_: IllegalStateException) { }
+        assertEquals("confirmado", documentos.getValue("turnos/solicitud")["Estado"])
+        api.ejecutar("publicarAgenda", mapOf("inicioSemana" to "2026-11-02", "agenda" to agenda))
+        assertEquals("confirmado", documentos.getValue("turnos/solicitud")["Estado"])
+        assertEquals(false, documentos.getValue("disponibilidad/${diaId()}")["PublicacionPendiente"])
+    }
+
+    @Test fun `publication preserves a booking moved into the new attention after its initial query`() = runTest {
+        api.ejecutar("reservarTurno", solicitud())
+        val nueva = agenda + ("Lunes" to mapOf("Estado" to true,
+            "Franjas" to listOf(mapOf("Inicio" to "10:00", "Fin" to "13:00"))))
+        documentos["barberos/barbero/agenda/2026-11-02"] = nueva
+        usuario = "barbero"
+        antesDeTransaccion = {
+            if (documentos.filterKeys { it.startsWith("disponibilidad/") }.values.all { it["PublicacionPendiente"] == true }) {
+                antesDeTransaccion = null
+                documentos["turnos/solicitud"] = documentos.getValue("turnos/solicitud") + mapOf(
+                    "Inicio" to Timestamp(java.util.Date(hora(10))), "Fin" to Timestamp(java.util.Date(hora(11))))
+                val ruta = "disponibilidad/${diaId()}"
+                documentos[ruta] = documentos.getValue(ruta) +
+                    ("Ocupacion" to ("0".repeat(600) + "1".repeat(60) + "0".repeat(780)))
+            }
+        }
+        api.ejecutar("publicarAgenda", mapOf("inicioSemana" to "2026-11-02", "agenda" to nueva))
+        assertEquals("confirmado", documentos.getValue("turnos/solicitud")["Estado"])
+        assertEquals("1".repeat(60), (documentos.getValue("disponibilidad/${diaId()}")["Ocupacion"] as String).substring(600,660))
     }
 }

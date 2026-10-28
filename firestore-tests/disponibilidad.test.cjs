@@ -197,3 +197,47 @@ test('Spark: un cambio de barbero no puede omitir la liberación del día anteri
   batch.update(refDia(db,destino),{Ocupacion:reemplazar('0'.repeat(1440),540,600,'1'),UltimoTurnoId:'a'});
   await assertFails(batch.commit());
 });
+
+test('Spark: servicios de 5, 41 y 240 minutos reservan y liberan exactamente su intervalo',async()=>{
+  for(const minutos of [5,41,240]){
+    await assertSucceeds(updateDoc(doc(store('barbero'),'servicios/corte'),{Duracion:minutos}));
+    await assertSucceeds(reservar('ana',`limite-${minutos}`,minutos));
+    assert.equal((await getDoc(refDia(store('ana')))).data().Ocupacion.slice(540,540+minutos),'1'.repeat(minutos));
+    await assertSucceeds(cancelar('ana',`limite-${minutos}`));
+    assert.equal((await getDoc(refDia(store('ana')))).data().Ocupacion,'0'.repeat(1440));
+  }
+});
+
+test('Spark: publicación pendiente bloquea reservas y ediciones pero permite cancelar',async()=>{
+  await reservar('ana','existente');
+  const db=store('barbero'),{UltimoTurnoId,...dia}=(await getDoc(refDia(db))).data();
+  await assertSucceeds(setDoc(refDia(db),{...dia,PublicacionPendiente:true}));
+  await assertFails(reservar('juan','nuevo',60,10));
+  await assertFails(editar('ana','existente',60,10));
+  await assertFails(updateDoc(refDia(store('ana')),{PublicacionPendiente:false}));
+  await assertFails(updateDoc(refDia(store('otro')),{PublicacionPendiente:false}));
+  await assertSucceeds(cancelar('ana','existente'));
+  const {UltimoTurnoId:ultimo,...cancelado}=(await getDoc(refDia(db))).data();
+  await assertSucceeds(setDoc(refDia(db),{...cancelado,PublicacionPendiente:false}));
+  await assertSucceeds(reservar('juan','recuperado'));
+});
+
+test('Spark: habilitar seis días en una transacción conserva ocupaciones y no excede accesos',async()=>{
+  await reservar('ana','existente');
+  const db=store('barbero'),{UltimoTurnoId,...base}=(await getDoc(refDia(db))).data();
+  const pendientes=[];
+  for(let i=0;i<6;i++){
+    const inicio=inicioDia+i*86400000;
+    const ref=doc(db,`disponibilidad/barbero_${inicio}`);
+    const dia={...base,Inicio:Timestamp.fromMillis(inicio),Fin:Timestamp.fromMillis(inicio+86400000),
+      Ocupacion:i===0?base.Ocupacion:'0'.repeat(1440),PublicacionPendiente:true};
+    await assertSucceeds(setDoc(ref,dia));
+    pendientes.push([ref,dia]);
+  }
+  await assertSucceeds(runTransaction(db,async tx=>{
+    const actuales=await Promise.all(pendientes.map(([ref])=>tx.get(ref)));
+    actuales.forEach(s=>tx.set(s.ref,{...s.data(),PublicacionPendiente:false}));
+  }));
+  assert.equal((await getDoc(refDia(db))).data().Ocupacion.slice(540,600),'1'.repeat(60));
+  for(const [ref] of pendientes)assert.equal((await getDoc(ref)).data().PublicacionPendiente,false);
+});
