@@ -15,10 +15,11 @@ con Firebase. El primer ingreso crea la cuenta; los siguientes reutilizan la exi
    generará el recurso `default_web_client_id` a partir de ese cliente.
 4. Sincronizá Gradle y volvé a instalar la app.
 
-SHA-1 debug de este equipo (obtenida con `:app:signingReport`):
+Para obtener la huella de la firma de depuración del equipo actual, ejecutar desde
+la raíz del proyecto:
 
-```text
-A2:35:6C:E2:79:27:AB:A8:2E:35:85:FC:E0:F6:DA:B2:07:97:B3:4A
+```powershell
+.\gradlew.bat :app:signingReport
 ```
 
 Para otras máquinas o una publicación, registrá también la huella de la firma
@@ -42,5 +43,9 @@ Habilitá también el proveedor Correo electrónico/contraseña en Firebase.
 - Registrá un correo nuevo con contraseña y comprobá su aparición en Authentication.
 - Intentá registrar nuevamente el correo: debe mostrar el error sin abrir la app.
 - Si falta el cliente web, se muestra que el acceso con Google no está disponible.
+
+Después de autenticar, se completa el perfil antes de abrir la sesión; un error
+de Firestore permite reintentar sin volver a crear la cuenta. Ver
+[configuración de perfiles](../README.md#3-configurar-firebase) y [sesión sin conexión](../README.md#persistencia-y-funcionamiento-sin-conexión).
 
 Referencia: https://firebase.google.com/docs/auth/android/google-signin

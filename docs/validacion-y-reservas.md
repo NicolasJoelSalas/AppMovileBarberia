@@ -90,7 +90,8 @@ crear un documento por minuto.
 
 ```powershell
 .\gradlew.bat test :app:assembleDebug
-.\gradlew.bat :app:connectedDebugAndroidTest
+.\gradlew.bat :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.notClass=ar.edu.unaj.am.myapplication.TurnosFirestoreReadTest"
+.\gradlew.bat :core:ui:connectedDebugAndroidTest
 ```
 
 Las pruebas del dominio cubren distintas duraciones, descansos, cierre exacto,
@@ -102,7 +103,7 @@ En `firestore-tests`, instalar dependencias con `pnpm install --frozen-lockfile`
 usar el emulador local:
 
 ```powershell
-node node_modules/firebase-tools/lib/bin/firebase.js emulators:exec --config ../firebase.json --project demo-barberia --only firestore "node run-tests.cjs"
+pnpm test
 ```
 
 Esto prueba concurrencia real y autorización con el SDK de cliente, sin un servidor
@@ -121,6 +122,18 @@ pantalla para cliente y barbero, inyectando una falla de sincronización. No cam
 el Wi-Fi ni sustituye la prueba manual de cerrar el proceso y abrir la app sin red.
 `TurnosFirestoreReadTest` sigue siendo un diagnóstico remoto opcional y se omite
 sin `-Pandroid.testInstrumentationRunnerArguments.validarFirestoreReal=true`.
+
+Para ejecutar únicamente ese diagnóstico, con una sesión de barbero iniciada:
+
+```powershell
+.\gradlew.bat :app:connectedDebugAndroidTest "-Pandroid.testInstrumentationRunnerArguments.class=ar.edu.unaj.am.myapplication.TurnosFirestoreReadTest" "-Pandroid.testInstrumentationRunnerArguments.validarFirestoreReal=true"
+```
+
+Las tarjetas, las cancelaciones, los reportes y los recordatorios utilizan
+`estadoTurno` para interpretar estados históricos. Los valores `true`, `confirmado`
+y `pendiente` se consideran pendientes; `false`, `cancelado` y `cancelada`,
+cancelados; `realizado` y `completado`, realizados. Un estado desconocido no
+habilita la edición o realización del turno.
 
 Se retiraron el generador fijo de 40 minutos, la dependencia de Cloud Functions para reservas,
 los módulos inactivos del template y sus pruebas/recursos de ejemplo. Se conservan

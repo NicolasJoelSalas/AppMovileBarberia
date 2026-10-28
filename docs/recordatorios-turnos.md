@@ -14,6 +14,12 @@ Durante la sesión del cliente, los avisos se actualizan si el turno cambia y se
 
 ## Verificación en Android
 
+El cálculo de instantes está en `core:domain/usecase/RecordatorioTurno.kt`, con
+anticipaciones definidas en `model/ConfiguracionRecordatorios.kt`. El contrato
+`RecordatoriosRepository` se implementa con preferencias en `core:data`.
+`app/reminders` integra AlarmManager, el receptor Android y la recuperación de
+los avisos; las pantallas consumen las acciones calculadas por dominio.
+
 1. Como cliente, reservar desde Inicio un turno a más de 24 horas. Aceptar los permisos. Comprobar dos alarmas distintas en `adb shell dumpsys alarm` sin entrar en Mis turnos.
 2. Verificar un turno con menos de 24 horas pero más de una hora: debe tener solo el aviso de una hora. Un turno a menos de una hora no debe generar avisos vencidos.
 3. Probar ambos avisos en un dispositivo de prueba ajustando el horario del turno y el reloj; confirmar que recibir el primero no cancela el segundo ni duplica avisos después de sincronizar.

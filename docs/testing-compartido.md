@@ -65,6 +65,12 @@ la regla y de los repositorios simulados.
 - Tests con dispositivo o emulador Android: `src/androidTest`.
 - Reglas de Firestore: `firestore-tests`.
 
+Las pruebas de reglas se ejecutan con `pnpm install --frozen-lockfile` y `pnpm test`
+desde `firestore-tests`; el script inicia el emulador con `demo-barberia`.
+Para pruebas Android se necesita un dispositivo o emulador. El diagnóstico
+`TurnosFirestoreReadTest` requiere habilitación explícita y sesión real; no debe
+confundirse con las pruebas locales. Ver [comandos y validación](validacion-y-reservas.md).
+
 Para ejecutar las pruebas locales de los módulos adaptados, desde la raíz:
 
 ```powershell

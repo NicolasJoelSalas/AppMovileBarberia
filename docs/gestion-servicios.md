@@ -26,4 +26,8 @@ La interfaz y sus validaciones tienen recursos en español e inglés. Los nombre
 
 ## Verificación y publicación
 
-Ejecutar los tests de `core:domain`, `features:cuenta`, `features:turnos`, `core:data` y las reglas con `npm test` en `firestore-tests`. Publicar las reglas de `firestore.rules` antes de utilizar el alta o la edición contra Firebase real. No se requiere una migración de Room. Para reservas de duración variable hay que publicar las reglas actualizadas y las agendas; no se requiere Blaze.
+La gestión de servicios no cambia el esquema local. La base de la aplicación
+está en versión 3 por la incorporación de la referencia de corte a los turnos;
+ver [migraciones y almacenamiento](../README.md#persistencia-y-funcionamiento-sin-conexión).
+
+Ejecutar los tests de `core:domain`, `features:cuenta`, `features:turnos`, `core:data` y las reglas con `pnpm test` en `firestore-tests`. Publicar las reglas de `firestore.rules` antes de utilizar el alta o la edición contra Firebase real. No se requiere una migración de Room. Para reservas de duración variable hay que publicar las reglas actualizadas y las agendas; no se requiere Blaze.

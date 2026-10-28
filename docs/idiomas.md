@@ -19,6 +19,11 @@ No traducir identificadores persistidos, estados de Firestore, claves de prefere
 
 ## Comprobaciones
 
+El idioma se gestiona en `core:ui/theme/LanguagePreference.kt` y desde Mi cuenta.
+La preferencia de apariencia se conserva por separado mediante
+`AparienciaRepository` y su implementación en `core:data`; no reemplaza el
+almacenamiento de idioma administrado por AppCompat y Android.
+
 `LocalizationResourcesTest` verifica con Android la selección de español e inglés, variantes regionales, el respaldo para idiomas no admitidos y los parámetros y plurales de recordatorios. Se ejecuta en un dispositivo o emulador con:
 
 ```powershell
