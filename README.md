@@ -1,4 +1,4 @@
-# Barbería UNAJ
+# BarberApp
 
 Aplicación Android para gestionar la relación entre clientes y barberos: publicación de trabajos, reservas de turnos, organización de la agenda y consulta de ganancias. Desarrollada en Kotlin con Jetpack Compose, una arquitectura modular por capas y persistencia local para consultar información previamente sincronizada.
 
