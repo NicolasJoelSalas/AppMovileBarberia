@@ -4,6 +4,7 @@ Aplicación Android para gestionar la relación entre clientes y barberos: publi
 
 El proyecto contempla dos perfiles con navegación y permisos diferenciados. Las reservas se confirman mediante transacciones de Cloud Firestore y sus reglas de seguridad. La implementación actual no requiere Cloud Functions ni un plan Firebase Blaze.
 
+**NOTA: La aplicacion cuenta con un usuario barbero registrado en la base de datos. Por otro lado, los usuarios que utilizan la opcion de registrarse se generan con el rol de cliente. La cuenta de barbero es nisca@gmail.com / Contraseña:619200.**
 ## Contenido
 
 - [Funcionalidades](#funcionalidades)
